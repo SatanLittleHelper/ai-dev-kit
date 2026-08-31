@@ -22,7 +22,7 @@ An invitation to jointly think through an architectural/creative decision — in
 
 ## Spec Placement
 
-Do not write the design spec to its permanent location before `ExitPlanMode` approval — draft/present it in chat and in Plan Mode's own service file first. Only after approval, save it per the `repo-workflow-conventions` skill's placement rule (project root, `YYYY-MM-DD-<topic>-design.md`). After the plan is written and saved, delete the temporary design spec unless the user explicitly asked to keep it.
+Do not write the design spec to its permanent location before `ExitPlanMode` approval — draft/present it in chat and in Plan Mode's own service file first. Only after approval, save it to `superpowers:brainstorming`'s own default location (`docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`) — `repo-workflow-conventions` explicitly leaves this to the planning skill's default rather than overriding it. After the plan is written and saved, delete the temporary design spec unless the user explicitly asked to keep it.
 
 ## Review Companion
 
