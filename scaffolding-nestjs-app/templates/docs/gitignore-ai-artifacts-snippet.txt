@@ -1,0 +1,6 @@
+# AI-артефакты — не должны попадать в репозиторий
+/.cursor/
+/MEMORY.md
+/AGENTS.md
+/CLAUDE.md
+/.codex-review/

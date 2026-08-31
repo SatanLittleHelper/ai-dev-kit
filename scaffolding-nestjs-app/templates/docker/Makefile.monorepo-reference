@@ -1,0 +1,49 @@
+.PHONY: local-up local-down local-clean prod-up prod-down prod-clean prod-check prod-build dev0-up dev0-down dev0-clean dev0-build dev0-check build-deps
+
+COMPOSE_BASE = docker compose -f devops/docker-compose.base.yml
+COMPOSE_LOCAL = $(COMPOSE_BASE) -f devops/docker-compose.local.yml
+COMPOSE_PROD = $(COMPOSE_BASE) -f devops/docker-compose.prod.yml
+COMPOSE_PROD_WITH_BNN = $(COMPOSE_PROD) -f devops/docker-compose.networks.brandnew.yml
+COMPOSE_PROD_WITH_EXN = $(COMPOSE_PROD) -f devops/docker-compose.networks.existing.yml
+
+local-up:
+	$(COMPOSE_LOCAL) up -d
+
+local-down:
+	$(COMPOSE_LOCAL) down
+
+local-clean:
+	$(COMPOSE_LOCAL) down -v
+
+build-deps:
+	docker build --progress=plain -f devops/Dockerfile.deps -t __PROJECT_NAME__-deps:local .
+
+prod-up: build-deps
+	$(COMPOSE_PROD_WITH_BNN) up -d --build
+
+prod-down:
+	$(COMPOSE_PROD_WITH_BNN) down
+
+prod-clean:
+	$(COMPOSE_PROD_WITH_BNN) -v
+
+prod-check:
+	$(COMPOSE_PROD_WITH_BNN) config
+
+prod-build: build-deps
+	$(COMPOSE_PROD_WITH_BNN) build --progress=plain
+
+dev0-up: build-deps
+	$(COMPOSE_PROD_WITH_BNN) -p __PROJECT_NAME__-uat up -d --build
+
+dev0-down:
+	$(COMPOSE_PROD_WITH_BNN) -p __PROJECT_NAME__-uat down
+
+dev0-clean:
+	$(COMPOSE_PROD_WITH_BNN) -p __PROJECT_NAME__-uat down -v
+
+dev0-check:
+	$(COMPOSE_PROD_WITH_BNN) -p __PROJECT_NAME__-uat config
+
+dev0-build: build-deps
+	$(COMPOSE_PROD_WITH_BNN) -p __PROJECT_NAME__-uat build --progress=plain

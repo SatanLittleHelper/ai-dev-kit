@@ -21,6 +21,8 @@ Baseline testing (an agent asked to add a DB lookup + outbound webhook call, no 
 | Outbound call to one external API | Lives in a dedicated `*.api.service.ts`, `async`, returns `Promise<T>` |
 | Whole external system integration | Gets its own `<domain>-http/` module with `forRootAsync()`, registered once, `global: true` |
 | M2M auth (no OAuth) | Bearer token guard comparing against a configured secret, registered as `APP_GUARD` |
+| Error logging | `PinoLogger.error(err, message)` — error first, message second — never `@nestjs/common Logger` for this call shape |
+| Branch logging | `logger.debug(...)` on every meaningful guard/branch/skip path |
 | Cross-field validation | Never stack a cross-field decorator on a property also guarded by `@IsOptional()`/`@ValidateIf()` |
 
 ## Repository Layer (mandatory)
@@ -107,9 +109,25 @@ Never mix the two shapes: if `catchError` is in the pipe, data must also come fr
 
 **A whole external system** (not just one call) → its own `<domain>-http/` module: `*.token.ts` for injection tokens, `*.types.ts` for `XxxHttpConfig`/`XxxHttpModuleAsyncOptions`, a `static forRootAsync(options)` returning a `DynamicModule` (config provider + `HttpService` provider, auth via an Axios request interceptor built inside `useFactory`). Mark it `global: true`, call `forRootAsync` exactly once in the root app module — every other module just `@Inject()`s the token, never re-imports or re-configures it.
 
+## Cron Schedules
+
+Always use the `CronExpression` enum from `@nestjs/schedule` (e.g. `CronExpression.EVERY_5_MINUTES`) — never a raw cron string. The enum is self-documenting and catches typos at compile time that a raw string like `'*/5 * * * *'` wouldn't.
+
+## Logging
+
+**Log messages in the same language you communicate with the user in** (this developer's default: Russian) — both `Logger`/diagnostic `console` output and structured logger calls.
+
+**Error logging — use `PinoLogger`, not `@nestjs/common`'s `Logger`, for the call shape.** Inject via `@InjectPinoLogger(ClassName.name) private readonly logger: PinoLogger` from `nestjs-pino` (constructor parameter, not a field initializer). Call pattern: `this.logger.error(err, 'Human-readable error message')` — the raw caught error **first**, the message **second**. Never pass a formatted error string as the trailing argument instead: `@nestjs/common`'s `Logger` (which `nestjs-pino` wraps for global output) treats a trailing string argument as the log `context` field and silently drops extra positional arguments that don't match a `%s`-style placeholder — so a `logger.error(getErrorMessage(err))`-shaped call never actually reaches stdout with the error detail. `PinoLogger.error(err, message)` is the only shape that reliably produces both a readable message and a structured `err` field (message + stack) for log parsing. `.warn`/`.debug` keep the plain single-string signature. `PinoLogger` has **no `.log()` method** — its levels are `trace/debug/info/warn/error/fatal`; a pre-`nestjs-pino` `logger.log('text')` becomes `logger.info('text')`.
+
+**Debug log every meaningful branch.** A guard clause, an `if`/`else`, a conditional early return, a skip/no-op path — each gets a `logger.debug('human-readable text')` call explaining which branch was taken and why. This makes branch-dependent bugs (a skipped write, a silently ignored duplicate) diagnosable from logs alone, without reproducing the issue or querying the database. Applies to services and repositories alike; a class with no logger yet gains one via the same constructor-injected `PinoLogger` pattern used for error logging.
+
 ## M2M Bearer Guard
 
 For service-to-service auth with no OAuth flow: extract the token via `bearer.replace('Bearer ', '')`, compare against a config value with `config.getOrThrow<string>(...)`, register the guard as `APP_GUARD`.
+
+## AppModule DI Test Pattern
+
+To test that the root `AppModule` actually wires up (env vars validated, every provider resolvable), set `process.env` in `beforeAll`, then use a dynamic `await import('./app.module')` inside the `it()` body — this guarantees the module is loaded after the env vars are set, not at file-parse time. Compile with `Test.createTestingModule({ imports: [AppModule] }).compile().resolves.toBeDefined()`. No `overrideProvider`, no `useMocker` — the point is verifying the real DI graph resolves, not stubbing pieces of it.
 
 ## Cross-Field Validation Gotcha
 

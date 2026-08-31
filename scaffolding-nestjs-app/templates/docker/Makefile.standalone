@@ -1,0 +1,12 @@
+.PHONY: local-up local-down local-clean
+
+COMPOSE = docker compose -f devops/docker-compose.yml
+
+local-up:
+	$(COMPOSE) up -d --build
+
+local-down:
+	$(COMPOSE) down
+
+local-clean:
+	$(COMPOSE) down -v

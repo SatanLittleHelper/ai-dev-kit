@@ -1,0 +1,17 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: devops/Dockerfile
+      args:
+        EXPOSE_PORT: ${PORT:-3000}
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT:-3000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_PRETTY: ${LOG_PRETTY:-false}
+    env_file:
+      - .env
+    ports:
+      - '${PORT:-3000}:${PORT:-3000}'
+    restart: unless-stopped

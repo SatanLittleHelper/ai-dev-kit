@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+set -e
+
+echo "Running tests for all projects..." >&2
+
+npx nx affected -t test-cli --coverage --base=origin/main
