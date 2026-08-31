@@ -18,8 +18,8 @@ This developer's personal testing standards, independent of stack or test runner
 | Assertion style | `toHaveBeenCalledWith`/`toHaveBeenNthCalledWith` — never index into `mock.calls[n][m]` |
 | Logger/console | Never assert on it — assert the observable behavior around it instead |
 | The tautology check | If the test still passes with the method body replaced by `return mockResult`, delete it |
-| Who writes tests | A separate pass/agent from the one that wrote the production code — not bundled into the same task |
-| When tests run | Only on explicit request, after all planned code changes in the task are done — never automatically after an edit |
+| Who writes tests | Same pass, test-first — the agent writing the code writes its test first, per TDD (`superpowers:test-driven-development`) |
+| When tests run | Per TDD red/green step, the one scoped test runs immediately (required) — the full build/lint/whole-suite pass stays a single run at the very end |
 
 ## What Gets Unit Tests, and What Doesn't
 
@@ -55,15 +55,21 @@ Before keeping a test, ask: would this still pass if the method body were replac
 
 A test earns its place by asserting something the *logic* produces — a downstream call with the right arguments, a branch-dependent return shape, an exception type tied to a specific input.
 
-## Execution Timing
+## Execution Timing: Test-Driven Development by Default
 
-Two separate questions, both answered here:
+**TDD is the default way to write any code this skill requires a unit test for** (the layer table above). Route to `superpowers:test-driven-development` for the mechanical cycle: write one failing test → verify it fails for the right reason → write minimal code to pass → verify it passes → refactor → repeat. This replaces writing tests after the fact in a separate pass.
 
-**Who writes the tests:** the agent/pass that writes production code for a task does not also write that task's tests. Route test-writing to a separate pass — a dedicated test-writing agent, or an explicit follow-up task in the same plan. This isn't optional by default: new or changed behavior gets test coverage as part of the work, just not authored by the same hands that wrote the implementation.
+**Who writes the tests:** the same agent/pass that writes the implementation writes its test — first, before the implementation exists. There is no longer a default split between "who writes the code" and "who writes its test"; TDD requires them to co-evolve in the same pass, since the code doesn't exist yet when the test is written.
 
-**When tests run:** never automatically after an edit. Run them only on explicit user request, and only once all planned code changes for the task are already written — not per-file, not per-task inside a multi-step plan. A multi-task plan gets exactly one test run, at the end, covering everything.
+**Scope boundary:** TDD's own checklist says "every new function/method has a test" — that's bounded by this skill's layer table above, not expanded by it. Don't start a test-first cycle for a layer this skill excludes (components, repositories, thin API-client wrappers, pure mappers) just because TDD's generic checklist implies otherwise; skip those layers exactly as before.
 
-**Exception — code review may write tests directly.** The "separate pass" rule above has exactly one carve-out: a review pass may add or update tests directly when it finds behavior changed, coverage missing, and no separate test-writing task was planned for it. This is the one case where reviewing and writing tests happen in the same pass.
+**When tests run:** two different things, don't conflate them.
+- TDD's own per-step runs (verify red, verify green) are scoped to the one test file/pattern under active work, and happen throughout the task — required at every step, never deferred.
+- The full build/type-check/lint/whole-suite pass still runs exactly once, at the very end (see `writing-plans-conventions`/`executing-plans-conventions`) — that's a different pass with a different purpose, not something TDD's scoped runs replace or duplicate.
+
+**Bug fixes go through TDD too:** write a failing test that reproduces the bug first, then fix it — mirrors `superpowers:test-driven-development`'s Debugging Integration.
+
+**Exception — code review may write tests directly.** One carve-out remains: a review pass may add or fix a test directly when it finds an existing gap TDD didn't produce — legacy code with no tests, or a merge that dropped coverage. The behavior already exists in that case, so there's no test-first cycle to run; this is the one case where reviewing and writing tests happen in the same pass without a preceding red step.
 
 ## Test Environment & Fixture Reuse
 
@@ -79,6 +85,7 @@ Two separate questions, both answered here:
 | `expect(fn.mock.calls[0][0]).toBe(x)` | `expect(fn).toHaveBeenCalledWith(x)` |
 | `expect(logger.error).toHaveBeenCalledWith(...)` in a catch-and-log test | Assert the surrounding observable behavior instead (return value, resolves without throwing, a sibling call that didn't fire) |
 | Only a happy-path test for a method with a try/catch or validation branch | Add the failure-branch test — it's not optional extra credit |
-| Running the test suite after every file edit mid-task | Wait until the whole task's code is written, then run once, on request |
-| Same agent writes the feature and its tests in one pass | Split into a separate test-writing pass |
+| Re-running the *full* suite after every file edit mid-task | Save the full build/lint/whole-suite run for the plan's single final pass — TDD's own scoped single-test run is the thing that happens per edit, not the full suite |
+| Writing implementation code before its test | Write the failing test first, watch it fail, then minimal code — no exceptions without the user's explicit permission |
+| Adding a test-first cycle for a layer this skill excludes, because TDD's checklist says "every function" | The layer table above still governs scope; TDD governs process/order for whatever's already in scope, not what's in scope |
 | Under deadline/reviewer pressure, adding tests for a layer this skill excludes "just to show full coverage" | "Full coverage" means full coverage *per this convention* — a repository/API-client/component with no spec file is the correct, complete state, not a gap |

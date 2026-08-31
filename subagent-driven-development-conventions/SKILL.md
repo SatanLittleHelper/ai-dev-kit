@@ -16,7 +16,7 @@ description: Use when executing an implementation plan by delegating its tasks t
 - **Pass a full context packet explicitly in each subagent's prompt:** goal, scope, interfaces, applicable constraints (including which stack-convention skills to invoke — a subagent doesn't discover skills from a bare task description), the chosen workflow mode, verification policy, and readiness criteria.
 - **Default to a mini/cheap model** for implementation and review subagents, unless the user specifies a different one.
 - **Implementer subagents never commit** — explicitly forbid `git commit` in the prompt; changes stay uncommitted (see `repo-workflow-conventions`).
-- **Route test-writing to the test-writing role**, not the implementer — an implementer subagent does not write tests unless the user explicitly asks it to (see `testing-philosophy`).
+- **The implementer subagent writes its task's test itself, test-first**, when the task falls in `testing-philosophy`'s test-worthy scope — per TDD, the same pass that writes the code writes its test, before the code exists. State this explicitly in the subagent's prompt (alongside which stack-convention skills apply) rather than assuming it infers it; don't route test-writing to a separate role by default (see `testing-philosophy`).
 - **One final whole-branch review, not per-task.** After all implementation tasks are done, run a single final review. Don't run a task-by-task review unless there's an explicit risk, blocker, or user request.
 
 ## Common Mistakes

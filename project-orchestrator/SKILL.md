@@ -26,7 +26,8 @@ Match the current situation against every row that applies (more than one can ap
 | Writing or reviewing NestJS code | `nestjs-personal-conventions` |
 | Writing or reviewing Angular code | `angular-personal-conventions` |
 | Writing or reviewing any TypeScript code | `ts-code-style-conventions` |
-| Writing a test, or deciding whether/when tests run | `testing-philosophy` |
+| Writing or changing implementation code in a layer `testing-philosophy` requires tests for | `superpowers:test-driven-development`, chained with `testing-philosophy` (defines what/how) and the applicable stack skill |
+| Deciding what to test, coverage shape, or assertion style | `testing-philosophy` |
 | Deciding where a file belongs, or about to branch/commit | `repo-workflow-conventions` |
 | Searching an unfamiliar or large codebase, before `find`/`grep`/`Explore` | `codebase-domain-map` |
 | A dedicated MCP tool could handle something Bash could also do, or a known file path needs reading | `mcp-tool-priority` |
@@ -41,8 +42,9 @@ Several rows can match the same task. Typical chains:
 - **Writing a plan that touches NestJS:** `writing-plans-conventions` already handles invoking `nestjs-best-practices`/`nestjs-personal-conventions` itself — don't invoke the stack skill a second time redundantly before it.
 - **Implementing a plan task that writes NestJS code outside a plan-driven flow** (bounded/inline work): `nestjs-personal-conventions` directly, no plan-related skill needed.
 - **About to say "done"** on any task: `verification-before-completion-conventions`, regardless of what else already ran.
+- **Implementing any task with test-worthy behavior:** `testing-philosophy` (decides what counts and how to assert it) chained with `superpowers:test-driven-development` (drives the red-green-refactor process) plus whichever stack skill applies (`nestjs-personal-conventions`/`angular-personal-conventions`/`ts-code-style-conventions`) — TDD is the default for all such code now, not an opt-in.
 
-When in doubt about order, match the sequence a human developer would naturally hit these decision points in: design → plan → implement (stack conventions) → test → verify → commit (repo workflow).
+When in doubt about order, match the sequence a human developer would naturally hit these decision points in: design → plan → implement via TDD (stack conventions + `test-driven-development`, test-first) → verify → commit (repo workflow).
 
 ## Project Config
 

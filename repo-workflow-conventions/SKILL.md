@@ -16,7 +16,6 @@ This developer's personal conventions for repository hygiene: where team-shared 
 | Personal note vs. shared rule | `*.local.md` (gitignored) vs. plain `*.md` (tracked, team-shared) |
 | Where a personal note lives | Same path as its shared counterpart, `.local.md` before the extension — or topic-named if there's no counterpart |
 | Ephemeral workflow artifacts (reports, reviews, logs) | Typed `tmp/` subfolders — never the repo root or `.git/` |
-| A plan/spec document produced by a planning skill | Project root as `YYYY-MM-DD-<name>.md`, deleted once implemented and no longer needed |
 | Committing to `main` | Never — always branch first, even for a one-line fix |
 | When `git commit` runs | Only on explicit user request — never automatically after a task or plan |
 | Commits per feature | One, at the end — no intermediate commits per task |
@@ -41,10 +40,10 @@ Two tiers of files can coexist in the same conventions directory:
 
 When using a multi-step workflow (planning, subagent-driven implementation, plan execution), route service files by type instead of dropping them wherever convenient:
 
-- **Plans and specs go to the project root**, not `tmp/`: as `YYYY-MM-DD-<feature-name>.md` (a plan) or `YYYY-MM-DD-<topic>-design.md` (a design spec/brainstorm output) — these are the one exception that belongs at the root, not in `tmp/`, because they're the durable artifact of the planning phase, not scratch output.
+- **Plans and specs go wherever the planning skill that produced them defaults to** (e.g. `docs/superpowers/plans/`, `docs/superpowers/specs/`) — don't override it.
 - Everything else — reports, review packages, build/debug logs — goes in **typed `tmp/` subfolders** (`tmp/reports/`, `tmp/reviews/`, `tmp/logs/`, or whatever taxonomy fits the workflow), never `.git/`, the bare repo root, or an external temp directory.
 
-**Cleanup:** once a plan is fully implemented, verified, and no longer needs review, delete its artifacts from `tmp/` and the plan/spec file itself — unless the user explicitly asked to keep them. A stale plan file sitting in the repo root after the feature shipped is clutter, not documentation.
+**Cleanup:** once a plan is fully implemented, verified, and no longer needs review, delete its artifacts from `tmp/` and the plan/spec file itself — unless the user explicitly asked to keep them. A stale plan/spec file sitting around after the feature shipped is clutter, not documentation.
 
 ## Git: Branching
 
@@ -70,7 +69,7 @@ Write internal rule/doc files (anything under a `rules`/`docs`-style conventions
 |---|---|
 | A personal scratch note committed as a plain `*.md` | Rename to `*.local.md` and confirm it's actually gitignored |
 | A review/report file dropped in the repo root or `.git/` | Move to the right typed `tmp/` subfolder |
-| A finished plan file left in the repo root after the feature shipped | Delete it once implemented and verified |
+| A finished plan/spec file left around after the feature shipped | Delete it once implemented and verified |
 | `git commit` run automatically after finishing a plan task | Only commit when the user explicitly asks |
 | A multi-task plan gets a commit per task | Squash the workflow into one commit at the very end |
 | Commit subject in imperative mood ("Add logging") | Past tense ("Added logging") |
