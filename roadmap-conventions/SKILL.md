@@ -7,7 +7,7 @@ description: Use when authoring, locating, or updating a roadmap file (a phased 
 
 ## Overview
 
-Cross-project conventions for where roadmaps and their nested docs live. Layered on top of `superpowers:writing-roadmaps` (authoring process), `writing-prd` (PRD content/format), and consumed by `executing-roadmap-checkpoints` (picking and finishing tasks from an existing roadmap).
+Cross-project conventions for where roadmaps and their nested docs live. Layered on top of `superpowers:writing-roadmaps` (authoring process), `writing-prd` (PRD content/format), and consumed by `executing-roadmap-checkpoints` (picking and finishing tasks from an existing roadmap) and `batch-plan-validate` (Phase 2 doc queue). For a generic "continue the roadmap" request that doesn't say which of those two applies, `resuming-roadmap-work` reads this same state and decides first.
 
 ## Workflow Recipe
 
