@@ -1,6 +1,6 @@
 ---
 name: repo-workflow-conventions
-description: Use when deciding where a file belongs in a repository (shared rule vs. personal note, tmp/ artifact vs. tracked file), or when creating a branch or writing a commit message.
+description: Use when deciding where a file belongs in a repository (shared rule vs. personal note, tmp/ artifact vs. tracked file), or when creating a branch or writing a commit message. Explicit triggers include "сделай коммит" / "make a commit", "закоммить" / "commit this", "сделай ветку" / "create a branch".
 ---
 
 # Repo Workflow Conventions
