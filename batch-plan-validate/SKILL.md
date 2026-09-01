@@ -8,15 +8,16 @@ description: >-
   "пройтись по роадмапу" / "go through the roadmap", "по каждой оставшейся задаче план" /
   "a plan for each remaining task", "прогнать планотатором" / "run through plannotator",
   "на все задачи роадмапа" / "for all roadmap tasks", "продолжим писать спеки" / "let's
-  continue writing specs", "у нас есть роадмап (с техдолгом)" / "we have a (tech debt)
-  roadmap", "давай продолжим по роадмапу" / "let's continue with the roadmap". This last
-  group is a soft/implicit trigger — a mention of an existing roadmap plus a request to
-  keep producing plans/specs "for it", even without naming "batch" or "one at a time"
-  explicitly — still means this skill, not ad-hoc writing-plans/brainstorming calls one by
-  one from scratch. Applies whenever the source is a roadmap file with checkboxes, or an
-  explicit list of tasks given inline, and each task needs its own superpowers:writing-plans
-  or superpowers:brainstorming output reviewed through the native Plan Mode → Plannotator
-  pattern.
+  continue writing specs". This last group is a soft/implicit trigger — a mention of an
+  existing roadmap plus a request to keep producing plans/specs "for it", even without
+  naming "batch" or "one at a time" explicitly — still means this skill, not ad-hoc
+  writing-plans/brainstorming calls one by one from scratch. For a generic "continue the
+  roadmap" request that doesn't specify documentation vs. implementation, use
+  `resuming-roadmap-work` first — it decides whether this skill or
+  `executing-roadmap-checkpoints` applies. Applies whenever the source is a roadmap file
+  with checkboxes, or an explicit list of tasks given inline, and each task needs its own
+  superpowers:writing-plans or superpowers:brainstorming output reviewed through the
+  native Plan Mode → Plannotator pattern.
 ---
 
 # Batch Plan Validate

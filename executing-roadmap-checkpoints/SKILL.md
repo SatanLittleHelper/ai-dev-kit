@@ -1,6 +1,6 @@
 ---
 name: executing-roadmap-checkpoints
-description: Use when the user asks to pick up, take, start, or continue the next unfinished checkpoint/task from an existing roadmap file — triggers include "возьми следующую задачу в роадмапе", "take the next roadmap task", "continue the roadmap", "next roadmap checkpoint", "продолжи роадмап".
+description: Use when the user names the next unfinished checkpoint/task from an existing roadmap and asks to pick it up, take it, or start it — triggers include "возьми следующую задачу в роадмапе", "take the next roadmap task", "next roadmap checkpoint", "возьми следующий чекпоинт". For a generic "continue the roadmap" request that doesn't specify implementation vs. documentation, use `resuming-roadmap-work` first — it decides whether this skill or `batch-plan-validate` applies.
 ---
 
 # Executing Roadmap Checkpoints
