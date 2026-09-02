@@ -2,7 +2,7 @@
 
 Drives one roadmap checkpoint from "find it" to "check it off": locate the roadmap, pick the first unfinished checkpoint, branch correctly, agree on an implementation mode, then close out (checkbox + cleanup) once done.
 
-**REQUIRED BACKGROUND:** `roadmap/SKILL.md` (file locations/naming used below, including the per-step `steps/<step-slug>/` folder). Implementation itself is delegated to `writing-prd`, `superpowers:writing-plans`, `superpowers:subagent-driven-development`/`superpowers:executing-plans`, `codex-implement`, or `superpowers:using-git-worktrees` — this reference sequences them, it doesn't replace them.
+**REQUIRED BACKGROUND:** `roadmap/SKILL.md` (file locations/naming used below, including the per-step `steps/<step-slug>/` folder). Implementation itself is delegated to `writing-prd`, `superpowers:writing-plans`, `superpowers:subagent-driven-development`/`superpowers:executing-plans`, or `codex-implement` — this reference sequences them, it doesn't replace them.
 
 Use this reference when the user names a specific checkpoint/task and asks to take/start it. For a generic "continue the roadmap" request that doesn't specify implementation vs. documentation, use `references/resuming-work.md` first — it decides whether this reference or `references/batch-plan-validate.md` applies.
 
@@ -46,10 +46,9 @@ Before writing code, confirm this checkpoint has its own step folder `docs/<slug
 
 A design doc in that folder (from `brainstorming`, written at roadmap-authoring time) is optional and only present if the step needed its own architectural decision — carry it forward as-is, don't regenerate it. Skip the PRD/plan requirement only if the user explicitly says the checkpoint is trivial enough to go straight to code.
 
-Then ask **one** `AskUserQuestion` call with two questions (never fold this into freeform prose):
+Then ask **one** `AskUserQuestion` call to decide the method (never fold this into freeform prose):
 
-- **Q1 — method:** inline (no subagents) / subagent-driven development (`rules/skills/subagent-driven-development.md`, or `rules/skills/executing-plans.md` if the plan already exists) / `codex-implement`.
-- **Q2 — worktree:** yes (`using-git-worktrees`) / no.
+- **method:** inline (no subagents) / subagent-driven development (`rules/skills/subagent-driven-development.md`, or `rules/skills/executing-plans.md` if the plan already exists) / `codex-implement`.
 
 ### 5. Implement
 
@@ -73,7 +72,7 @@ Only after the implementation's own final verification step has passed:
 |---|---|
 | Picking a checkpoint without checking its `(depends: ...)` tag first | Only offer checkpoints that are actually ready (all dependency ids `closed`); ask via `AskUserQuestion` when more than one is ready |
 | Guessing branch relation from the ticket's topic/description | Only the ticket-ID-substring-in-branch-name check counts |
-| Asking the implementation-mode question as free prose | Always a single `AskUserQuestion` call, two questions (method, worktree) |
+| Asking the implementation-mode question as free prose | Always a single `AskUserQuestion` call for the method |
 | Leaving a fully-checked roadmap file in place | Delete it (and the empty folder) once the last checkbox is ticked |
 | Committing the checkbox/deletion changes automatically | Never — explicit request only |
 | Starting implementation with no step-level PRD, only a plan | Write the PRD first (`writing-prd`), then the plan — both are required in `steps/<step-slug>/`, not just the plan |
