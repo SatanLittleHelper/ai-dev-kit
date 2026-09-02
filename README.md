@@ -14,7 +14,7 @@
 | `skills/codebase-domain-map` | Генерирует и поддерживает снэпшот «что где лежит» в незнакомом/большом репозитории |
 | `skills/scaffolding-nestjs-app` | Скаффолдинг нового NestJS-приложения по личным конвенциям |
 | `skills/writing-prd` | Шаблон и правила оформления PRD |
-| `skills/update-project-skills` | Обновляет установленные в проекте скиллы этого репозитория до последней версии (`npx skills update`) |
+| `skills/update-project-skills` | Обновляет установленные в проекте скиллы (`npx skills update`), rules-submodule (`git submodule update --remote`) и, если подключён, сгенерированный `AGENTS.md` для Codex |
 
 ### Правила (`rules/`)
 
@@ -73,6 +73,18 @@ npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices
 
 Без установки эти правила не откажут — по `rules/orchestrator.md` отсутствующий скилл просто пропускается молча, — но тогда `rules/angular/`/`rules/nestjs/` реально дают только личный, более узкий слой конвенций, без базового общефреймворкового пласта, который эти best-practices скиллы должны были закрыть.
 
+### Codex: `AGENTS.md` — отдельный механизм, не `@import`
+
+`CLAUDE.md`'s `@import` — фича Claude Code; Codex её не поддерживает так же надёжно. Проверено эмпирически: Codex прочитал `@путь.md`-строку в `AGENTS.md` как обычный текст и подтянул содержимое только потому, что модель сама, по собственной инициативе, решила дополнительно прочитать файл — не потому, что `AGENTS.md` при загрузке разворачивает `@`-ссылки. На одной короткой ссылке модель угадывает; полагаться на это для 11 always-on файлов `rules/RULES.md` ненадёжно.
+
+Поэтому для Codex — не копия `@import`-строк, а **генерируемый плоский блок**: `rules/build-agents-md.sh` инлайнит реальное содержимое всей always-on цепочки в маркированный блок внутри `AGENTS.md` проекта (`<!-- ai-dev-kit:rules:start -->` … `<!-- ai-dev-kit:rules:end -->`), не трогая остальное содержимое файла. Идемпотентно — повторный запуск просто заменяет блок.
+
+```bash
+bash .claude/ai-dev-kit/rules/build-agents-md.sh
+```
+
+`setup.sh` (ниже) сам спрашивает при первом запуске, нужна ли поддержка Codex — если да, вызывает этот генератор сразу. Если решишь добавить это позже — просто вызови команду выше в любой момент.
+
 ## Подключение к проекту
 
 ### Быстрый способ — одна команда
@@ -81,7 +93,9 @@ npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices
 curl -fsSL https://raw.githubusercontent.com/SatanLittleHelper/ai-dev-kit/main/setup.sh | bash
 ```
 
-Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано ниже, за один проход: ставит `skills`-CLI, если его ещё нет, добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, устанавливает все наши скиллы (`skills/roadmap`, `skills/codebase-domain-map`, `skills/scaffolding-nestjs-app`, `skills/writing-prd`, `skills/update-project-skills`), а также — если в `package.json` проекта уже есть `@angular/core`/`@nestjs/core` — соответствующий best-practices скилл из раздела выше. Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
+Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано выше, за один проход: ставит `skills`-CLI, если его ещё нет, добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, **спрашивает, нужна ли поддержка Codex** (и если да — генерирует `AGENTS.md`), устанавливает все наши скиллы (`skills/roadmap`, `skills/codebase-domain-map`, `skills/scaffolding-nestjs-app`, `skills/writing-prd`, `skills/update-project-skills`), а также — если в `package.json` проекта уже есть `@angular/core`/`@nestjs/core` — соответствующий best-practices скилл из раздела выше. Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
+
+Вопрос про Codex читается из `/dev/tty`, не из stdin (stdin в `curl | bash` занят самим скриптом) — в среде без терминала (CI и т.п.) шаг просто пропускается с подсказкой, как вызвать генератор вручную позже.
 
 ### Вручную, по частям
 
@@ -116,3 +130,5 @@ npx skills add SatanLittleHelper/ai-dev-kit --skill roadmap
    ```bash
    git submodule update --remote .claude/ai-dev-kit
    ```
+
+   Если в проекте есть сгенерированный блок в `AGENTS.md` (Codex), перегенерировать его тем же шагом: `bash .claude/ai-dev-kit/rules/build-agents-md.sh` — `CLAUDE.md` ничего дополнительно делать не нужно, `@import` уже подхватывает новое содержимое сам. Скилл `update-project-skills` делает оба шага (submodule + `AGENTS.md`, если он ранее был сгенерирован) заодно с обновлением скиллов.
