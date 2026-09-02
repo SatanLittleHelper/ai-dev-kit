@@ -75,19 +75,25 @@ npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices
 
 ## Подключение к проекту
 
-### Скиллы
-
-Не меняется по механике, но путь внутри репозитория теперь `skills/<name>` — при установке конкретного скилла указывай подпапку:
+### Быстрый способ — одна команда
 
 ```bash
-npx skills add SatanLittleHelper/ai-dev-kit --skill skills/roadmap
+curl -fsSL https://raw.githubusercontent.com/SatanLittleHelper/ai-dev-kit/main/setup.sh | bash
+```
+
+Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано ниже, за один проход: ставит `skills`-CLI, если его ещё нет, добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, устанавливает все наши скиллы (`skills/roadmap`, `skills/codebase-domain-map`, `skills/scaffolding-nestjs-app`, `skills/writing-prd`, `skills/update-project-skills`), а также — если в `package.json` проекта уже есть `@angular/core`/`@nestjs/core` — соответствующий best-practices скилл из раздела выше. Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
+
+### Вручную, по частям
+
+**Скиллы.** Живут в `skills/<name>`, но `--skill` берёт имя скилла (значение `name:` в его `SKILL.md`, совпадает с именем папки), а не путь:
+
+```bash
+npx skills add SatanLittleHelper/ai-dev-kit --skill roadmap
 ```
 
 Обновление — `npx skills update` (или скилл `update-project-skills`, если уже подключён), пин версий в `skills-lock.json` проекта.
 
-### Правила
-
-`npx skills` их не обрабатывает — это не скиллы, а обычные файлы. Подключаются через git submodule + один `@import` в CLAUDE.md проекта:
+**Правила.** `npx skills` их не обрабатывает — это не скиллы, а обычные файлы. Подключаются через git submodule + один `@import` в CLAUDE.md проекта:
 
 1. Добавить репозиторий как submodule:
 
