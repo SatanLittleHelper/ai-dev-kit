@@ -10,7 +10,7 @@ set -euo pipefail
 REPO="SatanLittleHelper/ai-dev-kit"
 SUBMODULE_PATH=".claude/ai-dev-kit"
 IMPORT_LINE="@${SUBMODULE_PATH}/rules/RULES.md"
-OUR_SKILLS=(roadmap codebase-domain-map scaffolding-nestjs-app writing-prd update-project-skills)
+OUR_SKILLS=(roadmap codebase-domain-map scaffolding-nestjs-app writing-prd update-project-skills update-project-rules)
 
 log() { echo "-- $*"; }
 die() { echo "Error: $*" >&2; exit 1; }
