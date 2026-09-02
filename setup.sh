@@ -55,12 +55,31 @@ else
   log "added '$IMPORT_LINE' to CLAUDE.md"
 fi
 
-# 4. Our skills — installed all at once; -s takes skill *names* (SKILL.md's `name:` field,
+# 4. AGENTS.md for Codex — opt-in, ask the user. Reads from /dev/tty, not stdin: this
+# script is normally run as `curl | bash`, where stdin is already the piped script itself,
+# so a plain `read` here would not reach an actual terminal.
+CODEX_ANSWER="n"
+if [ -r /dev/tty ]; then
+  read -r -p "Add Codex support (generate AGENTS.md from the always-on rules)? [y/N] " CODEX_ANSWER < /dev/tty || CODEX_ANSWER="n"
+else
+  log "no TTY available to ask about Codex support — skipping; run 'bash $SUBMODULE_PATH/rules/build-agents-md.sh' later if you want it"
+fi
+case "$CODEX_ANSWER" in
+  [Yy]*)
+    log "generating AGENTS.md for Codex"
+    bash "$SUBMODULE_PATH/rules/build-agents-md.sh"
+    ;;
+  *)
+    log "skipping AGENTS.md generation — rerun 'bash $SUBMODULE_PATH/rules/build-agents-md.sh' anytime to add it later"
+    ;;
+esac
+
+# 5. Our skills — installed all at once; -s takes skill *names* (SKILL.md's `name:` field,
 # which matches each folder's basename here), not paths within the repo.
 log "installing skills: ${OUR_SKILLS[*]}"
 npx skills add "$REPO" --skill "${OUR_SKILLS[@]}" --yes || log "  (one or more failed or already installed, continuing)"
 
-# 5. Stack-detected best-practices skills — rules/angular/ and rules/nestjs/ depend on these
+# 6. Stack-detected best-practices skills — rules/angular/ and rules/nestjs/ depend on these
 if [ -f package.json ]; then
   if grep -q '"@angular/core"' package.json; then
     log "Angular detected, installing angular-best-practices"
