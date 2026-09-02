@@ -34,10 +34,10 @@ Requires `@prisma/adapter-pg` + `pg` (the `datasource` block in `schema.prisma` 
 
 When a service call needs to write through more than one repository atomically, this developer has used two different approaches across projects — check which one the current project has actually adopted (grep for `nestjs-cls`/`@nestjs-cls/transactional-adapter-prisma` in `package.json`, or check whether repositories inject `TransactionHost` vs. `PrismaService`) before assuming either. **Default for a new project, absent a stated decision: the direct variant** — it's simpler and has no extra dependency; adopt the AsyncLocalStorage variant deliberately, the same way `forms.md`'s Signal Forms section is opted into, not assumed.
 
-| Signal in the project | Variant |
-|---|---|
-| Repositories inject `PrismaService` directly; no `nestjs-cls` in `package.json` | Direct `$transaction` |
-| Repositories inject `TransactionHost<TransactionalAdapterPrisma>`; `nestjs-cls` + `@nestjs-cls/transactional-adapter-prisma` in `package.json` | AsyncLocalStorage (`nestjs-cls`) |
+| Signal in the project                                                                                                                          | Variant                          |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| Repositories inject `PrismaService` directly; no `nestjs-cls` in `package.json`                                                                | Direct `$transaction`            |
+| Repositories inject `TransactionHost<TransactionalAdapterPrisma<PrismaService>>`; `nestjs-cls` + `@nestjs-cls/transactional-adapter-prisma` in `package.json` | AsyncLocalStorage (`nestjs-cls`) |
 
 ### Variant A — Direct `$transaction` (default)
 
@@ -60,27 +60,34 @@ Simple, no extra dependency — the tradeoff is that a repository method called 
 
 Adopted when the explicit-`client`-parameter cost of Variant A becomes real (a repository called from multiple orchestrating services, some inside a transaction and some not) — a per-request/per-call AsyncLocalStorage context propagates the active transaction client into every repository transparently, with no parameter threading.
 
-**`PrismaModule` is no longer `@Global()` and no longer exports `PrismaService`** — it's only needed internally by the Cls transactional adapter:
+**`PrismaModule` is no longer `@Global()`**, but it still exports `PrismaService` so
+`ClsPluginTransactional` can resolve it through `imports: [PrismaModule]`. Application modules and
+repositories still must not inject `PrismaService` directly:
 
 ```typescript
 @Module({
   providers: [PrismaService],
+  exports: [PrismaService],
 })
 export class PrismaModule {}
 ```
 
-**`ClsModule` is registered once, in the root `AppModule`**, and becomes the thing that's global (its `global: true` option also makes every provider added by its plugins global — including `TransactionHost`):
+**`ClsModule` is registered once, in the root `AppModule`**. `ClsPluginTransactional` registers
+`TransactionHost` in the global context by itself — no `@Global()` on any module and no `global`
+option on `ClsModule.forRoot` are needed:
 
 ```typescript
 @Module({
   imports: [
     PrismaModule,
     ClsModule.forRoot({
-      global: true,
       plugins: [
         new ClsPluginTransactional({
           imports: [PrismaModule],
-          adapter: new TransactionalAdapterPrisma({ prismaInjectionToken: PrismaService }),
+          adapter: new TransactionalAdapterPrisma<PrismaService>({
+            prismaInjectionToken: PrismaService,
+            sqlFlavor: 'postgresql',
+          }),
         }),
       ],
     }),
@@ -90,19 +97,26 @@ export class PrismaModule {}
 export class AppModule {}
 ```
 
-**Repositories inject `TransactionHost<TransactionalAdapterPrisma>` instead of `PrismaService`**, and read through `this.txHost.tx` everywhere — no `client` parameter in any method signature:
+**Repositories inject `TransactionHost<TransactionalAdapterPrisma<PrismaService>>` instead of
+`PrismaService`**, and wrap `this.txHost.tx` in a private `client` getter — no `client` parameter
+in any method signature. Use the explicit `PrismaService` generic when the project generates
+Prisma Client outside the default `@prisma/client` package.
 
 ```typescript
 @Injectable()
 export class ApplicationRepository {
-  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
+  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma<PrismaService>>) {}
 
   upsert({ userId, vacancyId }: UpsertApplicationParams) {
-    return this.txHost.tx.application.upsert({
+    return this.client.application.upsert({
       where: { user_id_vacancy_id: { user_id: userId, vacancy_id: vacancyId } },
       create: { user_id: userId, vacancy_id: vacancyId },
       update: {},
     });
+  }
+
+  private get client() {
+    return this.txHost.tx;
   }
 }
 ```
@@ -130,12 +144,12 @@ export class GeneralInformationService {
 
 ### Common Mistakes
 
-| Mistake | Fix |
-|---|---|
-| Assuming either transaction variant without checking the project | Grep `package.json` for `nestjs-cls`, or check whether repositories inject `TransactionHost` vs. `PrismaService` |
-| Adding `nestjs-cls` to a project that only needs one repository per transaction | Stay on Variant A — the AsyncLocalStorage variant earns its cost only once multiple repositories/call-sites genuinely need to share a transaction transparently |
-| In Variant B, a repository still injecting `PrismaService` instead of `TransactionHost` | Switch the constructor injection — mixing both patterns in one project defeats the point |
-| In Variant B, an orchestrating service calling `this.prisma.$transaction(cb)` manually | Use `@Transactional()` on the method instead |
-| Hand-editing `schema.prisma` after `db pull`, including adding `@updatedAt` | Re-run `db pull`; pass `updated_at: new Date()` explicitly in `update*` methods instead |
-| A timestamp column declared `TIMESTAMP` instead of `TIMESTAMPTZ` in the Flyway migration | Always `TIMESTAMPTZ` for any `*_at` column |
-| Wrapping a `bigint`/`bigserial` value in `BigInt(...)` before passing it into a Prisma call | Pass the plain `number` — Prisma's generated client converts it internally |
+| Mistake                                                                                     | Fix                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Assuming either transaction variant without checking the project                            | Grep `package.json` for `nestjs-cls`, or check whether repositories inject `TransactionHost` vs. `PrismaService`                                                |
+| Adding `nestjs-cls` to a project that only needs one repository per transaction             | Stay on Variant A — the AsyncLocalStorage variant earns its cost only once multiple repositories/call-sites genuinely need to share a transaction transparently |
+| In Variant B, a repository still injecting `PrismaService` instead of `TransactionHost`     | Switch the constructor injection — mixing both patterns in one project defeats the point                                                                        |
+| In Variant B, an orchestrating service calling `this.prisma.$transaction(cb)` manually      | Use `@Transactional()` on the method instead                                                                                                                    |
+| Hand-editing `schema.prisma` after `db pull`, including adding `@updatedAt`                 | Re-run `db pull`; pass `updated_at: new Date()` explicitly in `update*` methods instead                                                                         |
+| A timestamp column declared `TIMESTAMP` instead of `TIMESTAMPTZ` in the Flyway migration    | Always `TIMESTAMPTZ` for any `*_at` column                                                                                                                      |
+| Wrapping a `bigint`/`bigserial` value in `BigInt(...)` before passing it into a Prisma call | Pass the plain `number` — Prisma's generated client converts it internally                                                                                      |
