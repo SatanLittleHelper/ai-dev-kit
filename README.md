@@ -42,7 +42,7 @@ rules/
 | `testing.md` | Что покрывать тестами, стиль ассертов, tautology check |
 | `test-execution-policy.md` | TDD по умолчанию — кто и когда пишет тесты |
 | `mcp-tool-priority.md` | Когда предпочитать выделенный MCP-инструмент простому Bash |
-| `git-and-commits.md` | on-demand. Ветки, коммиты, формат сообщения, тикет-префикс |
+| `git-and-commits.md` | Ветки, коммиты (pre-commit branch check, согласование текста), формат сообщения, тикет-префикс |
 | `local-vs-shared.md` | on-demand. `*.local.md` vs обычный `*.md` |
 | `artifacts-and-tmp.md` | on-demand. Куда класть планы/спеки/отчёты/логи |
 
@@ -76,7 +76,9 @@ npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices
 
 ### Codex: `AGENTS.md` — отдельный механизм, не `@import`
 
-`CLAUDE.md`'s `@import` — фича Claude Code; Codex её не поддерживает так же надёжно. Проверено эмпирически: Codex прочитал `@путь.md`-строку в `AGENTS.md` как обычный текст и подтянул содержимое только потому, что модель сама, по собственной инициативе, решила дополнительно прочитать файл — не потому, что `AGENTS.md` при загрузке разворачивает `@`-ссылки. На одной короткой ссылке модель угадывает; полагаться на это для 11 always-on файлов `rules/RULES.md` ненадёжно.
+`CLAUDE.md`'s `@import` — фича Claude Code; Codex её не поддерживает так же надёжно. Проверено эмпирически: Codex прочитал `@путь.md`-строку в `AGENTS.md` как обычный текст и подтянул содержимое только потому, что модель сама, по собственной инициативе, решила дополнительно прочитать файл — не потому, что `AGENTS.md` при загрузке разворачивает `@`-ссылки. На одной короткой ссылке модель угадывает; полагаться на это для always-on файлов `rules/RULES.md` ненадёжно.
+
+Тот же эффект наблюдался и внутри Claude Code, но по другой причине: пока файл лежит в on-demand-группе (не `@import`-нут в `RULES.md`, а только упомянут строкой «Read ...» в роутинг-таблице `orchestrator.md`), модель должна сама вспомнить пойти его прочитать в нужный момент — сработало не всегда. Именно поэтому важные правила (например `git-and-commits.md` — pre-commit branch check) переведены в always-on, а не оставлены на усмотрение модели.
 
 Поэтому для Codex — не копия `@import`-строк, а **генерируемый плоский блок**: `rules/build-agents-md.sh` инлайнит реальное содержимое всей always-on цепочки в маркированный блок внутри `AGENTS.md` проекта (`<!-- ai-dev-kit:rules:start -->` … `<!-- ai-dev-kit:rules:end -->`), не трогая остальное содержимое файла. Идемпотентно — повторный запуск просто заменяет блок.
 
@@ -122,9 +124,9 @@ npx skills add SatanLittleHelper/ai-dev-kit --skill roadmap
    @.claude/ai-dev-kit/rules/RULES.md
    ```
 
-   Это рекурсивно подтянет весь always-on-блок (`orchestrator`, `skills/brainstorming`, `skills/writing-plans`, `skills/verification-before-completion`, `base/naming`, `base/class-structure`, `base/file-structure`, `base/workflow-and-misc`, `base/testing`, `base/test-execution-policy`, `base/mcp-tool-priority`) одним импортом.
+   Это рекурсивно подтянет весь always-on-блок (`orchestrator`, `skills/brainstorming`, `skills/writing-plans`, `skills/verification-before-completion`, `base/naming`, `base/class-structure`, `base/file-structure`, `base/workflow-and-misc`, `base/testing`, `base/test-execution-policy`, `base/mcp-tool-priority`, `base/git-and-commits`) одним импортом.
 
-3. On-demand файлы (`rules/angular/*.md`, `rules/nestjs/*.md`, `rules/base/git-and-commits.md` и т.д.) отдельно импортировать не нужно — `rules/orchestrator.md` уже в контексте и сам укажет читать нужный по пути внутри submodule, когда придёт время (`Read .claude/ai-dev-kit/rules/nestjs/repository.md` и т.п.).
+3. On-demand файлы (`rules/angular/*.md`, `rules/nestjs/*.md`, `rules/base/local-vs-shared.md` и т.д.) отдельно импортировать не нужно — `rules/orchestrator.md` уже в контексте и сам укажет читать нужный по пути внутри submodule, когда придёт время (`Read .claude/ai-dev-kit/rules/nestjs/repository.md` и т.п.).
 
 4. Обновление до последней версии репозитория:
 

@@ -23,7 +23,8 @@ Match the current situation against every row that applies (more than one can ap
 | Writing or reviewing any TypeScript code (naming, class structure, file splitting) | already always-on via `rules/base/naming.md`, `rules/base/class-structure.md`, `rules/base/file-structure.md`, `rules/base/workflow-and-misc.md` |
 | Writing or changing implementation code in a layer `rules/base/testing.md` requires tests for | invoke `superpowers:test-driven-development`, chained with `rules/base/testing.md` + `rules/base/test-execution-policy.md` (already in context) and whichever stack rule applies |
 | Deciding what to test, coverage shape, or assertion style | already always-on via `rules/base/testing.md` |
-| Committing, branching, or deciding where a file belongs | Read `rules/base/git-and-commits.md`; also `rules/base/local-vs-shared.md` (shared vs. personal file) or `rules/base/artifacts-and-tmp.md` (where a workflow artifact goes) as the specific question calls for |
+| Committing or branching | already always-on via `rules/base/git-and-commits.md` — apply it (pre-commit branch check, message approval), no extra action |
+| Deciding where a file belongs | Read `rules/base/local-vs-shared.md` (shared vs. personal file) or `rules/base/artifacts-and-tmp.md` (where a workflow artifact goes), as the specific question calls for |
 | Creating a roadmap, resuming roadmap work, taking the next checkpoint, or batch-drafting roadmap steps | invoke skill `roadmap` |
 | Searching an unfamiliar or large codebase, before `find`/`grep`/`Explore` | invoke skill `codebase-domain-map`, if installed |
 | A dedicated MCP tool could handle something Bash could also do, or a known file path needs reading | already always-on via `rules/base/mcp-tool-priority.md` |

@@ -13,3 +13,4 @@ Single entry point for the rules meant to be in context every session, regardles
 @base/testing.md
 @base/test-execution-policy.md
 @base/mcp-tool-priority.md
+@base/git-and-commits.md
