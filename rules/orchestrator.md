@@ -73,7 +73,7 @@ Any skill or rule applied through this router that produces a markdown artifact 
 - User instructions take priority over a skill/rule and over default agent behavior.
 - `rules/skills/brainstorming.md` and `rules/skills/writing-plans.md` always require native Plan Mode: enter it before invoking `superpowers:brainstorming`/`superpowers:writing-plans`, never in default mode. The subagent-driven-development workflow (`rules/skills/subagent-driven-development.md`) does not require it — go straight to reading the plan and delegating. Don't enable Plan Mode solely for that workflow unless something else requires it.
 - In Plan Mode, save the working artifact only to the mode's own service file; never draft it at its final destination until `ExitPlanMode` approves.
-- **After `ExitPlanMode` approval, don't start implementation automatically** — approval confirms the plan's content, not consent to begin coding. Ask explicitly what to do next: a more detailed plan, subagent-driven development, inline implementation, a git worktree, or nothing further for now.
+- **After `ExitPlanMode` approval, don't start implementation automatically** — approval confirms the plan's content, not consent to begin coding. Ask explicitly what to do next: a more detailed plan, subagent-driven development, inline implementation, or nothing further for now.
 - If native Plan Mode is required but unavailable in the current context (e.g. a subagent), say so explicitly — don't substitute a checklist tool for it.
 - When asked to look at, check, or review a plan, run the project's doc-review skill rather than giving an ad-hoc review.
 
