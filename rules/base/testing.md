@@ -11,6 +11,8 @@ This developer's personal testing standards, independent of stack or test runner
 | Assertion style | `toHaveBeenCalledWith`/`toHaveBeenNthCalledWith` — never index into `mock.calls[n][m]` |
 | Logger/console | Never assert on it — assert the observable behavior around it instead |
 | The tautology check | If the test still passes with the method body replaced by `return mockResult`, delete it |
+| Test description language | Same language you communicate with the user in (default: Russian) — matches the same default for commits (`rules/base/git-and-commits.md`) and logs (`rules/nestjs/logging.md`) |
+| Casting a mock/fixture to a type | `as unknown as Type`, never `as any` |
 
 ## What Gets Unit Tests, and What Doesn't
 
@@ -52,6 +54,12 @@ A test earns its place by asserting something the *logic* produces — a downstr
 
 **Reuse fixtures/mocks before writing new ones.** Before hand-rolling a mock, check whether your project's shared testing-utilities package already has one — look for a `create-*` naming convention nearby. Duplicated ad hoc mocks drift from each other and from the real shape they're mocking.
 
+## Test Descriptions and Mock Casting
+
+**`describe`/`it` strings are written in the same language you communicate with the user in** (this developer's default: Russian) — same default already applied to commit messages (`rules/base/git-and-commits.md`) and NestJS logging (`rules/nestjs/logging.md`). A project's own CLAUDE.md can override this explicitly.
+
+**Cast a mock or fixture with `as unknown as Type`, never `as any`.** `as any` silently disables type-checking on everything that value touches afterward, not just the cast itself — `as unknown as Type` still forces the mock to structurally match `Type` at every point it's used.
+
 ## Common Mistakes
 
 | Mistake | Fix |
@@ -60,3 +68,5 @@ A test earns its place by asserting something the *logic* produces — a downstr
 | `expect(fn.mock.calls[0][0]).toBe(x)` | `expect(fn).toHaveBeenCalledWith(x)` |
 | `expect(logger.error).toHaveBeenCalledWith(...)` in a catch-and-log test | Assert the surrounding observable behavior instead (return value, resolves without throwing, a sibling call that didn't fire) |
 | Only a happy-path test for a method with a try/catch or validation branch | Add the failure-branch test — it's not optional extra credit |
+| `describe`/`it` text in English by default | Match the language you communicate with the user in |
+| `mockObject as any` to satisfy a parameter type | `mockObject as unknown as Type` |
