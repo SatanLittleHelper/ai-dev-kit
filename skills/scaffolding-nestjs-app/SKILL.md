@@ -122,33 +122,77 @@ This makes routes resolve as `/api/v1/...`. If no, skip it — routes stay at `/
 
 ## Step 4 — Wire the pino logger
 
-Copy `templates/pino/app-logger.module.ts` into the new app:
-- Monorepo with multiple Nest apps already sharing code → put it in a shared lib (e.g. `libs/nest-logger`) if one
-  doesn't already exist; if it does, just depend on it — **do not duplicate**.
-- Standalone app or first app in a monorepo → `src/common/logger/app-logger.module.ts` inside the app itself.
+Copy the whole `templates/pino/` directory into the new app — it's five files that compose together, not one
+monolithic module:
 
-**`LOG_PRETTY`'s Joi schema must keep it a string**, not `Joi.boolean()`. If the schema declares it as a boolean,
-`ConfigService` returns an actual `boolean` and the `=== 'true'` comparison below always evaluates `false` (silently
-disables pretty-printing even with `LOG_PRETTY=true` in `.env` — no error, just wrong logs). Use exactly this shape
-in the `ConfigModule.forRoot({ validationSchema: Joi.object({ ... }) })` block:
+| Template file | Role |
+|---|---|
+| `pino-config.types.ts` | `AppLoggerOptions`, `AppLoggerContextFilter`, `PinoConfig` + their `is*` type guards |
+| `pino-config.constants.ts` | `REDACT_AUTH_HEADER_PATHS` (auth/token headers redacted by default), `PINO_CONFIG_FILENAME` |
+| `pino-config.helpers.ts` | `buildPinoParams` — pure builder: pretty-transport, redact paths, context-blacklist hook |
+| `pino-config.loader.ts` | `loadPinoConfig` — reads optional `pino.config.json` from cwd when `PINO_CONFIG_ENABLED=true` |
+| `app-logger.module.ts` | `AppLoggerModule.forRoot`/`forRootAsync` — thin `nestjs-pino` wrapper composing the four above |
+
+Placement:
+- Monorepo with multiple Nest apps already sharing code → put the whole directory in a shared lib (e.g.
+  `libs/nest-logger`) if one doesn't already exist; if it does, just depend on it — **do not duplicate**.
+- Standalone app or first app in a monorepo → `src/common/logger/` inside the app itself, same five files.
+
+**What each option controls** (`AppLoggerOptions`, consumed by `buildPinoParams`):
+- `level` — pino log level (`'info'`, `'debug'`, …).
+- `pretty` — dev-mode `pino-pretty` transport (`colorize: true`, `translateTime: 'SYS:standard'`). Off in prod —
+  NDJSON goes to whatever log shipper is downstream, colorized/formatted output would just be noise there.
+- `singleLine` — passed straight through to `pino-pretty`'s own `singleLine` option; `true` keeps one log line per
+  request even with a large `req`/`res` payload, `false` pretty-prints multi-line for easier local reading of deeply
+  nested objects.
+- `pinoConfigEnabled` — when `true`, `loadPinoConfig` requires a `pino.config.json` in `process.cwd()` shaped
+  `{ contextFilter?: { blacklist: string[] }, redactPaths?: string[] }` and throws a descriptive error if it's
+  missing or malformed; when `false` (the default), no file is read and only the built-in redact paths apply. Use
+  this escape hatch for noisy per-project cases (a health-check module's own `context` flooding dev logs, a field the
+  built-in redact list doesn't cover) instead of hand-editing the shared lib per project.
+
+**`LOG_LEVEL`/`LOG_PRETTY`/`LOG_PRETTY_SINGLE_LINE`/`PINO_CONFIG_ENABLED` — pick one Joi shape for all four and stay
+consistent.** Two shapes both work; the failure mode is mixing them:
+- **String shape** (`Joi.string().empty('').valid('true', 'false').default('true')`, compared as `config.get<string>('LOG_PRETTY') === 'true'`)
+  — the shape this skill defaults to; needed if the same env value is ever read outside `ConfigService` (e.g. echoed
+  into a shell script) where a native boolean can't survive serialization.
+- **Boolean shape** (`Joi.boolean().default(false)`, read as `config.getOrThrow<boolean>('LOG_PRETTY')`) — simpler
+  when nothing outside Nest's own `ConfigService` needs the raw value.
+
+**Whichever shape you pick, apply it identically to all four keys.** Mixing them is the actual bug this warning
+exists for: declaring `LOG_PRETTY: Joi.boolean()` while comparing `config.get<string>('LOG_PRETTY') === 'true'`
+silently evaluates to `false` — no validation error, just wrong logs, because a real `boolean` is never `===` to the
+string `'true'`. Match the schema's declared type to how the factory reads it, key by key.
+
+String-shape example:
 ```ts
 LOG_LEVEL: Joi.string().default('info'),
 LOG_PRETTY: Joi.string().empty('').valid('true', 'false').default('true'),
+LOG_PRETTY_SINGLE_LINE: Joi.string().empty('').valid('true', 'false').default('true'),
+PINO_CONFIG_ENABLED: Joi.string().empty('').valid('true', 'false').default('false'),
 ```
 
-Wire into `app.module.ts`:
+Wire into `app.module.ts` (string-shape factory — swap `=== 'true'`/`config.get<string>` for `config.getOrThrow<boolean>` throughout if using the boolean shape instead):
 ```ts
 AppLoggerModule.forRootAsync({
   imports: [ConfigModule],
   inject: [ConfigService],
-  useFactory: (config: ConfigService) => ({
+  useFactory: (config: ConfigService): AppLoggerOptions => ({
     level: config.getOrThrow<string>('LOG_LEVEL'),
     pretty: config.get<string>('LOG_PRETTY') === 'true',
+    singleLine: config.get<string>('LOG_PRETTY_SINGLE_LINE') === 'true',
+    pinoConfigEnabled: config.get<string>('PINO_CONFIG_ENABLED') === 'true',
   }),
 }),
 ```
 And in `main.ts`: `NestFactory.create(AppModule, { bufferLogs: true })` then `app.useLogger(app.get(Logger))`
 (`Logger` from `nestjs-pino`).
+
+**Env vars — update all three places** per this repo's own env-var convention (Joi schema above, root `.env.example`,
+and — in a monorepo with a `devops/` deployment layer — `devops/.env.example` + the corresponding
+`docker-compose.prod.yml` service env block): `LOG_LEVEL`, `LOG_PRETTY`, `LOG_PRETTY_SINGLE_LINE`,
+`PINO_CONFIG_ENABLED`. Default `LOG_PRETTY_SINGLE_LINE=true` and `PINO_CONFIG_ENABLED=false` everywhere unless the
+project has a specific reason to change either.
 
 After wiring, **actually start the app** (`LOG_PRETTY=true` in `.env`) and confirm colorized single-line output
 appears — not raw NDJSON — before moving on. A silently-false `pretty` flag is easy to miss otherwise.
@@ -300,7 +344,11 @@ AI working artifacts, not project source. Check for existing entries first; don'
 
 | File | Purpose | Standalone-only edits |
 |---|---|---|
-| `templates/pino/app-logger.module.ts` | `nestjs-pino` wrapper module | none |
+| `templates/pino/app-logger.module.ts` | `nestjs-pino` wrapper module (composes the four files below) | none |
+| `templates/pino/pino-config.types.ts` | `AppLoggerOptions`/`PinoConfig` types + type guards | none |
+| `templates/pino/pino-config.constants.ts` | Default redact paths, `pino.config.json` filename | none |
+| `templates/pino/pino-config.helpers.ts` | `buildPinoParams` pure builder | none |
+| `templates/pino/pino-config.loader.ts` | Optional `pino.config.json` loader | none |
 | `templates/response/api.types.ts` | `ApiResponse<T>` contract | none |
 | `templates/response/api-exception-filter.ts` | Global `@Catch()` filter | drop axios branch if unused |
 | `templates/response/api-response.interceptor.ts` | Wraps controller returns | none |
