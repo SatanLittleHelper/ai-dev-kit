@@ -62,6 +62,27 @@ export class SomeRepository {
 
 Type the repository's row-mapping input with the ORM's own generated model type (e.g. `import type { users } from '@prisma/client'`) — never a hand-written structural interface duplicating the schema by hand; it silently drifts when the schema changes.
 
+**Repository write-params derived from the shared request contract:** when a repository method's parameters overlap heavily with an existing shared request interface (from wherever the project keeps cross-cutting contracts — a shared lib, `contracts/`, etc.) minus a few server-derived fields (e.g. `userId` from the auth context) or fields owned by a sibling repository (e.g. a nested collection written through its own `replaceAll`), derive the params type via `Omit<>` intersection instead of re-declaring every field by hand:
+
+```typescript
+// shared contracts package
+export interface CreateApplicationRequest {
+  vacancyId: number;
+  careerTrackChoices: CreateCareerTrackChoiceRequest[];
+  generalCommentOnCareerPaths?: string;
+}
+
+// repository params — careerTrackChoices is written by CareerTrackChoiceRepository, not this upsert;
+// userId comes from the auth context, never from the request body
+import type { CreateApplicationRequest } from '<shared-contracts-package>';
+
+export interface UpsertApplicationParams extends Omit<CreateApplicationRequest, 'careerTrackChoices'> {
+  userId: number;
+}
+```
+
+This keeps the repository-layer params type structurally locked to the shared request contract — a field added, renamed, or removed there surfaces as a compile error here instead of silently drifting out of sync.
+
 **Repository method naming:** `get*` throws when missing, `find*` returns `null`/`undefined` when missing.
 
 ## Known Gotchas
@@ -94,4 +115,5 @@ This applies to Prisma specifically — verify the same guarantee before relying
 | ------------------------------------------------------------------- | -------------------------------------------------------------- |
 | Service calls `PrismaService`/`TransactionHost`/ORM client directly | Add a `*.repository.ts`, move the query there                  |
 | Hand-written interface mirroring an ORM row shape                   | Import the ORM's generated model type instead                  |
+| Repository params type hand-duplicates fields from an existing shared request contract | Derive via `Omit<SharedRequest, 'fieldsOwnedElsewhere'> & { serverDerivedField }` |
 | `...(value ? { column: value } : {})` for an optional Prisma filter | Pass `{ column: value }` directly — Prisma ignores `undefined` |
