@@ -19,17 +19,17 @@ Migrations live in two locations, both fed to Flyway via `FLYWAY_LOCATIONS` (`fi
 
 Migrations are themselves the schema's source of truth, so the column-level rules other files assume start here, not in Prisma:
 
-- **Primary key:** `BIGSERIAL PRIMARY KEY` (or `BIGINT GENERATED ALWAYS AS IDENTITY`) — matches `rules/nestjs/prisma.md`'s `bigint`/`bigserial` → `number` mapping.
+- **Primary key:** `SERIAL PRIMARY KEY` by default. Use `BIGSERIAL` or `BIGINT GENERATED ALWAYS AS IDENTITY` only when the table genuinely needs a range beyond `INTEGER`.
 - **Column names:** snake_case, matching what `rules/nestjs/prisma.md` expects Prisma to introspect verbatim (no naming translation layer).
 - **Timestamps:** `TIMESTAMPTZ NOT NULL DEFAULT now()` for `created_at`/`updated_at`/any similar column — never bare `TIMESTAMP` (see `rules/nestjs/prisma.md` for why). `DEFAULT now()` covers `created_at`; `updated_at` still gets set explicitly on every `update*` call at the application layer (Prisma has no `@updatedAt` in this workflow) — the migration-level default only covers the row's initial insert.
-- **Foreign keys:** explicit `REFERENCES <table> (id)` with an explicit `ON DELETE CASCADE`/`ON DELETE RESTRICT` — never left at the (implicit) default, which silently means `NO ACTION`.
+- **Foreign keys:** `INTEGER` by default, with explicit `REFERENCES <table> (id)` and an explicit `ON DELETE CASCADE`/`ON DELETE RESTRICT` — never left at the (implicit) default, which silently means `NO ACTION`. Match the referenced PK type; use `BIGINT` only when the referenced key is intentionally large.
 - **Required vs. optional:** `NOT NULL` stated explicitly on every column that is actually required — don't rely on the column simply not having a default.
 
 ```sql
 CREATE TABLE application (
-    id                 BIGSERIAL PRIMARY KEY,
-    user_id            BIGINT NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
-    vacancy_id         BIGINT NOT NULL REFERENCES competition_vacancy (id) ON DELETE RESTRICT,
+    id                 SERIAL PRIMARY KEY,
+    user_id            INTEGER NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
+    vacancy_id         INTEGER NOT NULL REFERENCES competition_vacancy (id) ON DELETE RESTRICT,
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (user_id, vacancy_id)
