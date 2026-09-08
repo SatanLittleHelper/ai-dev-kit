@@ -73,6 +73,32 @@ Validation lives in the form schema, not in the control component. A kit compone
 
 **A custom control reports validation through the `FormUiControl` inputs, never through a home-grown `errorMessage` input.** `FormUiControl` declares `errors`, `touched`, `disabled`, `required`, `readonly` and the `touch` output as _optional inputs the control declares itself_ — the `FormField` directive writes into whichever of them exist. So a control that wants a piece of field state must declare that input; a control that wants its blur to mark the field touched must declare `touch = output<void>()` and emit it on `blur`. Render the message with a `protected computed` over `errors()` (typically `errors()[0]?.message`, shown once `touched()`), and pass that string down to the presentational wrapper. Never accept a validation verdict as a plain string input on a control that implements `FormValueControl` — that bypasses the form state and forces the consumer to unpack the form by hand. Presentational wrappers that implement no form interface (`ui-field`) are the exception: they legitimately take the final string.
 
+### Reading a `FieldTree`'s array value — the double call is intentional, don't leave it in the template
+
+`FieldTree<T>` is typed as `(() => FieldState<T>) & (indexable child structure)` — it is simultaneously "a function you call to get the field's state" and "an object you index into for child fields". A component that receives an array field as `input.required<FieldTree<Row[]>>()` therefore needs **two** calls to read the current array value: the first `()` unwraps the component's own `input()` signal down to the `FieldTree`, the second `()` invokes that `FieldTree` to get its `FieldState`, whose `.value()` is the actual reactive array:
+
+```typescript
+readonly field = input.required<FieldTree<Row[]>>();
+```
+
+```html
+<!-- ❌ works, but the double call leaks the FieldTree's internal shape into the template -->
+<tbody uiTbody [data]="field()().value()">
+```
+
+Move the read into the component as a `computed()` instead — the template gets a single, ordinary signal call:
+
+```typescript
+protected readonly rows = computed(() => this.field()().value());
+```
+
+```html
+<!-- ✅ -->
+<tbody uiTbody [data]="rows()">
+```
+
+This does not remove the double invocation (it's inherent to how `FieldTree` is typed) — it relocates it out of the template, which is where a signal-forms consumer should not have to reason about the type's dual function/indexable nature. Per-index child access (`field()[index].someField`) is unaffected — that's a single call into the indexable side of the same `FieldTree`, not the value-read side, and stays in the template as usual for binding to `[formField]`.
+
 ### Common Mistakes
 
 | Mistake | Fix |
@@ -81,3 +107,4 @@ Validation lives in the form schema, not in the control component. A kit compone
 | Hand-written `[field]` attribute binding | `[formField]="personForm.path"`, binding the `FieldTree` node itself |
 | A custom control implementing `ControlValueAccessor` for a Signal Forms project | Implement `FormValueControl`/`FormCheckboxControl` instead — reach for the `signals/compat` bridge only for third-party CVAs that can't be changed |
 | A control taking a home-grown `errorMessage` string input | Declare the `FormUiControl` inputs (`errors`, `touched`, etc.) so `FormField` can write into them |
+| `[data]="field()().value()"` (or similar) written directly in a template | Wrap the read in a `computed()` in the component and bind the computed's single call in the template |
