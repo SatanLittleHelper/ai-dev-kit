@@ -38,10 +38,10 @@ Map the in-progress block's `status` to where `references/block-cycle.md` picks 
 |---|---|
 | No block in progress (all `pr-created`, `unassignedFiles` non-empty) | Step 1 (Analyze), for a new block |
 | `planned` | Step 2 (Approve plan) — re-show the existing proposal rather than re-deriving it; `branch`/`baseBranch` are already recorded from Step 1 |
-| `approved` | Step 4 (Isolate and verify the build) |
-| `committed` | Step 6 (Plannotator review) — the block's isolating stash is resolved fresh by its deterministic tag (`git stash list --format='%gd %gs' \| grep -F "pr-split-<slug>-<n>" \| head -1`) whenever it needs restoring, same lookup whether this is the original session or a resumed one |
-| `review-passed` | Step 7 (PR) |
-| `pr-created`, `unassignedFiles` empty | Nothing to resume — the split is complete, say so |
+| `approved` | Step 4 (Commit) — nothing to isolate first; `git add` the block's files and commit as usual |
+| `committed` | Step 5 (Plannotator review) |
+| `review-passed` | Step 6 (PR) |
+| `pr-created`, `unassignedFiles` empty | Not actually resumable — Step 7 deletes `state.json` once every block reaches this point (see `SKILL.md` → Completion), so finding this shape at all means that cleanup didn't run; tell the user the split already looks complete and confirm before deleting the file yourself |
 
 Never jump straight to committing or creating a PR without re-confirming context with the user
 first — Step 2 above already surfaces the state, but if anything looks stale (e.g. the working
