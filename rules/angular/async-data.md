@@ -38,10 +38,12 @@ Without `initialValue`, the signal's type is `T | undefined` — this is a featu
 }
 ```
 
-`takeUntilDestroyed()` is not a substitute for `toSignal()` — reach for it only for imperative side-effect subscriptions that don't represent displayed data (reacting to a stream without turning it into a template-bound value). `OnDestroy` + manual `unsubscribe()` is forbidden either way.
+`takeUntilDestroyed()` is not a substitute for `toSignal()` — reach for it only for imperative side-effect subscriptions that don't represent displayed data (reacting to a stream without turning it into a template-bound value). `OnDestroy` + manual `unsubscribe()` is forbidden either way — **every** subscription must be tied to `DestroyRef` through one of these two mechanisms, with no exceptions carved out for "it's just one quick subscribe." A `.subscribe()` call with no `toSignal()`/`takeUntilDestroyed()` around it leaks past the component's destruction: the callback keeps firing (and, for HTTP polling/streams, keeps holding the connection open) after the component is gone, which is the concrete bug this rule exists to prevent — not just a style preference for less code.
 
 ## Common Mistakes
 
 | Mistake | Fix |
 |---|---|
 | `effect()` + manual `.subscribe()` + `onCleanup()` for HTTP data | `toSignal()` (+ `toObservable()`/`switchMap` if driven by another signal) |
+| `.subscribe()` with no `toSignal()`/`takeUntilDestroyed()`/manual `unsubscribe()` at all — subscription silently never cleaned up | `toSignal()` for displayed data, `takeUntilDestroyed()` for side-effect subscriptions — never leave a bare `.subscribe()` |
+| `OnDestroy` + stored `Subscription` + manual `unsubscribe()` | Same two mechanisms above — manual `OnDestroy` cleanup is forbidden even when technically correct |

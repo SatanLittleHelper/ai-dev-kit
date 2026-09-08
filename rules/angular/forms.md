@@ -23,6 +23,8 @@ Build with `inject(NonNullableFormBuilder)`, never `new FormGroup(...)` by hand.
 
 `FormsModule`, `[(ngModel)]`, and `ReactiveFormsModule` (`FormControl`/`FormGroup`/`NonNullableFormBuilder`) are not used in new code once a project has adopted Signal Forms.
 
+For a multi-section form (business sections, a step/wizard flow, or a model that needs to diverge from its API DTO), see `signal-forms-architecture.md` for the scaling story — single source of truth, section components, composable per-section schemas, mapper placement, and file layout. What follows here is the base single-section mechanics.
+
 The form model is a signal holding a plain object; the schema is a separate function:
 
 ```typescript
@@ -30,6 +32,33 @@ readonly model = signal({ lastName: '', firstName: '', citizenship: '' });
 readonly personForm = form(this.model, (path) => {
   required(path.lastName, { message: 'Укажите фамилию' });
 });
+```
+
+**Once the model object literal or the schema function body exceeds 5 lines, extract them out of the component** — the model's shape into `*.model.ts`, the schema function into `*.schema.ts`, both imported back into the component. A component file mixing a growing form model/schema inline with its own class body makes both harder to scan and impossible to reuse from a sibling component:
+
+```typescript
+// person.model.ts
+export interface PersonModel {
+  lastName: string;
+  firstName: string;
+  citizenship: string;
+}
+
+export const initialPersonModel: PersonModel = { lastName: '', firstName: '', citizenship: '' };
+
+// person.schema.ts
+import { required, minLength } from '@angular/forms/signals';
+import type { PersonModel } from './person.model';
+
+export function personSchema(path: FieldPath<PersonModel>) {
+  required(path.lastName, { message: 'Укажите фамилию' });
+  minLength(path.firstName, 2, { message: 'Слишком короткое имя' });
+  // ...
+}
+
+// person.component.ts
+readonly model = signal(initialPersonModel);
+readonly personForm = form(this.model, personSchema);
 ```
 
 A field is bound to a control through the **`FormField` directive** (`[formField]`, imported from `@angular/forms/signals` and added to the component's `imports`) — not through a hand-written `[field]` attribute, which is not a real Angular selector in this package. Bind the `FieldTree` node itself, not a called/invoked form of it:
@@ -108,3 +137,4 @@ This does not remove the double invocation (it's inherent to how `FieldTree` is 
 | A custom control implementing `ControlValueAccessor` for a Signal Forms project | Implement `FormValueControl`/`FormCheckboxControl` instead — reach for the `signals/compat` bridge only for third-party CVAs that can't be changed |
 | A control taking a home-grown `errorMessage` string input | Declare the `FormUiControl` inputs (`errors`, `touched`, etc.) so `FormField` can write into them |
 | `[data]="field()().value()"` (or similar) written directly in a template | Wrap the read in a `computed()` in the component and bind the computed's single call in the template |
+| Model object literal or schema function body over 5 lines, left inline in the component | Extract to `*.model.ts` / `*.schema.ts` |
