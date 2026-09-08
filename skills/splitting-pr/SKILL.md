@@ -6,9 +6,10 @@ description: >-
   "раздели изменения на несколько PR", "split this PR", "too many files in one PR". Retroactive
   only: it acts on a diff that already exists, never on work not yet started. Splits the diff
   into stacked branches/PRs, each capped at 15 business-logic files (assets/docs excluded from
-  the cap) unless breaking the cap is the only way to keep every intermediate PR building and
-  passing lint/tests. Tracks progress in an untracked JSON state file so the split survives
-  session restarts and no file from the original diff is ever silently dropped.
+  the cap) unless breaking the cap is the only way to keep coupled files together. Does not run
+  its own build/lint/test — that's left to the project's own pre-push hook. Tracks progress in a
+  JSON state file (deleted automatically once the split completes) so the split survives session
+  restarts and no file from the original diff is ever silently dropped.
 ---
 
 # Splitting PR
@@ -17,9 +18,11 @@ description: >-
 
 A large uncommitted diff on one branch produces one large, risky-to-review PR. This skill turns
 it into a **stacked chain of small PRs**: each one small enough to review (≤15 business-logic
-files, assets/docs excluded), each one verified to build/lint/test cleanly on its own before it's
-committed, and each one tracked in a state file so the split can be paused and resumed across
-sessions without losing track of which files went where.
+files, assets/docs excluded), each one tracked in a state file so the split can be paused and
+resumed across sessions without losing track of which files went where. This skill does not run
+its own build/lint/test step — verification is whatever the project's own pre-push hook already
+does at `git push` time (Step 6 of `references/block-cycle.md`); if that hook rejects a push,
+that's the signal a block was cut wrong, not something this skill checks proactively beforehand.
 
 This skill is retroactive only — it never plans a split before the diff exists. If no large
 uncommitted diff is present when this skill is invoked, say so and stop; there is nothing to
@@ -36,6 +39,17 @@ both reference files) and routes to the process that applies:
 Read only the reference the situation calls for — both assume this file's storage/schema/
 classification conventions as shared background, so don't re-derive them per reference.
 
+## Approval Gates
+
+Every point in `references/block-cycle.md` where the user must approve, reject, or edit
+something (the block's file grouping, the commit message, the PR title/body, the Plannotator
+review outcome) is asked via `AskUserQuestion` with concrete options (e.g. "Approve" /
+"Change grouping", "Approve" / "Edit message") — never by posting text in chat and waiting for a
+free-form reply. This lets the user approve with a click instead of typing anything back. The
+one exception is genuine data entry with no fixed option set — e.g. pasting a manually-created
+PR's URL when `gh` isn't available (`references/block-cycle.md` Step 6) — which stays a normal
+chat prompt, since there's nothing to choose between.
+
 ## File Classification
 
 Extension/path heuristic — never guessed from file content:
@@ -50,12 +64,13 @@ Extension/path heuristic — never guessed from file content:
 ## Grouping Priority
 
 Grouping into blocks is this skill's own judgment from reading the diff (imports, symbol usage,
-domain proximity) — not a rigid static algorithm. **Build safety always outranks the 15-file
-cap:** if a tightly-coupled group of files can't be split without breaking the build, the cap is
-exceeded for that one block. When that happens, flag it explicitly in the block proposal shown
-to the user and get their confirmation on that specific point before moving on. The
-build/lint/test run in `references/block-cycle.md` step 4 is the actual, empirical check — it
-catches coupling the diff-reading analysis missed, not just cosmetic risk.
+domain proximity) — not a rigid static algorithm. **Keeping coupled files together always
+outranks the 15-file cap:** if a tightly-coupled group of files can't be split without leaving
+one half referencing something the other half hasn't introduced yet, the cap is exceeded for
+that one block. When that happens, flag it explicitly in the block proposal shown to the user and
+get their confirmation on that specific point before moving on. There is no local build/lint/test
+run to empirically confirm this — the project's own pre-push hook is the real check, at
+`git push` time (`references/block-cycle.md` Step 6); a rejected push is the signal to regroup.
 
 ## Storage
 
@@ -64,9 +79,10 @@ catches coupling the diff-reading analysis missed, not just cosmetic risk.
 - **Untracked.** Never `git add`ed, never committed, never part of any block's diff or any PR.
   It lives in the working tree only — it survives branch switches within the same checkout
   (untracked files aren't touched by `git checkout <branch>` unless they'd conflict), but it is
-  not pushed, not backed up, and needs no commit-time cleanup step.
-- Not auto-deleted when the split finishes — left for the user to remove once they're satisfied
-  every block's PR has merged.
+  not pushed and not backed up.
+- **Deleted automatically once the split completes** — see Completion below. It is workflow
+  state for an in-progress split, not a durable record; nothing else in the repo depends on it
+  surviving past the last block's PR.
 - **Backup branch:** `<sourceBranch>_backup` — a single ordinary commit holding the entire
   original diff, made before anything else touches it (`references/block-cycle.md` Step 0). This
   is the guarantee against data loss if something later in the split goes wrong; unlike the state
@@ -76,10 +92,19 @@ catches coupling the diff-reading analysis missed, not just cosmetic risk.
 ## Completion
 
 The split is complete once every block in `blocks` has reached `status: "pr-created"` and
-`unassignedFiles` is empty. `state.json` is not auto-deleted at that point — cleanup is left to
-the user once they're satisfied the final PR is merged. If the user wants to mark it as fully
-wrapped up before removing it, that's a manual note for themselves (e.g. a comment, or just
-deleting the file) — not a status value this skill's automation ever reads or writes.
+`unassignedFiles` is empty. At that point, delete `.claude/pr-split/<slug>-state.json` as the
+last action of the workflow and tell the user it's done — the split's job was tracking progress
+while it was in flight, and once every block has a PR, `state.json` has nothing left to track.
+This is unrelated to the backup branch (`<sourceBranch>_backup`, see Storage above), which this
+skill's automation never deletes regardless of completion status.
+
+## Editing the State File
+
+`.claude/pr-split/<slug>-state.json` is a plain text file — read and edit it the same way as any
+other file in the repo, with the `Read`/`Edit` tools, never through a shell one-liner (`jq`,
+`python -c`, `node -e`, etc.). The file is small enough that every write in this skill (append a
+block, flip a `status`, move a handful of paths between `unassignedFiles` and a block's `files`)
+is a direct, visible text edit — there is no need for a JSON-processing tool in between.
 
 ## State File Schema
 
@@ -152,10 +177,11 @@ deleting the file) — not a status value this skill's automation ever reads or 
 
 | Mistake | Fix |
 |---|---|
-| Treating the 15-file cap as absolute and breaking the build to respect it | Build safety wins — exceed the cap for that block, flag it, get explicit confirmation |
+| Treating the 15-file cap as absolute and splitting apart tightly coupled files to respect it | Coupling wins — exceed the cap for that block, flag it, get explicit confirmation |
 | Classifying a `.json`/`.yaml` config file as "not really logic" | Always business logic — extension-based classification only, never content-based |
 | Committing or `git add`ing `.claude/pr-split/<slug>-state.json` | It stays untracked, always |
-| Using bare `git stash` / `git stash pop` during the build check | Always a uniquely tagged `push -m <tag>`, restored with `apply` + explicit `drop` |
+| Running a local build/lint/test step before committing a block | Out of scope for this skill — the project's own pre-push hook is the verification, at `git push` time |
 | Basing every block's PR on `main` | Only block 1 targets the original base; every later block's PR bases on the previous block's branch |
 | Silently proceeding when the nothing-lost invariant doesn't hold | Stop and surface the mismatch — never auto-drop or auto-duplicate a file to force it to balance |
 | Starting the split without a backup branch, or deleting `<sourceBranch>_backup` as part of the workflow | `references/block-cycle.md` Step 0 always runs first, and the backup branch is never touched by this skill's own automation afterward |
+| Leaving `.claude/pr-split/<slug>-state.json` on disk after the last block reaches `pr-created` | Delete it as the final action once `unassignedFiles` is empty — see Completion |
