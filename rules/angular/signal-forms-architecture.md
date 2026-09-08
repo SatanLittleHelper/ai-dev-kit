@@ -69,6 +69,15 @@ A section component receives only its own branch of the form as an input — it 
 
 A section component owns rendering, layout, local error display, and local UI behavior for its branch. It does not own: loading or saving the whole form, aggregating sibling sections' data, or creating any parallel copy of form state. Prefer `input.required<FieldTree<...>>()` for the branch it receives over reaching for a shared form via `inject()` — a reusable section component's dependency on "which form" should be visible in its own API, not hidden behind an injected service.
 
+### Naming the `FieldTree` Input: `form` vs. `field`
+
+Name the input by what the `FieldTree` actually wraps, not by habit:
+
+- **`FieldTree<CompoundType>`** — an object with its own nested fields, or an array of rows (`FieldTree<PersonalFormModel>`, `FieldTree<Row[]>`) — the component is a **section**, so the input is `form`: `readonly form = input.required<FieldTree<PersonalFormModel>>();`, bound as `[form]="form.personal"`.
+- **`FieldTree<string | number | boolean | null>`** (or a union of those) — a single scalar leaf — the component is a **field-level control's consumer**, so the input stays `field`: `readonly field = input.required<FieldTree<number | null>>();`, bound as `[field]="form.vacancyId"`.
+
+A component whose input is a compound `FieldTree` but is still named `field` (or a business-specific variant like `applicationField`) reads as if it holds one value when it actually holds a whole sub-form — rename it to `form` the same way the section-component example above already does. This is a naming rule only; it doesn't change how the value is read (`this.form()().value()` for the double-call array/object case — see `forms.md`).
+
 Low-level UI components (`ui-input`, `ui-select`, `ui-date-picker`) stay one level further out: they know `FormField`/`FormValueControl` (see `forms.md`), never a specific business model type like `ApplicationFormModel`. Business knowledge stops at the feature/section component.
 
 ## Validation Lives in Schema, Organized by Section
@@ -220,5 +229,6 @@ If the surrounding code doesn't make these answers obvious, read the existing fo
 | Form data moved into a lazily-mounted step component | Keep the model in the component/service whose lifecycle spans the whole form |
 | Form's model placed in a `providedIn: 'root'` service "for convenience" | Pass the form down via inputs; use a feature-scoped service only when cross-component coordination genuinely requires it |
 | Low-level UI component (`ui-input`, `ui-select`) typed against a specific business FormModel | UI components depend only on `FormField`/`FormValueControl` — business types stay in feature/section components |
+| A section component's compound `FieldTree` input (object or array branch) named `field`/`someNameField` | Rename to `form` — reserve `field` for a genuinely scalar leaf `FieldTree` |
 
 Introducing a store/facade/service purely because a form is large is not justified on its own — reach for that added infrastructure only once a specific problem (not just size) requires it.
