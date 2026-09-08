@@ -12,6 +12,7 @@ Baseline testing (an agent asked to build a component with an input, output, rea
 | Component inputs/outputs | `input()`/`input.required()`, `output<T>()` — decorators forbidden | `inputs-outputs.md` |
 | Async data from an Observable | `toSignal()` — not a manual subscription | `async-data.md` |
 | Forms | Version-gated: Reactive Forms below Angular 22, Signal Forms (`@angular/forms/signals`) at 22+ once adopted — check `@angular/core` in the project first | `forms.md` |
+| Multi-section/large Signal Forms (sectioning, FormModel vs. API DTO, per-section schema composition, file layout) | See file | `signal-forms-architecture.md` |
 | Component structure, styling, Taiga UI, layout spacing | See file | `component.md` |
 | Pagination pattern | Plain pagination, reusable controller, fixed bottom bar | `pagination.md` |
 | Routing | Lazy-loaded route components | `routing.md` |
