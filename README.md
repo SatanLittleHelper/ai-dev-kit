@@ -26,14 +26,15 @@
 ```
 rules/
   RULES.md          # always-on агрегатор — единственная точка @import для проекта
-  orchestrator.md    # роутинг-таблица: что читать/вызывать для текущей ситуации
-  base/               # кросс-стековые правила, в основном always-on
-  skills/             # личный слой поверх superpowers:X / внешнего workflow-инструмента
+  core.md           # компактные always-on guardrails
+  orchestrator.md   # роутинг-таблица: что читать/вызывать для текущей ситуации
+  base/             # универсальные правила + подробные on-demand правила
+  skills/           # always-on/on-demand слой поверх superpowers:X / workflow
   angular/            # Angular-конвенции, по темам, on-demand
   nestjs/             # NestJS-конвенции, по темам, on-demand
 ```
 
-**`rules/base/`** — always-on, если не указано иное:
+**`rules/base/`** — универсальные правила и подробные on-demand правила:
 
 | Файл | Что внутри |
 |---|---|
@@ -41,10 +42,10 @@ rules/
 | `class-structure.md` | Порядок членов класса, деструктуризация 3+ параметров |
 | `file-structure.md` | Когда выносить в `*.types.ts`/`*.constants.ts`/`*.helpers.ts`/`*.mapper.ts`, барели |
 | `workflow-and-misc.md` | `let`+переприсваивание, magic numbers, язык документации (rules — English, docs — русский) |
-| `testing.md` | Что покрывать тестами, стиль ассертов, tautology check |
-| `test-execution-policy.md` | TDD по умолчанию — кто и когда пишет тесты |
-| `mcp-tool-priority.md` | Когда предпочитать выделенный MCP-инструмент простому Bash |
-| `git-and-commits.md` | Ветки, коммиты (pre-commit branch check, согласование текста), формат сообщения, тикет-префикс |
+| `testing.md` | **on-demand**: что покрывать тестами, стиль ассертов, tautology check |
+| `test-execution-policy.md` | **on-demand**: TDD по умолчанию — кто и когда пишет тесты |
+| `mcp-tool-priority.md` | **on-demand**: когда предпочитать выделенный MCP-инструмент простому Bash |
+| `git-and-commits.md` | **on-demand**: ветки, коммиты, формат сообщения, тикет-префикс |
 | `local-vs-shared.md` | on-demand. `*.local.md` vs обычный `*.md` |
 | `artifacts-and-tmp.md` | on-demand. Куда класть планы/спеки/отчёты/логи |
 
@@ -52,16 +53,16 @@ rules/
 
 | Файл | Группа | Что внутри |
 |---|---|---|
-| `brainstorming.md` | always-on | Обёртка над `superpowers:brainstorming`: Plan Mode wiring, триггер-фразы, куда сохранять дизайн-документ |
-| `writing-plans.md` | always-on | Обёртка над `superpowers:writing-plans`: детект стека → какие `rules/angular\|nestjs` подгрузить перед написанием плана |
-| `verification-before-completion.md` | always-on | Требования к отчёту о проверке работы перед тем, как считать задачу выполненной |
+| `brainstorming.md` | on-demand | Обёртка над `superpowers:brainstorming`: Plan Mode wiring, триггер-фразы, куда сохранять дизайн-документ |
+| `writing-plans.md` | on-demand | Обёртка над `superpowers:writing-plans`: детект стека → какие `rules/angular\|nestjs` подгрузить перед написанием плана |
+| `verification-before-completion.md` | on-demand | Требования к отчёту о проверке работы перед тем, как считать задачу выполненной |
 | `executing-plans.md` | on-demand | Дисциплина исполнения уже написанного плана |
 | `subagent-driven-development.md` | on-demand | Как делегировать задачи плана субагентам |
 | `plannotator.md` | on-demand | Как вести себя вокруг долгоживущего процесса ревью в Plannotator |
 
 **`rules/angular/`** и **`rules/nestjs/`** — on-demand, по одному файлу на тему (`di.md`, `component.md`, `repository.md`, `dto.md` и т.д.). Каждая директория начинается с `index.md` — краткая карта («какой файл про что»), не заменяет чтение конкретного файла и **не** является `@import`-агрегатором (см. ниже).
 
-On-demand файлы отдельно импортировать не нужно — `rules/orchestrator.md` (always-on) содержит таблицу маршрутизации и указывает, какой файл читать в конкретной ситуации.
+On-demand файлы отдельно импортировать не нужно — `rules/core.md` и `rules/orchestrator.md` (always-on) содержат обязательные guardrails и указывают, какой файл прочитать в конкретной ситуации.
 
 **Важно про `@import` и `index.md`:** `@import` резолвится только внутри always-on цепочки, начинающейся от `rules/RULES.md` (то есть при первой загрузке CLAUDE.md проекта). Файл, до которого агент доходит через `Read` посреди сессии (это все on-demand файлы — `rules/angular/*`, `rules/nestjs/*`, `rules/skills/executing-plans.md` и т.д.), не разворачивает `@`-ссылки внутри себя — они останутся как обычный текст. Поэтому `angular/index.md`/`nestjs/index.md` — это таблица-подсказка «что где», а не `@import`-агрегатор: агент должен явно `Read` нужный файл темы по пути, а не рассчитывать, что чтение `index.md` подтянет остальное.
 
@@ -80,7 +81,7 @@ npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices
 
 `CLAUDE.md`'s `@import` — фича Claude Code; Codex её не поддерживает так же надёжно. Проверено эмпирически: Codex прочитал `@путь.md`-строку в `AGENTS.md` как обычный текст и подтянул содержимое только потому, что модель сама, по собственной инициативе, решила дополнительно прочитать файл — не потому, что `AGENTS.md` при загрузке разворачивает `@`-ссылки. На одной короткой ссылке модель угадывает; полагаться на это для always-on файлов `rules/RULES.md` ненадёжно.
 
-Тот же эффект наблюдался и внутри Claude Code, но по другой причине: пока файл лежит в on-demand-группе (не `@import`-нут в `RULES.md`, а только упомянут строкой «Read ...» в роутинг-таблице `orchestrator.md`), модель должна сама вспомнить пойти его прочитать в нужный момент — сработало не всегда. Именно поэтому важные правила (например `git-and-commits.md` — pre-commit branch check) переведены в always-on, а не оставлены на усмотрение модели.
+Для Claude Code критические действия получают короткий always-on guardrail в `rules/core.md`, который требует прочитать подробное правило непосредственно перед действием. Это сохраняет строгую точку остановки при существенно меньшем постоянном контексте.
 
 Поэтому для Codex — не копия `@import`-строк, а **генерируемый плоский блок**: `rules/build-agents-md.sh` инлайнит реальное содержимое всей always-on цепочки в маркированный блок внутри `AGENTS.md` проекта (`<!-- ai-dev-kit:rules:start -->` … `<!-- ai-dev-kit:rules:end -->`), не трогая остальное содержимое файла. Идемпотентно — повторный запуск просто заменяет блок.
 
@@ -126,7 +127,7 @@ npx skills add SatanLittleHelper/ai-dev-kit --skill roadmap
    @.claude/ai-dev-kit/rules/RULES.md
    ```
 
-   Это рекурсивно подтянет весь always-on-блок (`orchestrator`, `skills/brainstorming`, `skills/writing-plans`, `skills/verification-before-completion`, `base/naming`, `base/class-structure`, `base/file-structure`, `base/workflow-and-misc`, `base/testing`, `base/test-execution-policy`, `base/mcp-tool-priority`, `base/git-and-commits`) одним импортом.
+   Это рекурсивно подтянет компактный always-on-блок (`core`, `orchestrator`, `base/naming`, `base/class-structure`, `base/file-structure`, `base/workflow-and-misc`) одним импортом. Остальные правила читаются on-demand по роутеру.
 
 3. On-demand файлы (`rules/angular/*.md`, `rules/nestjs/*.md`, `rules/base/local-vs-shared.md` и т.д.) отдельно импортировать не нужно — `rules/orchestrator.md` уже в контексте и сам укажет читать нужный по пути внутри submodule, когда придёт время (`Read .claude/ai-dev-kit/rules/nestjs/repository.md` и т.п.).
 
