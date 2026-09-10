@@ -13,10 +13,10 @@ There is no application code, build, lint, or test step here — the repo is mar
 
 ## Architecture: rules vs skills
 
-- `rules/RULES.md` is the single always-on entry point: a consuming project imports it once (`@.claude/ai-dev-kit/rules/RULES.md`), which recursively pulls in `rules/orchestrator.md` plus every always-on file under `rules/base/` and `rules/skills/` via `@import`.
+- `rules/RULES.md` is the single always-on entry point: a consuming project imports it once (`@.claude/ai-dev-kit/rules/RULES.md`), which recursively pulls in the compact `core.md`, `orchestrator.md`, and universal TypeScript/workflow rules via `@import`.
 - `rules/orchestrator.md` is the routing table: for a given situation it says which always-on rule already applies (no action needed) vs. which on-demand file or skill needs a deliberate `Read`/invocation.
 - **`@import` only resolves inside the always-on chain starting at `RULES.md`** — i.e. when a project's `CLAUDE.md` first loads. A file reached later via `Read` mid-session (any on-demand file — `rules/angular/*`, `rules/nestjs/*`, `rules/skills/executing-plans.md`, etc.) does NOT expand `@` references inside itself; they stay literal text. `rules/angular/index.md` and `rules/nestjs/index.md` are lookup tables meant for `Read`, not `@import` aggregators — reading the index does not pull in the files it lists.
-- A convention is deliberately kept as an always-on **rule**, not a skill, when it must be guaranteed present every turn (e.g. `rules/base/git-and-commits.md`'s pre-commit branch check) — an on-demand skill can be forgotten and skipped; an always-on imported file cannot.
+- Critical behavior keeps a short always-on guardrail in `rules/core.md`; the detailed rule is read immediately before the corresponding action (for example, `git-and-commits.md` before a commit).
 - `.claude/dev-conventions.json` in a *consuming* project stores small per-project values routed rules need (currently `ticketPrefix` for commit message prefixes) — read via `rules/orchestrator.md`'s "Project Config" section, never guessed or invented.
 - Any rule/skill that produces a markdown artifact (design spec, plan, roadmap, issue draft) must save it only after `ExitPlanMode` approval, never write the real file first and validate after — see `rules/orchestrator.md`'s "Markdown-Generating Skills Require `ExitPlanMode` Gating".
 
