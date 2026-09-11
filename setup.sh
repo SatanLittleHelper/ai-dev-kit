@@ -40,6 +40,16 @@ else
   git submodule add "git@github.com:${REPO}.git" "$SUBMODULE_PATH"
 fi
 
+# 2b. Auto-update the submodule on checkout/pull, so rule fixes actually reach the working
+# tree instead of sitting unpulled at a stale pinned commit. Local repo config only (.git/config,
+# not committed) — each clone/dev needs to run this setup once for it to take effect for them.
+if [ "$(git config --get submodule.recurse 2>/dev/null || true)" = "true" ]; then
+  log "submodule.recurse already enabled, skipping"
+else
+  log "enabling submodule.recurse (git config, local to this clone)"
+  git config submodule.recurse true
+fi
+
 # 3. CLAUDE.md wiring
 if [ ! -f CLAUDE.md ]; then
   log "creating CLAUDE.md"
@@ -54,6 +64,14 @@ else
   } >> CLAUDE.md
   log "added '$IMPORT_LINE' to CLAUDE.md"
 fi
+
+# 3b. Commit-rules PreToolUse hook — enforces rules/base/git-and-commits.md's no-trailer /
+# one-line-message rules deterministically (code, not a prompt), so they hold even when a
+# session-level instruction tries to override them. Writes only to the project's committed
+# .claude/settings.json — see rules/hooks/install-hook.sh for why that file and not the
+# user's global or local settings.
+log "registering commit-rules hook"
+bash "$SUBMODULE_PATH/rules/hooks/install-hook.sh"
 
 # 4. AGENTS.md for Codex — opt-in, ask the user. Reads from /dev/tty, not stdin: this
 # script is normally run as `curl | bash`, where stdin is already the piped script itself,
