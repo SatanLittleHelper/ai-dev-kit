@@ -4,8 +4,8 @@ These compact guardrails are always in context through `rules/RULES.md`. User in
 
 ## Required reads and gates
 
-- Before design or an architectural decision: enter native Plan Mode, then read `rules/skills/brainstorming.md` and invoke `superpowers:brainstorming`.
-- Before writing a multi-step plan: read `rules/skills/writing-plans.md`, enter native Plan Mode, and invoke `superpowers:writing-plans`.
+- Before design or an architectural decision: enter native Plan Mode, then read `rules/skills/brainstorming.md` and invoke `superpowers:brainstorming`. The resulting design spec is written in Russian, no exceptions — see `rules/base/workflow-and-misc.md` → "Documentation Language".
+- Before writing a multi-step plan: read `rules/skills/writing-plans.md`, enter native Plan Mode, and invoke `superpowers:writing-plans`. The resulting plan document is written in Russian, no exceptions — same rule.
 - Before test-worthy implementation: read `rules/base/testing.md` and `rules/base/test-execution-policy.md`, then invoke `superpowers:test-driven-development`. Follow the testing layer table; do not expand it from a generic TDD checklist.
 - Before committing or branching: read `rules/base/git-and-commits.md`. Never commit automatically.
 - Before reading a known file or choosing between Bash and a dedicated tool: apply `rules/base/mcp-tool-priority.md`.

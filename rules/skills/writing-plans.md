@@ -21,6 +21,8 @@ The final pass runs build, type-check, lint, and tests exactly once at the end. 
 
 Store plans at `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`; delete them after implementation unless the user asks to keep them. Follow `rules/base/artifacts-and-tmp.md` for other artifacts.
 
+**Write the plan document in Russian** — see `rules/base/workflow-and-misc.md` → "Documentation Language". This applies to the whole document (headings, task descriptions, prose) regardless of what language the request came in; only code blocks/identifiers stay as-is.
+
 ## Common Mistakes
 
 | Mistake | Fix |
@@ -30,3 +32,4 @@ Store plans at `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`; delete the
 | Tests deferred to a separate task | Put test-first code in the same task |
 | Full suite after each task | Reserve it for the single final pass |
 | Commit step in the plan | Remove it |
+| Writing the plan in English (or the request's language) | Write it in Russian — the plan document itself, not just trigger phrases |

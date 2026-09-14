@@ -15,6 +15,7 @@ After design approval, hand off to `rules/skills/writing-plans.md`; do not invok
 - Save the design spec only after approval, at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`.
 - If a plan follows, delete the temporary design spec unless the user asks to keep it.
 - If the user explicitly requests visual annotation, save the current design and use the annotation UI; otherwise use text.
+- **Write the design spec in Russian** — see `rules/base/workflow-and-misc.md` → "Documentation Language". Applies even inside the Plan Mode draft, not only the saved file; only code blocks/identifiers stay as-is.
 
 ## Common Mistakes
 
@@ -24,3 +25,4 @@ After design approval, hand off to `rules/skills/writing-plans.md`; do not invok
 | Skipping Plan Mode | Enter it before invoking the sub-skill |
 | Saving the spec early | Keep the draft in chat/Plan Mode until approval |
 | Combining approval cycles | Use one Plan Mode document per artifact |
+| Writing the spec in English (or the request's language) | Write it in Russian — the document itself, not just trigger phrases |

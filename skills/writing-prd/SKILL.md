@@ -78,7 +78,7 @@ Same `docs/` convention as roadmaps (see `roadmap/SKILL.md`, itself project-agno
 
 ## Formatting rules
 
-- Body language matches how the user communicates in this conversation (default: Russian) — no project-file lookup needed to decide this.
+- **Hard rule, no exceptions: the PRD body is written entirely in Russian** — headings, prose, and requirements alike — regardless of what language the request came in. No project-file lookup needed to decide this. Code blocks, identifiers, and technical terms stay in their original form.
 - Section inapplicable? Keep the heading, write `Не применимо` — don't delete it.
 - Unknown fact (ticket, stack, deadline, integration detail) → literal `TBD`, never guess. Ticket number specifically: only the user supplies the real one, in whatever format their tracker uses — never invent a prefix or number.
 - No filler — facts and decisions only, not a narrative of the conversation.
