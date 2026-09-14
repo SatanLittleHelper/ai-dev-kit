@@ -29,6 +29,8 @@ This skill is the single trigger for everything roadmap-related. It owns storage
 
 Read only the reference the situation calls for — they all assume this file's storage/naming/state-file conventions as shared background, so don't re-derive them per reference.
 
+**Hard rule, no exceptions:** the roadmap file itself, every feature-level and step-level PRD, every design/spec doc, and every implementation plan produced under this skill (directly or via `writing-prd` / `superpowers:brainstorming` / `superpowers:writing-plans`) is written entirely in Russian — headings, prose, and task descriptions alike — regardless of what language the request came in. Code blocks, identifiers, file paths, and ticket ids stay in their original form. A project's own `rules/skills/writing-plans.md` / `rules/skills/brainstorming.md` override, if present, states the same rule — this is not conditional on that file existing.
+
 ## Workflow Recipe
 
 A roadmap-sized feature moves through three phases, each handled entirely by one reference here — no separate orchestrator needed:
