@@ -23,6 +23,17 @@ Store plans at `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`; delete the
 
 **Write the plan document in Russian** — see `rules/base/workflow-and-misc.md` → "Documentation Language". This applies to the whole document (headings, task descriptions, prose) regardless of what language the request came in; only code blocks/identifiers stay as-is.
 
+### Exceptions: keep in English
+
+The superpowers tooling matches some plan markup by literal English text, so these stay English even inside the Russian plan:
+
+- **Task headings: `### Task N: <название на русском>`.** The word `Task` and the Arabic number are mandatory. `subagent-driven-development/scripts/task-brief` extracts each task with the regex `^#+[ \t]+Task[ \t]+[0-9]+`; a heading like `### Задача 1` or `### Task One` is not found (exit 3) and the implementer gets no brief. Only the part after the colon is Russian.
+- **Checkboxes: `- [ ]` / `- [x]`.** The executing skills track progress by them.
+- **Structural labels from the skill template:** `Step N:` in step titles, `Files:` (`Create:` / `Modify:` / `Test:`), `Interfaces:` (`Consumes:` / `Produces:`), and the `## Global Constraints` section heading. The plan reviewer and `subagent-driven-development` (conflict scan, task reviewer) refer to them by these names. Their contents are Russian.
+- **Header line for agentic workers** (`> **For agentic workers:** REQUIRED SUB-SKILL: ...`) stays verbatim, including skill names.
+
+Everything else (plan title, goal, architecture, task and step descriptions, prose) is Russian.
+
 ## Common Mistakes
 
 | Mistake | Fix |
@@ -33,3 +44,4 @@ Store plans at `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`; delete the
 | Full suite after each task | Reserve it for the single final pass |
 | Commit step in the plan | Remove it |
 | Writing the plan in English (or the request's language) | Write it in Russian — the plan document itself, not just trigger phrases |
+| Translating the `Task N` heading ("Задача 1") | Keep `### Task N: <русское название>` — `task-brief` parses the English word |
