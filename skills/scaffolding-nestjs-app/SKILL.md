@@ -103,6 +103,15 @@ no separate e2e test target. Immediately after generating the app, before touchi
 
 Before Step 3, make sure `main.ts`/`app.module.ts` have this baseline, regardless of what the generator produced: a global `ConfigModule` validating `PORT` (Joi or class-validator, `getOrThrow` at usage sites — never a bare `process.env.PORT`), `app.setGlobalPrefix('api')`, a global `ValidationPipe` with `transform: true` + `whitelist: true` + implicit conversion enabled, and `useContainer(app, { fallbackOnErrors: true })` so `class-validator`'s custom decorators can use Nest DI. If the app sits behind a Traefik (or equivalent) reverse proxy that strips a service-name prefix before forwarding, the app's own routes stay at plain `/api/...` — the proxy's route pattern (e.g. `/{service_name}/api` with a strip-prefix middleware) is the proxy's concern, not something the app needs to know about internally.
 
+## App Baseline: Process Guards
+
+Every app's `main.ts` must survive failures outside the request chain. Without this, an unhandled rejection or exception kills the process with a raw stack on stderr (bypassing pino), and SIGTERM skips Nest shutdown hooks, so Redis/BullMQ/DB connections are never closed. Two calls, both taken from one shared helper — in a monorepo `registerProcessGuards`/`runBootstrap` from `@chatbot-platform/helpers/nest` (do not duplicate them); in a standalone app create the same two functions under `src/common/process-guards/` — never inline `process.on(...)` in `main.ts`:
+
+- `runBootstrap(bootstrap)` replaces a bare `bootstrap()` / `void bootstrap()` call at the bottom of `main.ts`: a rejected bootstrap is written with `console.error` (pino may not be up yet) and the process exits with code 1.
+- `registerProcessGuards({ app, logger: app.get(Logger) })` goes right after `app.useLogger(app.get(Logger))`: it calls `app.enableShutdownHooks()` and, on `unhandledRejection`/`uncaughtException`, logs through pino, runs `app.close()` raced against a named-constant timeout, then `process.exit(1)`; repeated events during shutdown are ignored. Both events behave the same — the container's restart policy brings the service back, whereas an "alive but broken" process is worse than a restart.
+
+If the app registers `@nestjs-modules/ioredis` or a BullMQ `@Processor`, also attach `error` listeners that log through pino (`@OnWorkerEvent('error')` on the processor; a small module with `@InjectRedis()` calling `redis.on('error', ...)`) — otherwise ioredis and BullMQ fall back to `console.error` outside pino.
+
 ## Step 3 — Ask about API versioning
 
 **Always ask the user** whether the new app needs URI API versioning before writing `main.ts` — don't default to
@@ -186,7 +195,7 @@ AppLoggerModule.forRootAsync({
 }),
 ```
 And in `main.ts`: `NestFactory.create(AppModule, { bufferLogs: true })` then `app.useLogger(app.get(Logger))`
-(`Logger` from `nestjs-pino`).
+(`Logger` from `nestjs-pino`), then `registerProcessGuards({ app, logger: app.get(Logger) })` (see "App Baseline: Process Guards").
 
 **Env vars — update all three places** per this repo's own env-var convention (Joi schema above, root `.env.example`,
 and — in a monorepo with a `devops/` deployment layer — `devops/.env.example` + the corresponding
@@ -378,4 +387,5 @@ AI working artifacts, not project source. Check for existing entries first; don'
 | Setting hard coverage thresholds on day one | Leave `thresholds` commented out until the app has real tests |
 | Creating a brand-new per-app Dockerfile in a monorepo that already has a shared parametrized one | Reuse the shared `devops/Dockerfile` with `ARG APP_NAME`, just add a compose service block |
 | Adding a new env var to only one of the three required places | Joi schema + root `.env.example` + `devops/.env.example` (+ compose `environment:` block) — all three, every time |
+| Ending `main.ts` with a bare `bootstrap()` / `void bootstrap()` and no `registerProcessGuards` | Wrap with `runBootstrap(bootstrap)` and call `registerProcessGuards` right after `useLogger` — see "App Baseline: Process Guards" |
 | Skipping the health endpoint because the app "is internal" | Every HTTP app gets `GET /health` (or `/api/health` with global prefix) — internal-only apps still need it for orchestration liveness checks |
