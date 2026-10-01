@@ -346,8 +346,9 @@ skills-workflow conventions — don't duplicate.
 ## Step 13 — .gitignore AI artifacts
 
 Append `templates/docs/gitignore-ai-artifacts-snippet.txt` to the target repo's `.gitignore` (create the file if it
-doesn't exist). `CLAUDE.md`/`AGENTS.md`/`MEMORY.md` are written by Step 11 above but must stay untracked — they are
-AI working artifacts, not project source. Check for existing entries first; don't duplicate lines already present.
+doesn't exist). The snippet ignores only personal Claude Code files (`CLAUDE.local.md`, `settings.local.json`,
+worktrees, `.doc-review/`); `CLAUDE.md`/`AGENTS.md` written by Step 11 above are shared project files and stay tracked.
+Check for existing entries first; don't duplicate lines already present.
 
 ## Quick reference — template files
 
@@ -374,7 +375,7 @@ AI working artifacts, not project source. Check for existing entries first; don'
 | `templates/docker/.env.example.standalone` / `env-example-snippet.monorepo.md` | Env var baseline | pick one |
 | `templates/docs/claude-md-nestjs-snippet.md` | NestJS-specific conventions writeup for the target repo | adjust paths |
 | `templates/docs/claude-md-skills-workflow-snippet.md` | Stack-agnostic skills/subagents workflow rules | none |
-| `templates/docs/gitignore-ai-artifacts-snippet.txt` | Keeps CLAUDE.md/AGENTS.md/MEMORY.md untracked | none |
+| `templates/docs/gitignore-ai-artifacts-snippet.txt` | Ignores personal Claude Code files (CLAUDE.local.md, settings.local.json, worktrees) | none |
 
 ## Common mistakes
 

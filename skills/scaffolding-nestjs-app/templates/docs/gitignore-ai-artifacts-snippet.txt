@@ -1,6 +1,10 @@
-# AI-артефакты — не должны попадать в репозиторий
-/.cursor/
-/MEMORY.md
-/AGENTS.md
-/CLAUDE.md
-/.codex-review/
+# Claude Code — личные файлы (не шарятся с командой)
+/CLAUDE.local.md
+/.claude/settings.local.json
+/.claude/scheduled_tasks.lock
+/.claude/worktrees/
+/.worktrees/
+/.doc-review/
+
+# Личные .local.md-заметки разработчиков в любой подпапке .claude
+**/*.local.md
