@@ -9,7 +9,7 @@ These rules define what to test and how to assert. The execution order is in `ru
 | Services with branching/orchestration logic | **Yes** |
 | Guards, validation, fallback and error-handling branches | **Yes** |
 | UI components | **No** — cover delegated behavior through the service/store layer |
-| Thin repositories/DAOs | **No** — cover through the calling service |
+| Repositories/DAOs (`*.repository.ts`), including ones with a guard or branch | **No** — cover through the calling service |
 | Thin outbound API clients | **No** — test how the caller uses the result |
 | Pure row/payload → domain mappers (only field assignment/`?? default`) | **No** |
 
@@ -35,7 +35,7 @@ For async dependencies, cover timeout and upstream failure when the code has beh
 
 | Mistake | Fix |
 |---|---|
-| Spec for a component, thin repository/client, or pure mapper | Skip it; cover the caller where applicable |
+| Spec for a component, repository, thin client, or pure mapper | Skip it; cover the caller where applicable |
 | Happy path only | Add meaningful negative/validation/failure branches |
 | `expect(fn.mock.calls[0][0])` | Use the matching call matcher |
 | Logger assertion | Assert surrounding behavior |

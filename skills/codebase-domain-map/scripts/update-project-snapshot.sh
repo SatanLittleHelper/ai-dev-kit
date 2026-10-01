@@ -12,7 +12,6 @@ ROOT_DIR="$(cd "$ROOT_DIR" && pwd)"
 
 OUTPUT_DIR="$ROOT_DIR/.claude/project-snapshot"
 OVERVIEW_FILE="$OUTPUT_DIR/overview.md"
-FILES_FILE="$OUTPUT_DIR/files.txt"
 DOMAINS_FILE="$OUTPUT_DIR/domains.tsv"
 
 mkdir -p "$OUTPUT_DIR"
@@ -151,21 +150,6 @@ print_project_section() {
   printf 'sed -n "1,200p" .claude/project-snapshot/overview.md\n'
   printf '```\n'
 } > "$OVERVIEW_FILE"
-
-if command -v rg >/dev/null 2>&1; then
-  if [ "$fallback_mode" = true ] || [ "$single_project_mode" = true ]; then
-    (cd "$ROOT_DIR" && rg --files . 2>/dev/null | sort > "$FILES_FILE") || true
-  else
-    (cd "$ROOT_DIR" && rg --files "${containers[@]}" 2>/dev/null | sort > "$FILES_FILE") || true
-  fi
-else
-  echo "Note: ripgrep (rg) not found — falling back to find (slower, no .gitignore filtering)" >&2
-  if [ "$fallback_mode" = true ] || [ "$single_project_mode" = true ]; then
-    (cd "$ROOT_DIR" && find . -type f -not -path './.git/*' | sed 's|^\./||' | sort > "$FILES_FILE")
-  else
-    (cd "$ROOT_DIR" && find "${containers[@]}" -type f | sort > "$FILES_FILE")
-  fi
-fi
 
 # Prints one project's domains.tsv rows (project row + section rows) to stdout.
 print_project_domains_rows() {

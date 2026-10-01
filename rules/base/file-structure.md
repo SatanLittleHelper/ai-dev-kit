@@ -2,7 +2,7 @@
 
 | Content | File |
 |---|---|
-| More than one type/interface | `*.types.ts` |
+| Any type/interface, even a single one | `*.types.ts` |
 | Constants | `*.constants.ts` |
 | Pure builders/formatters without side effects or DI | `*.helpers.ts` |
 | Pure row/payload → domain mappers with no branching beyond `?? default` | `*.mapper.ts` |
