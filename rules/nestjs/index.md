@@ -11,6 +11,7 @@ Baseline testing (an agent asked to add a DB lookup + outbound webhook call, no 
 | DB/ORM access | Only through a dedicated `*.repository.ts` class — never call the ORM client (Prisma/TypeORM/etc.) from a service; Prisma's `where` ignores `undefined` filters, no conditional spread needed | `repository.md` |
 | DTO ↔ shared contract | Every DTO class `implements` an interface from the project's shared-contracts package/folder | `dto.md` |
 | Outbound HTTP calls | One call → `*.api.service.ts`; a whole external system → its own `<domain>-http/` module | `http-client.md` |
+| Init hooks & startup dependencies | `onModuleInit`/`onApplicationBootstrap`/async factories block startup and a throw aborts bootstrap — classify the dependency: critical (DB, Redis) → fail fast; non-critical (Max, Jira, BPM) must not fail startup (config/lazy, or `try/catch` + degraded feature); disable library auto-start (`nestjs-max` `launchOptions: false`) when only the API client is needed | `lifecycle.md` |
 | Cron schedules | `CronExpression` enum, never a raw cron string | `scheduling.md` |
 | Logging | `PinoLogger.error(err, message)`, debug-log every branch | `logging.md` |
 | M2M auth (no OAuth) | Bearer guard registered as `APP_GUARD` | `guard.md` |
