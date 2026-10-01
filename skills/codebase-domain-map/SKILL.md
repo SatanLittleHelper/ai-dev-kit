@@ -7,7 +7,7 @@ description: Use before any codebase search or exploration in a large or unfamil
 
 ## Overview
 
-A repo-local, regeneratable snapshot of "what lives where" — three small files under `.claude/project-snapshot/` that give domain/folder-level orientation in one read, instead of re-deriving the module map with `find`/`grep` every time. Read it first; it narrows *where* to look, then use normal search tools *inside* that narrowed scope for the actual line-level answer.
+A repo-local, regeneratable snapshot of "what lives where" — two small files under `.claude/project-snapshot/` that give domain/folder-level orientation in one read, instead of re-deriving the module map with `find`/`grep` every time. Read it first; it narrows *where* to look, then use normal search tools *inside* that narrowed scope for the actual line-level answer.
 
 **Applies to every repository you work in — not just ones where `.claude/project-snapshot/` already exists, and independent of whatever any single project's own CLAUDE.md/rules happen to say about a "project snapshot."** A project's own rules may instruct reading its own already-generated snapshot by that name — that project-local instruction is one instance of this general, portable technique, not the whole of it. This skill is a different, standing thing: it applies in *any* repository, including ones with no such rule at all. If the snapshot is missing in the current repo, the correct move is to generate it (Setup below), never to skip the technique because no project-local rule told you to use it here.
 
@@ -32,7 +32,8 @@ A repo-local, regeneratable snapshot of "what lives where" — three small files
 
 - `.claude/project-snapshot/overview.md` — per-project domain list and entry points, human-readable.
 - `.claude/project-snapshot/domains.tsv` — flat `scope\ttype\tname\tpath` table; fastest to `grep` for a keyword across every project at once.
-- `.claude/project-snapshot/files.txt` — full file listing, for when domain-level granularity isn't enough.
+
+There is deliberately no full file listing: it goes stale fast and adds noisy diffs, and file-level lookups are covered by a glob, `rg --files`, or the IDE's file search.
 
 ## Setup / Refresh
 

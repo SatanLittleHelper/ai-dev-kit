@@ -28,6 +28,7 @@ If a routed skill or file is missing, skip it silently and continue; never recon
 ## Chaining
 
 - Design → plan → implementation via TDD when in scope → verification → commit.
+- Effort follows the stage: clarify requirements first, implement at medium effort, then switch to high (`/effort high`) to verify before the final pass; keep max for hard autonomous problems.
 - For a NestJS/Angular plan, `writing-plans.md` handles stack detection and required stack reads; do not repeat them before drafting.
 - For inline stack implementation outside a plan, read the relevant index and topic directly.
 - TDD scope is bounded by `testing.md`'s layer table.
