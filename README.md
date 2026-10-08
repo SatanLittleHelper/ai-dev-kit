@@ -14,6 +14,7 @@
 | `skills/codebase-domain-map` | Генерирует и поддерживает снэпшот «что где лежит» в незнакомом/большом репозитории |
 | `skills/scaffolding-nestjs-app` | Скаффолдинг нового NestJS-приложения по личным конвенциям |
 | `skills/writing-prd` | Шаблон и правила оформления PRD |
+| `skills/testing-changes` | Ручное тестирование изменений ветки: анализ изменений и документов задачи, тест-план (согласуется через Plan Mode), запуск всех приложений проекта, тесты (`curl`, Playwright, веб-версия Max), остановка запущенного и отчёт через Plannotator; проектные настройки читаются из блока `testing` в `.claude/dev-conventions.json` |
 | `skills/update-project-skills` | Обновляет установленные в проекте скиллы этого репозитория до последней версии (`npx skills update`) |
 | `skills/update-project-rules` | Обновляет rules-submodule (`git submodule update --remote`) и, если проект подключил Codex, перегенерирует `AGENTS.md` — отдельно от скиллов, намеренно не объединено с `update-project-skills` |
 
