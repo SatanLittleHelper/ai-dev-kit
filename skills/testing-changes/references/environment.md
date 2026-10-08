@@ -85,4 +85,14 @@ For every `owned: true` entry in the state file:
 2. Wait with Monitor until `kill -0 -- -<pgid>` fails. Still alive after the Monitor timeout: `kill -KILL -- -<pgid>`.
 3. Check each recorded port: `lsof -iTCP:<port> -sTCP:LISTEN -P` must print nothing. Something still listens: show the process and ask the user; do not kill unknown processes.
 
-`owned: false` entries are left alone. Delete the state file once every owned entry is confirmed stopped. Keep the logs. Killing only the parent `npm`/`nx` process is not enough: the child `node` processes survive and keep the ports.
+`owned: false` entries are left alone. Delete the state file once every owned entry is confirmed stopped. Keep the logs until the document cleanup below. Killing only the parent `npm`/`nx` process is not enough: the child `node` processes survive and keep the ports.
+
+## Cleanup of documents (only after the report is approved)
+
+Runs after the apps are confirmed stopped, and only when the user approved the report (Plannotator "Done"). Not on a dismissed review, a cancel or an abort: the plan stays for a re-run.
+
+1. Delete the test plan file (the path from the report's «Тест-план» field, saved in Phase 1-2). Say in one line which file was deleted. A missing file is not an error.
+2. Ask the user with `AskUserQuestion` whether to delete the test report too (options: «Удалить» / «Оставить»). Delete it only on «Удалить». The default is to keep it: no answer means keep.
+3. Delete the temp files of this run: the logs of the apps this run started (`tmp/logs/<app>.log` for every `owned: true` entry). Logs of `owned: false` apps were not written by this run: leave them.
+4. Evidence of this run (`tmp/reports/<run>/`: response bodies, screenshots, test logs) is referenced by the report. Delete it together with the report when the user chose «Удалить»; if the report stays, the evidence stays too.
+5. Remove `tmp/logs`, `tmp/reports`, `tmp/test-plans` if they are now empty. Do not touch anything else: `docs/` files other than these, git state. Never commit the deletions unless the user asks.
