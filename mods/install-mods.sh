@@ -4,6 +4,8 @@
 # project gets them. Same target file and reasoning as rules/hooks/install-hook.sh: the
 # project's settings.json is shared and merged with, never replaces, the user's own settings.
 #
+# Also installs the mods through the claude CLI (project scope), when it is on PATH.
+#
 # Usage: bash .claude/ai-dev-kit/mods/install-mods.sh <mod>...
 
 set -euo pipefail
@@ -26,3 +28,20 @@ mkdir -p "$SETTINGS_DIR"
 [ -f "$SETTINGS_FILE" ] || echo "{}" > "$SETTINGS_FILE"
 
 node "$MERGE_JS" "$SETTINGS_FILE" "$MARKETPLACE" "$REPO" "$@"
+
+# Writing enabledPlugins is not an install: the plugin must also be installed on this machine, or it
+# silently never loads ("enabled but not installed"). Done through the CLI when it is available;
+# anything else is a hint, not a failure. Installs are per user, so every teammate runs this once
+# (setup.sh does it) or installs by hand.
+if command -v claude >/dev/null 2>&1; then
+  claude plugin marketplace add "$REPO" --scope project >/dev/null 2>&1 || true
+  for MOD in "$@"; do
+    if claude plugin install "$MOD@$MARKETPLACE" --scope project; then
+      echo "-- installed $MOD@$MARKETPLACE (project scope)"
+    else
+      echo "-- could not install $MOD@$MARKETPLACE; run: claude plugin install $MOD@$MARKETPLACE --scope project" >&2
+    fi
+  done
+else
+  echo "-- claude CLI not found; install the mods by hand: claude plugin install <mod>@$MARKETPLACE --scope project" >&2
+fi
