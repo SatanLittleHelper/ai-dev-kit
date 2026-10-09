@@ -1,0 +1,12 @@
+{
+  "name": "ai-dev-kit",
+  "description": "Personal dev conventions and mods",
+  "owner": { "name": "Aleksandr Fenin" },
+  "plugins": [
+    {
+      "name": "polish",
+      "source": "./mods/polish",
+      "description": "Кнопка и команда /polish: /simplify, затем /code-review low, общий отчёт в Plannotator"
+    }
+  ]
+}
