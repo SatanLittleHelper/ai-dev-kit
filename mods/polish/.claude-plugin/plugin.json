@@ -1,6 +1,6 @@
 {
   "name": "polish",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Кнопка и команда /polish: последовательно запускает /simplify и /code-review low и собирает общий отчёт в Plannotator",
   "author": { "name": "Aleksandr Fenin" },
   "types": "./types/index.d.ts"

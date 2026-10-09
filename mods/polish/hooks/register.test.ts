@@ -222,3 +222,75 @@ test('Cancel aborts the running turn and stops the agents the chain started', as
 
   expect(again.text).toContain('Запущено')
 })
+
+test('the annotations from Plannotator go to the model as a prompt', async ($, on) => {
+  engine(on)
+  const clock = mock.clock(on)
+  const prompts: string[] = []
+  let agents: AgentInfo[] = []
+
+  on('agent.list', () => ({ value: agents }))
+  on('command.run', { command: 'simplify' }, () => ({ text: '' }))
+  on('command.run', { command: 'code-review' }, () => {
+    agents = [reviewAgent]
+
+    return { text: '' }
+  })
+  on('fs.write', () => ({ value: undefined }))
+  on('process.spawn', async function* () {
+    yield { stream: 'stdout' as const, text: '# File Feedback\n1. a.js:1 — переименуй' }
+
+    return { value: { code: 0, signal: null } }
+  })
+  on('prompt.submit', ($, e) => {
+    prompts.push(e.text)
+
+    return { text: '' }
+  })
+
+  await $.command.run({ command: 'polish', args: '' })
+  await clock.settle()
+  await $.turn.start({ text: '/simplify', turnId: 't1' })
+  await $.turn.complete(completion('t1', SIMPLIFY_ANSWER))
+  await clock.advance(2000)
+  await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+  await clock.settle()
+
+  expect(prompts.join('\n')).toContain('a.js:1 — переименуй')
+})
+
+test('an empty Plannotator review sends nothing to the model', async ($, on) => {
+  engine(on)
+  const clock = mock.clock(on)
+  const prompts: string[] = []
+  let agents: AgentInfo[] = []
+
+  on('agent.list', () => ({ value: agents }))
+  on('command.run', { command: 'simplify' }, () => ({ text: '' }))
+  on('command.run', { command: 'code-review' }, () => {
+    agents = [reviewAgent]
+
+    return { text: '' }
+  })
+  on('fs.write', () => ({ value: undefined }))
+  on('process.spawn', async function* () {
+    yield { stream: 'stdout' as const, text: 'User reviewed the document and has no feedback.\n' }
+
+    return { value: { code: 0, signal: null } }
+  })
+  on('prompt.submit', ($, e) => {
+    prompts.push(e.text)
+
+    return { text: '' }
+  })
+
+  await $.command.run({ command: 'polish', args: '' })
+  await clock.settle()
+  await $.turn.start({ text: '/simplify', turnId: 't1' })
+  await $.turn.complete(completion('t1', SIMPLIFY_ANSWER))
+  await clock.advance(2000)
+  await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+  await clock.settle()
+
+  expect(prompts).toEqual([])
+})
