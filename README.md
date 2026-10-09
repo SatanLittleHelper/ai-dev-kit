@@ -15,8 +15,7 @@
 | `skills/scaffolding-nestjs-app` | Скаффолдинг нового NestJS-приложения по личным конвенциям |
 | `skills/writing-prd` | Шаблон и правила оформления PRD |
 | `skills/testing-changes` | Ручное тестирование изменений ветки: анализ изменений и документов задачи, тест-план (согласуется через Plan Mode), запуск всех приложений проекта, тесты (`curl`, Playwright, веб-версия Max), остановка запущенного и отчёт через Plannotator; проектные настройки читаются из блока `testing` в `.claude/dev-conventions.json` |
-| `skills/update-project-skills` | Обновляет установленные в проекте скиллы этого репозитория до последней версии (`npx skills update`) |
-| `skills/update-project-rules` | Обновляет rules-submodule (`git submodule update --remote`) и, если проект подключил Codex, перегенерирует `AGENTS.md` — отдельно от скиллов, намеренно не объединено с `update-project-skills` |
+| `skills/update-ai-dev-kit` | Приводит проект к актуальному состоянию кита одной командой: обновляет rules-submodule (и `AGENTS.md`, если подключён Codex), установленные скиллы, **ставит новые скиллы и моды**, появившиеся в репозитории |
 
 **Правило проекта:** при добавлении нового скилла в `skills/` — обязательно дописать его имя в массив `OUR_SKILLS` в `setup.sh`. Список там захардкожен и не подтягивается автоматически из содержимого папки: `setup.sh` устанавливает только то, что перечислено явно, так что забытый скилл просто не попадёт новым пользователям при разовой установке.
 
@@ -118,7 +117,7 @@ bash .claude/ai-dev-kit/rules/build-agents-md.sh
 curl -fsSL https://raw.githubusercontent.com/SatanLittleHelper/ai-dev-kit/main/setup.sh | bash
 ```
 
-Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано выше, за один проход: ставит `skills`-CLI, если его ещё нет, добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, **спрашивает, нужна ли поддержка Codex** (и если да — генерирует `AGENTS.md`), устанавливает все наши скиллы (`skills/roadmap`, `skills/codebase-domain-map`, `skills/scaffolding-nestjs-app`, `skills/writing-prd`, `skills/update-project-skills`, `skills/update-project-rules`), включает наши моды (`mods/polish`) в `.claude/settings.json` проекта, а также — если в `package.json` проекта уже есть `@angular/core`/`@nestjs/core` — соответствующий best-practices скилл из раздела выше. Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
+Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано выше, за один проход: ставит `skills`-CLI, если его ещё нет, добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, **спрашивает, нужна ли поддержка Codex** (и если да — генерирует `AGENTS.md`), устанавливает все наши скиллы (`skills/roadmap`, `skills/codebase-domain-map`, `skills/scaffolding-nestjs-app`, `skills/writing-prd`, `skills/update-ai-dev-kit`), включает наши моды (`mods/polish`) в `.claude/settings.json` проекта, а также — если в `package.json` проекта уже есть `@angular/core`/`@nestjs/core` — соответствующий best-practices скилл из раздела выше. Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
 
 Вопрос про Codex читается из `/dev/tty`, не из stdin (stdin в `curl | bash` занят самим скриптом) — в среде без терминала (CI и т.п.) шаг просто пропускается с подсказкой, как вызвать генератор вручную позже.
 
@@ -130,7 +129,7 @@ curl -fsSL https://raw.githubusercontent.com/SatanLittleHelper/ai-dev-kit/main/s
 npx skills add SatanLittleHelper/ai-dev-kit --skill roadmap
 ```
 
-Обновление — `npx skills update` (или скилл `update-project-skills`, если уже подключён — только скиллы, не правила), пин версий в `skills-lock.json` проекта.
+Обновление — скилл `update-ai-dev-kit` («обнови скиллы» / «обнови правила» / «обнови кит»): обновляет правила, скиллы и моды и доустанавливает новые скиллы и моды из репозитория. Голый `npx skills update` обновляет только уже установленные скиллы и новых не добавляет. Пин версий — в `skills-lock.json` проекта.
 
 **Правила.** `npx skills` их не обрабатывает — это не скиллы, а обычные файлы. Подключаются через git submodule + один `@import` в CLAUDE.md проекта:
 
@@ -156,4 +155,4 @@ npx skills add SatanLittleHelper/ai-dev-kit --skill roadmap
    git submodule update --remote .claude/ai-dev-kit
    ```
 
-   Если в проекте есть сгенерированный блок в `AGENTS.md` (Codex), перегенерировать его тем же шагом: `bash .claude/ai-dev-kit/rules/build-agents-md.sh` — `CLAUDE.md` ничего дополнительно делать не нужно, `@import` уже подхватывает новое содержимое сам. Скилл `update-project-rules` делает оба шага (submodule + `AGENTS.md`, если он ранее был сгенерирован) одной командой — отдельно от `update-project-skills`, который занимается только скиллами.
+   Если в проекте есть сгенерированный блок в `AGENTS.md` (Codex), перегенерировать его тем же шагом: `bash .claude/ai-dev-kit/rules/build-agents-md.sh` — `CLAUDE.md` ничего дополнительно делать не нужно, `@import` уже подхватывает новое содержимое сам. Скилл `update-ai-dev-kit` делает оба шага (submodule + `AGENTS.md`, если он ранее был сгенерирован) вместе со скиллами и модами одной командой.
