@@ -18,7 +18,7 @@ There is no application code, build, lint, or test step here — the repo is mar
 - **`@import` only resolves inside the always-on chain starting at `RULES.md`** — i.e. when a project's `CLAUDE.md` first loads. A file reached later via `Read` mid-session (any on-demand file — `rules/angular/*`, `rules/nestjs/*`, `rules/skills/executing-plans.md`, etc.) does NOT expand `@` references inside itself; they stay literal text. `rules/angular/index.md` and `rules/nestjs/index.md` are lookup tables meant for `Read`, not `@import` aggregators — reading the index does not pull in the files it lists.
 - Critical behavior keeps a short always-on guardrail in `rules/core.md`; the detailed rule is read immediately before the corresponding action (for example, `git-and-commits.md` before a commit).
 - `.claude/dev-conventions.json` in a *consuming* project stores small per-project values routed rules need (currently `ticketPrefix` for commit message prefixes) — read via `rules/orchestrator.md`'s "Project Config" section, never guessed or invented.
-- Any rule/skill that produces a markdown artifact (design spec, plan, roadmap, issue draft) must save it only after `ExitPlanMode` approval, never write the real file first and validate after — see `rules/orchestrator.md`'s "Markdown-Generating Skills Require `ExitPlanMode` Gating".
+- Any rule/skill that produces a markdown artifact (design spec, plan, roadmap, issue draft) must save it only after `ExitPlanMode` approval, never write the real file first and validate after — see `rules/core.md` (Plan Mode guardrail).
 
 ## Commands
 
