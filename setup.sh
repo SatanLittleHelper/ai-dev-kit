@@ -78,6 +78,14 @@ bash "$SUBMODULE_PATH/rules/hooks/install-hook.sh"
 # 3c. Mods — plugins with UI and hooks (mods/), enabled in the project's committed
 # .claude/settings.json (extraKnownMarketplaces + enabledPlugins), so everyone who opens the
 # project gets them after trusting the folder. Same file and merge-don't-clobber reasoning as 3b.
+# An already-added submodule can pin a commit from before mods/ existed; setup never moves it
+# otherwise, so bring it up to date here (the pointer change shows in git status to be committed).
+if [ ! -f "$SUBMODULE_PATH/mods/install-mods.sh" ]; then
+  log "$SUBMODULE_PATH predates mods/, updating the submodule to the latest ai-dev-kit"
+  git submodule update --init --remote "$SUBMODULE_PATH"
+fi
+[ -f "$SUBMODULE_PATH/mods/install-mods.sh" ] || die "mods/install-mods.sh not found in $SUBMODULE_PATH even after updating it — check the submodule's remote."
+
 log "enabling mods: ${OUR_MODS[*]}"
 bash "$SUBMODULE_PATH/mods/install-mods.sh" "${OUR_MODS[@]}"
 
