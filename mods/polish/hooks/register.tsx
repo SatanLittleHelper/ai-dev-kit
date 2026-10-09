@@ -25,6 +25,9 @@ const SECTION_ASSESSMENT = 'Polish: оценка пропусков simplify'
 const SECTION_NOT_REPORTED = 'Polish: reviewed-not-reported'
 const NOT_EXTRACTED = 'не удалось выделить'
 const ACTIVE_AGENT_STATUSES = ['pending', 'running']
+const FEEDBACK_PREFIX = 'Замечания к отчёту Polish (из Plannotator). Разбери каждое и исправь, что нужно:'
+// What plannotator prints when the review is closed without a single annotation.
+const NO_FEEDBACK = /^user reviewed the document and has no feedback\.?$/i
 const SETTLE_MS = 1500
 const REVIEW_LOOKUP_ATTEMPTS = 20
 const REVIEW_LOOKUP_STEP_MS = 500
@@ -153,14 +156,25 @@ async function fail($: EngineInterface, message: string): Promise<void> {
   $.ui.toast(message)
 }
 
-// plannotator annotate stays alive until the review in the browser is submitted, so it is only watched.
+// plannotator annotate stays alive until the review in the browser is submitted, then prints the
+// user's annotations on stdout: they are collected and handed to the model as a prompt.
 async function watchPlannotator($: EngineInterface): Promise<void> {
+  let feedback = ''
+
   try {
     for await (const piece of $.process.spawn({ argv: ['plannotator', 'annotate', REPORT_PATH] })) {
-      void piece
+      if ('stream' in piece && piece.stream === 'stdout') {
+        feedback += piece.text
+      }
     }
   } catch (error) {
     $.ui.toast(`Polish: не удалось открыть Plannotator: ${String(error)}`)
+
+    return
+  }
+
+  if (feedback.trim() !== '' && !NO_FEEDBACK.test(feedback.trim())) {
+    void $.prompt.submit({ text: `${FEEDBACK_PREFIX}\n\n${feedback.trim()}` })
   }
 }
 
