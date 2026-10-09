@@ -10,7 +10,7 @@ set -euo pipefail
 REPO="SatanLittleHelper/ai-dev-kit"
 SUBMODULE_PATH=".claude/ai-dev-kit"
 IMPORT_LINE="@${SUBMODULE_PATH}/rules/RULES.md"
-OUR_SKILLS=(roadmap codebase-domain-map scaffolding-nestjs-app writing-prd update-project-skills update-project-rules splitting-pr testing-changes)
+OUR_SKILLS=(roadmap codebase-domain-map scaffolding-nestjs-app writing-prd update-ai-dev-kit splitting-pr testing-changes)
 # Mods from mods/ (listed in .claude-plugin/marketplace.json) enabled in the project's settings.json.
 OUR_MODS=(polish)
 
