@@ -2,6 +2,8 @@
 
 Written after the tests while the apps are still running, in Russian, from the recorded results. Every claim has evidence from the run; never write "passed" for a test that was not run.
 
+**Evidence goes into the report itself, as data.** The report is read in Plannotator, where file links cannot be opened. For every test (passed or failed) paste the actual data in a code block: the DB query output, the `curl` status and response body, the script output, a snapshot or console excerpt. Trim long output to the lines that prove the result and say it was trimmed. A path under `tmp/reports/<run>/` may be added next to the data, never instead of it. Screenshots are the only evidence that stays a path: describe in words what the screenshot shows.
+
 ## Template
 
 ```markdown
@@ -27,6 +29,19 @@ Written after the tests while the apps are still running, in Russian, from the r
 | T1 | <название> | пройден |
 | T2 | <название> | провален |
 
+## Подробности
+
+### T1. <название>
+- **Ожидалось:** <из тест-плана>
+- **Получено:** <факт одной-двумя строками>
+- **Данные:**
+
+```
+<вывод БД, статус и тело ответа curl, вывод скрипта: сами данные, не ссылка на файл>
+```
+
+(блок на каждый тест, пройденный или проваленный)
+
 ## Ошибки
 
 ### T2. <название>
@@ -34,7 +49,7 @@ Written after the tests while the apps are still running, in Russian, from the r
 - **Получено:** <факт: статус, тело, текст в интерфейсе>
 - **Отличие:** <что именно не совпало>
 - **Шаги воспроизведения:** <команды и действия>
-- **Доказательства:** <ответ curl, путь к скриншоту, фрагмент лога>
+- **Доказательства:** <ответ curl, фрагмент лога и вывод скрипта прямо в блоке кода; для скриншота путь и описание словами>
 - **Предположительная причина:** <если ясна по логам, иначе «не установлена»>
 
 ## Пропущенные тесты
