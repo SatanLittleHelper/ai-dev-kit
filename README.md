@@ -20,6 +20,22 @@
 
 **Правило проекта:** при добавлении нового скилла в `skills/` — обязательно дописать его имя в массив `OUR_SKILLS` в `setup.sh`. Список там захардкожен и не подтягивается автоматически из содержимого папки: `setup.sh` устанавливает только то, что перечислено явно, так что забытый скилл просто не попадёт новым пользователям при разовой установке.
 
+### Моды (`mods/`)
+
+Плагины Claude Code с UI и хуками (TypeScript), перечислены в `.claude-plugin/marketplace.json`. `setup.sh` включает их в `.claude/settings.json` проекта (`extraKnownMarketplaces` + `enabledPlugins`), поэтому они появляются у всех, кто открывает проект и доверяет папке.
+
+| Мод | Что делает |
+|---|---|
+| `mods/polish` | Кнопка `Polish` над промптом и команда `/polish`: по очереди запускает `/simplify` и `/code-review low`, ждёт всех агентов `simplify` и собирает общий отчёт (исправлено, пропущено, находки ревью, оценка пропусков, «рассмотрено, но не заявлено») в Plannotator; `/polish report` открывает последний отчёт. Нажатие кнопки мышью работает в полноэкранном режиме (`/tui fullscreen`), иначе — `ctrl+x`, `Tab`, `p` |
+
+Ручная установка без `setup.sh` (личная, в user-scope):
+
+```
+/plugin install polish --marketplace SatanLittleHelper/ai-dev-kit
+```
+
+**Правило проекта:** новый мод нужно дописать и в `.claude-plugin/marketplace.json`, и в массив `OUR_MODS` в `setup.sh` — оба списка захардкожены. Проверки: `claude plugin validate mods/<name>`, `claude plugin validate .`, `claude plugin test mods/<name>`.
+
 ### Правила (`rules/`)
 
 Не скиллы — обычные markdown-файлы, организованы иерархически по тому же принципу, что личный конвенций-набор в `chatbot-platform` (`.claude/rules/{base,angular,nest,skills}`):
@@ -100,7 +116,7 @@ bash .claude/ai-dev-kit/rules/build-agents-md.sh
 curl -fsSL https://raw.githubusercontent.com/SatanLittleHelper/ai-dev-kit/main/setup.sh | bash
 ```
 
-Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано выше, за один проход: ставит `skills`-CLI, если его ещё нет, добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, **спрашивает, нужна ли поддержка Codex** (и если да — генерирует `AGENTS.md`), устанавливает все наши скиллы (`skills/roadmap`, `skills/codebase-domain-map`, `skills/scaffolding-nestjs-app`, `skills/writing-prd`, `skills/update-project-skills`, `skills/update-project-rules`), а также — если в `package.json` проекта уже есть `@angular/core`/`@nestjs/core` — соответствующий best-practices скилл из раздела выше. Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
+Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано выше, за один проход: ставит `skills`-CLI, если его ещё нет, добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, **спрашивает, нужна ли поддержка Codex** (и если да — генерирует `AGENTS.md`), устанавливает все наши скиллы (`skills/roadmap`, `skills/codebase-domain-map`, `skills/scaffolding-nestjs-app`, `skills/writing-prd`, `skills/update-project-skills`, `skills/update-project-rules`), включает наши моды (`mods/polish`) в `.claude/settings.json` проекта, а также — если в `package.json` проекта уже есть `@angular/core`/`@nestjs/core` — соответствующий best-practices скилл из раздела выше. Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
 
 Вопрос про Codex читается из `/dev/tty`, не из stdin (stdin в `curl | bash` занят самим скриптом) — в среде без терминала (CI и т.п.) шаг просто пропускается с подсказкой, как вызвать генератор вручную позже.
 

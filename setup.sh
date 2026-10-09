@@ -11,6 +11,8 @@ REPO="SatanLittleHelper/ai-dev-kit"
 SUBMODULE_PATH=".claude/ai-dev-kit"
 IMPORT_LINE="@${SUBMODULE_PATH}/rules/RULES.md"
 OUR_SKILLS=(roadmap codebase-domain-map scaffolding-nestjs-app writing-prd update-project-skills update-project-rules splitting-pr testing-changes)
+# Mods from mods/ (listed in .claude-plugin/marketplace.json) enabled in the project's settings.json.
+OUR_MODS=(polish)
 
 log() { echo "-- $*"; }
 die() { echo "Error: $*" >&2; exit 1; }
@@ -72,6 +74,12 @@ fi
 # user's global or local settings.
 log "registering commit-rules hook"
 bash "$SUBMODULE_PATH/rules/hooks/install-hook.sh"
+
+# 3c. Mods — plugins with UI and hooks (mods/), enabled in the project's committed
+# .claude/settings.json (extraKnownMarketplaces + enabledPlugins), so everyone who opens the
+# project gets them after trusting the folder. Same file and merge-don't-clobber reasoning as 3b.
+log "enabling mods: ${OUR_MODS[*]}"
+bash "$SUBMODULE_PATH/mods/install-mods.sh" "${OUR_MODS[@]}"
 
 # 4. AGENTS.md for Codex — opt-in, ask the user. Reads from /dev/tty, not stdin: this
 # script is normally run as `curl | bash`, where stdin is already the piped script itself,
