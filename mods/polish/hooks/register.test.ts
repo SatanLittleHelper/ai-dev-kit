@@ -43,6 +43,9 @@ const REVIEW_ANSWER = [
 
 const reviewAgent: AgentInfo = { id: 'review-1', description: 'code-review', type: 'general-purpose', status: 'running' }
 
+const FIX_ANSWER = 'Исправил b.js:3: проверка порта перенесена в начало.'
+const AFTER_GRACE_MS = 35 * 1000
+
 function completion(turnId: string, answer: string, agentId?: string) {
   return { turnId, answer, reason: 'answer' as const, durationMs: 1, isAborted: false, ...(agentId ? { agentId } : {}) }
 }
@@ -69,7 +72,7 @@ test('/polish runs /simplify first and refuses a second start', async ($, on) =>
   expect(ran).toEqual(['simplify'])
 })
 
-test('the review waits for the simplify agents and its report is written once everything is done', async ($, on) => {
+test('the review waits for the simplify agents and the report is written once the fixes after the review are done', async ($, on) => {
   const toasts = engine(on)
   const clock = mock.clock(on)
   const ran: string[] = []
@@ -115,10 +118,26 @@ test('the review waits for the simplify agents and its report is written once ev
   expect(ran).toEqual(['simplify', 'code-review low'])
 
   await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+  await clock.advance(2000)
+
+  // the review is over, but the main assistant has not applied its findings yet: nothing is shown
+  expect(written).toHaveLength(0)
+
+  await $.turn.start({ text: 'review reported', turnId: 't3' })
+  await clock.advance(5000)
+
+  // the fixes are being applied
+  expect(written).toHaveLength(0)
+
+  await $.turn.complete(completion('t3', FIX_ANSWER))
+  await clock.advance(2000)
 
   expect(written).toHaveLength(1)
 
   const report = written[0] ?? ''
+
+  expect(report).toContain('## Code review: исправлено после ревью')
+  expect(report).toContain('проверка порта перенесена в начало')
 
   expect(report).toContain('## Simplify: исправлено')
   expect(report).toContain('a.js:1 — fixed it')
@@ -254,6 +273,7 @@ test('the annotations from Plannotator go to the model as a prompt', async ($, o
   await $.turn.complete(completion('t1', SIMPLIFY_ANSWER))
   await clock.advance(2000)
   await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+  await clock.advance(AFTER_GRACE_MS)
   await clock.settle()
 
   expect(prompts.join('\n')).toContain('a.js:1 — переименуй')
@@ -290,7 +310,142 @@ test('an empty Plannotator review sends nothing to the model', async ($, on) => 
   await $.turn.complete(completion('t1', SIMPLIFY_ANSWER))
   await clock.advance(2000)
   await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+  await clock.advance(AFTER_GRACE_MS)
   await clock.settle()
 
   expect(prompts).toEqual([])
+})
+
+type Ctx = Parameters<Parameters<typeof test>[1]>[0]
+
+function chain(on: On) {
+  const toasts = engine(on)
+  const clock = mock.clock(on)
+  const written: string[] = []
+  const prompts: string[] = []
+  const state = { agents: [] as AgentInfo[] }
+
+  on('agent.list', () => ({ value: state.agents }))
+  on('command.run', { command: 'simplify' }, () => ({ text: '' }))
+  on('command.run', { command: 'code-review' }, () => {
+    state.agents = [reviewAgent]
+
+    return { text: '' }
+  })
+  on('fs.write', ($, e) => {
+    written.push(e.text)
+
+    return { value: undefined }
+  })
+  on('prompt.submit', ($, e) => {
+    prompts.push(e.text)
+
+    return { text: '' }
+  })
+
+  return { toasts, clock, written, prompts, state }
+}
+
+// Runs /polish up to the moment the /code-review agent has finished and handed its answer back.
+async function runToReviewDone($: Ctx, clock: ReturnType<typeof mock.clock>) {
+  await $.command.run({ command: 'polish', args: '' })
+  await clock.settle()
+  await $.turn.start({ text: '/simplify', turnId: 't1' })
+  await $.turn.complete(completion('t1', SIMPLIFY_ANSWER))
+  await clock.advance(2000)
+  await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+}
+
+test('without any turn after the review the report opens once the grace period has passed', async ($, on) => {
+  const { clock, written, state } = chain(on)
+
+  on('process.spawn', async function* () {
+    return { value: { code: 0, signal: null } }
+  })
+
+  await runToReviewDone($, clock)
+  state.agents = [{ ...reviewAgent, status: 'completed' }]
+  await clock.advance(2000)
+
+  expect(written).toHaveLength(0)
+
+  await clock.advance(AFTER_GRACE_MS)
+
+  expect(written).toHaveLength(1)
+  expect(written[0]).toContain('## Code review: исправлено после ревью')
+  expect(written[0]).toContain('правок после ревью не было')
+})
+
+test('an agent started while the fixes are applied holds the report back', async ($, on) => {
+  const { clock, written, state } = chain(on)
+
+  on('process.spawn', async function* () {
+    return { value: { code: 0, signal: null } }
+  })
+
+  await runToReviewDone($, clock)
+  await $.turn.start({ text: 'review reported', turnId: 't3' })
+  state.agents = [
+    { ...reviewAgent, status: 'completed' },
+    { id: 'fix-helper', description: 'checks the fix', type: 'Explore', status: 'running' },
+  ]
+  await $.turn.complete(completion('t3', FIX_ANSWER))
+  await clock.advance(2000)
+
+  expect(written).toHaveLength(0)
+
+  state.agents = [
+    { ...reviewAgent, status: 'completed' },
+    { id: 'fix-helper', description: 'checks the fix', type: 'Explore', status: 'completed' },
+  ]
+  await $.turn.complete(completion('helper-turn', 'checked', 'fix-helper'))
+  await clock.advance(2000)
+
+  expect(written).toHaveLength(1)
+})
+
+test('a message typed while the fixes are applied does not drop the report', async ($, on) => {
+  const { clock, written } = chain(on)
+
+  on('process.spawn', async function* () {
+    return { value: { code: 0, signal: null } }
+  })
+
+  await runToReviewDone($, clock)
+  await $.turn.start({ text: 'review reported', turnId: 't3' })
+  await $.prompt.submit({ text: 'а что с портом?', origin: { kind: 'composer' } })
+  await $.turn.complete(completion('t3', FIX_ANSWER))
+  await clock.advance(2000)
+
+  expect(written).toHaveLength(1)
+})
+
+test('the annotations from Plannotator wait for a running turn before they go to the model', async ($, on) => {
+  const { clock, prompts } = chain(on)
+  let release = () => {}
+  const released = new Promise<void>(resolve => {
+    release = resolve
+  })
+
+  on('process.spawn', async function* () {
+    await released
+    yield { stream: 'stdout' as const, text: '# File Feedback\n1. a.js:1 — переименуй' }
+
+    return { value: { code: 0, signal: null } }
+  })
+
+  await runToReviewDone($, clock)
+  await $.turn.start({ text: 'review reported', turnId: 't3' })
+  await $.turn.complete(completion('t3', FIX_ANSWER))
+  await clock.advance(2000)
+  await $.turn.start({ text: 'ещё вопрос', turnId: 't4' })
+  release()
+  await clock.advance(2000)
+
+  expect(prompts).toEqual([])
+
+  await $.turn.complete(completion('t4', 'ответ'))
+  await clock.advance(2000)
+
+  expect(prompts.join('\n')).toContain('a.js:1 — переименуй')
 })
