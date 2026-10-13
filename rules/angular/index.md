@@ -9,6 +9,7 @@ Baseline testing (an agent asked to build a component with an input, output, rea
 | Concern | Rule | File |
 |---|---|---|
 | Dependency injection | `inject()` only — constructor-parameter injection is forbidden | `di.md` |
+| Service declaration | Version-gated: `@Service()` at Angular 22+ instead of `@Injectable()`; `@Injectable({ providedIn: 'root' })` below 22 | `service.md` |
 | Component inputs/outputs | `input()`/`input.required()`, `output<T>()` — decorators forbidden | `inputs-outputs.md` |
 | Async data from an Observable | `toSignal()` — not a manual subscription | `async-data.md` |
 | Forms | Version-gated: Reactive Forms below Angular 22, Signal Forms (`@angular/forms/signals`) at 22+ once adopted — check `@angular/core` in the project first | `forms.md` |

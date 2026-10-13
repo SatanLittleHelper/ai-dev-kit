@@ -4,7 +4,6 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { Step } from '../types'
 
 const step = atom({ plugin: 'polish', key: 'step' } as const, 'idle' as Step)
-const reviewAgent = atom({ plugin: 'polish', key: 'reviewAgent' } as const, '')
 // Comma-joined ids of the agents that existed when the chain started: only newer ones count as ours.
 const baseline = atom({ plugin: 'polish', key: 'baseline' } as const, '')
 const turnCount = atom({ plugin: 'polish', key: 'turnCount' } as const, 0)
@@ -15,7 +14,7 @@ const simplifyAnswer = atom({ plugin: 'polish', key: 'simplifyAnswer' } as const
 const fixed = atom({ plugin: 'polish', key: 'fixed' } as const, '')
 const skipped = atom({ plugin: 'polish', key: 'skipped' } as const, '')
 const report = atom({ plugin: 'polish', key: 'report' } as const, '')
-// The /code-review answer is kept until the fixes that follow it are done: only then the report opens.
+// The review answer is kept until the fixes that follow it are done: only then the report opens.
 const reviewAnswer = atom({ plugin: 'polish', key: 'reviewAnswer' } as const, '')
 const reviewNote = atom({ plugin: 'polish', key: 'reviewNote' } as const, '')
 const turnsAtReview = atom({ plugin: 'polish', key: 'turnsAtReview' } as const, 0)
@@ -24,6 +23,7 @@ const fixAnswer = atom({ plugin: 'polish', key: 'fixAnswer' } as const, '')
 // Set once the wait for the assistant to start on the findings is over: a quiet session then ends the fixes.
 const fixGraceOver = atom({ plugin: 'polish', key: 'fixGraceOver' } as const, false)
 
+const REVIEW_COMMAND = 'superpowers:requesting-code-review'
 const REPORT_PATH = '/tmp/polish-report.md'
 // The user's own prompts: a background agent's hand-back or a task notification must not cancel the chain.
 const USER_ORIGINS = ['composer', 'bridge']
@@ -42,10 +42,13 @@ const FEEDBACK_IDLE_STEP_MS = 500
 const FEEDBACK_IDLE_ATTEMPTS = 120
 const MAX_FIX_CHARS = 6000
 const NO_FIXES = '- правок после ревью не было'
-const REVIEW_LOOKUP_ATTEMPTS = 20
-const REVIEW_LOOKUP_STEP_MS = 500
 const MAX_SKIPPED_CHARS = 6000
 const RAW_TAIL_LENGTH = 1500
+
+const APPLY_FINDINGS_PROMPT = `Ревью завершено. Примени находки ревью, которые стоит исправить (Critical и Important; Minor — по своему усмотрению), и кратко перечисли, что исправлено. Если исправлять нечего, так и скажи.`
+
+const REVIEW_SCOPE_INSTRUCTION = `## Polish scope (added by the polish mod)
+Review the uncommitted changes in the working tree: BASE_SHA is HEAD, the diff is \`git diff HEAD\` plus the untracked files. Do not fix anything and do not commit at this step — report findings only; the fixes are applied in a separate step afterwards. Put the reviewer's findings (Critical / Important / Minor, with file:line) into your final message.`
 
 const SIMPLIFY_INSTRUCTION = `## Polish report (added by the polish mod)
 End your final message with exactly two sections, in this order:
@@ -152,18 +155,14 @@ function buildReport({ fixedText, skippedText, reviewText, note, fixesText }: Re
 
 async function reset($: EngineInterface): Promise<void> {
   await update($, step, () => 'idle')
-  await update($, reviewAgent, () => '')
   await update($, fixGraceOver, () => false)
 }
 
-// Agents started since the chain began that are still working; the finished review agent itself does not count.
+// Agents started since the chain began that are still working.
 async function hasActiveAgents($: EngineInterface): Promise<boolean> {
   const known = new Set((await read($, baseline)).split(','))
-  const review = await read($, reviewAgent)
 
-  return (await $.agent.list()).some(
-    agent => !known.has(agent.id) && agent.id !== review && ACTIVE_AGENT_STATUSES.includes(agent.status),
-  )
+  return (await $.agent.list()).some(agent => !known.has(agent.id) && ACTIVE_AGENT_STATUSES.includes(agent.status))
 }
 
 // Atomically moves the chain from one step to another; false when something else already did.
@@ -311,17 +310,18 @@ async function storeSimplifyResult($: EngineInterface): Promise<void> {
   await update($, skipped, () => extractSection(answer, SECTION_SKIPPED) ?? NOT_EXTRACTED)
 }
 
-// /simplify ends its own turn right after launching four review agents, then applies the fixes in a
-// later turn. So the first step is done only once a main turn started after the chain began, no main
-// turn is running or about to start, and none of the agents spawned since then is still working.
+// Both steps run as skills in the main loop and may end their turn right after launching background
+// agents (/simplify does, the reviewer subagent may), then finish in a later turn. So a step is done only
+// once a main turn started after the step began, no main turn is running or about to start, and none of
+// the agents spawned since the chain began is still working.
 // Called after every main turn and every agent turn; the settle pause lets a queued hand-back start
 // the next main turn first, and that turn's own completion calls back in here.
-async function advance($: EngineInterface): Promise<void> {
+async function advance($: EngineInterface, current: 'simplify' | 'review'): Promise<void> {
   const turnsBefore = await read($, turnCount)
 
   await $.clock.sleep(SETTLE_MS)
 
-  const isStale = (await read($, step)) !== 'simplify' || (await read($, turnCount)) !== turnsBefore
+  const isStale = (await read($, step)) !== current || (await read($, turnCount)) !== turnsBefore
   const isStarted = turnsBefore > (await read($, turnsAtStart))
 
   if (isStale || !isStarted || (await read($, runningTurnId)) !== '') {
@@ -332,14 +332,18 @@ async function advance($: EngineInterface): Promise<void> {
     return
   }
 
-  if (await claim($, 'simplify', 'review')) {
-    await storeSimplifyResult($)
-    await runReview($)
+  if (current === 'simplify') {
+    if (await claim($, 'simplify', 'review')) {
+      await storeSimplifyResult($)
+      await runReview($)
+    }
+  } else if (await claim($, 'review', 'fix')) {
+    await startFixes($, await read($, reviewAnswer), '')
+    void $.prompt.submit({ text: APPLY_FINDINGS_PROMPT })
   }
 }
 
-// The review agent is done and its answer goes to the main assistant, which applies the findings in its own
-// turns. The report waits for them: it opens only once a turn started after the review, no turn is running
+// The review is done and the main assistant is asked to apply the findings in its own turns. The report waits for them: it opens only once a turn started after the review, no turn is running
 // and no agent is still working. A review with nothing to fix may start no turn at all, hence the grace timer.
 async function startFixes($: EngineInterface, reviewText: string, note: string): Promise<void> {
   const turns = await read($, turnCount)
@@ -380,7 +384,6 @@ async function advanceFix($: EngineInterface): Promise<void> {
   }
 
   if (await claim($, 'fix', 'idle')) {
-    await update($, reviewAgent, () => '')
     await finish($, {
       reviewText: await read($, reviewAnswer),
       note: await read($, reviewNote),
@@ -389,39 +392,15 @@ async function advanceFix($: EngineInterface): Promise<void> {
   }
 }
 
-// /code-review runs as a background agent: its own turn.complete (carrying that agent's id) ends
-// the chain, so the new agent has to be found in the agent list after the command started.
+// The review is a skill run in the main loop: its turns count from here, and advance() ends it.
 async function runReview($: EngineInterface): Promise<void> {
-  const before = new Set((await $.agent.list()).map(agent => agent.id))
+  const turns = await read($, turnCount)
 
-  await run($, 'code-review', 'low')
-
-  for (let attempt = 0; attempt < REVIEW_LOOKUP_ATTEMPTS; attempt += 1) {
-    if ((await read($, step)) !== 'review') {
-      return
-    }
-
-    const added = (await $.agent.list()).find(agent => !before.has(agent.id))
-
-    if (added !== undefined) {
-      if (['completed', 'failed', 'killed'].includes(added.status)) {
-        await finish($, { reviewText: '', note: 'агент завершился до того, как мод его заметил' })
-      } else {
-        await update($, reviewAgent, () => added.id)
-      }
-
-      return
-    }
-
-    await $.clock.sleep(REVIEW_LOOKUP_STEP_MS)
-  }
-
-  if ((await read($, step)) === 'review') {
-    await finish($, { reviewText: '', note: 'агент ревью не найден' })
-  }
+  await update($, turnsAtStart, () => turns)
+  await run($, REVIEW_COMMAND, '')
 }
 
-function reviewLabel(current: Step, isReviewInBackground: boolean): string {
+function reviewLabel(current: Step): string {
   if (current === 'simplify') {
     return 'simplify'
   }
@@ -430,14 +409,14 @@ function reviewLabel(current: Step, isReviewInBackground: boolean): string {
     return 'правки по ревью'
   }
 
-  return isReviewInBackground ? 'review (в фоне)' : 'review'
+  return 'review'
 }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'polish',
-      description: 'simplify, затем code-review low; «/polish report» — последний отчёт в Plannotator',
+      description: 'simplify, затем superpowers:requesting-code-review; «/polish report» — последний отчёт в Plannotator',
     })
 
     return next(e)
@@ -468,7 +447,7 @@ export const register: Register = on => {
 
     return {
       text: isStarted
-        ? 'Запущено: /simplify → /code-review low'
+        ? 'Запущено: /simplify → /superpowers:requesting-code-review'
         : 'Цепочка уже выполняется',
     }
   })
@@ -485,7 +464,7 @@ export const register: Register = on => {
   })
 
   // The review is told what /simplify left alone, so it can judge those spots instead of re-finding them.
-  on('skill.prompt', { skill: 'code-review' }, async ($, e, next) => {
+  on('skill.prompt', { skill: REVIEW_COMMAND }, async ($, e, next) => {
     const result = await next(e)
 
     if ((await read($, step)) !== 'review') {
@@ -493,7 +472,7 @@ export const register: Register = on => {
     }
 
     const skippedText = await read($, skipped)
-    const parts = [result.text, hasSkips(skippedText) ? simplifySkipsInstruction(skippedText) : '', NOT_REPORTED_INSTRUCTION]
+    const parts = [result.text, REVIEW_SCOPE_INSTRUCTION, hasSkips(skippedText) ? simplifySkipsInstruction(skippedText) : '', NOT_REPORTED_INSTRUCTION]
 
     return { text: parts.filter(part => part !== '').join('\n\n') }
   })
@@ -509,14 +488,8 @@ export const register: Register = on => {
     const current = await read($, step)
 
     if (e.agentId !== undefined) {
-      if (current === 'review' && e.agentId === (await read($, reviewAgent))) {
-        if (e.reason === 'answer') {
-          await startFixes($, e.answer, '')
-        } else {
-          await finish($, { reviewText: e.answer, note: 'ревью прервано' })
-        }
-      } else if (current === 'simplify') {
-        void advance($)
+      if (current === 'simplify' || current === 'review') {
+        void advance($, current)
       } else if (current === 'fix') {
         void advanceFix($)
       }
@@ -531,13 +504,17 @@ export const register: Register = on => {
       void advanceFix($)
     }
 
-    if (current === 'simplify') {
-      await update($, simplifyAnswer, previous => (e.answer.trim() === '' ? previous : e.answer))
+    if (current === 'simplify' || current === 'review') {
+      if (current === 'simplify') {
+        await update($, simplifyAnswer, previous => (e.answer.trim() === '' ? previous : e.answer))
+      } else {
+        await update($, reviewAnswer, previous => (e.answer.trim() === '' ? previous : e.answer))
+      }
 
       if (e.reason !== 'answer') {
         await reset($)
       } else {
-        void advance($)
+        void advance($, current)
       }
     }
 
@@ -561,7 +538,6 @@ export const register: Register = on => {
     }
 
     const current = await read($, step)
-    const isReviewInBackground = (await read($, reviewAgent)) !== ''
     const { Box, Button, Text } = $.ui.resolve(e)
 
     if (current === 'idle') {
@@ -572,7 +548,7 @@ export const register: Register = on => {
       )
     }
 
-    const label = reviewLabel(current, isReviewInBackground)
+    const label = reviewLabel(current)
 
     return (
       <Box>

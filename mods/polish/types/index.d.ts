@@ -4,7 +4,6 @@ declare module 'claude-code' {
   interface PluginState {
     polish: {
       step: Step
-      reviewAgent: string
       baseline: string
       turnCount: number
       turnsAtStart: number

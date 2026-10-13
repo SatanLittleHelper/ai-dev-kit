@@ -41,7 +41,7 @@ const REVIEW_ANSWER = [
   '- b.js:3 — maybe',
 ].join('\n')
 
-const reviewAgent: AgentInfo = { id: 'review-1', description: 'code-review', type: 'general-purpose', status: 'running' }
+const FEEDBACK_MARK = 'Замечания к отчёту Polish'
 
 const FIX_ANSWER = 'Исправил b.js:3: проверка порта перенесена в начало.'
 const AFTER_GRACE_MS = 35 * 1000
@@ -77,6 +77,7 @@ test('the review waits for the simplify agents and the report is written once th
   const clock = mock.clock(on)
   const ran: string[] = []
   const written: string[] = []
+  const prompts: string[] = []
   let agents: AgentInfo[] = []
 
   on('agent.list', () => ({ value: agents }))
@@ -86,9 +87,13 @@ test('the review waits for the simplify agents and the report is written once th
 
     return { text: '' }
   })
-  on('command.run', { command: 'code-review' }, ($, e) => {
-    ran.push(`code-review ${e.args}`)
-    agents = [...agents, reviewAgent]
+  on('command.run', { command: 'superpowers:requesting-code-review' }, () => {
+    ran.push('review')
+
+    return { text: '' }
+  })
+  on('prompt.submit', ($, e) => {
+    prompts.push(e.text)
 
     return { text: '' }
   })
@@ -115,10 +120,14 @@ test('the review waits for the simplify agents and the report is written once th
   await $.turn.complete(completion('t2', SIMPLIFY_ANSWER))
   await clock.advance(2000)
 
-  expect(ran).toEqual(['simplify', 'code-review low'])
+  expect(ran).toEqual(['simplify', 'review'])
 
-  await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+  // the review runs in the main loop: its answer ends the step, then the assistant is asked to apply the findings
+  await $.turn.start({ text: '/superpowers:requesting-code-review', turnId: 't2r' })
+  await $.turn.complete(completion('t2r', REVIEW_ANSWER))
   await clock.advance(2000)
+
+  expect(prompts).toHaveLength(1)
 
   // the review is over, but the main assistant has not applied its findings yet: nothing is shown
   expect(written).toHaveLength(0)
@@ -160,8 +169,8 @@ test('an aborted simplify turn stops the chain and /polish can start again', asy
 
     return { text: '' }
   })
-  on('command.run', { command: 'code-review' }, () => {
-    ran.push('code-review')
+  on('command.run', { command: 'superpowers:requesting-code-review' }, () => {
+    ran.push('review')
 
     return { text: '' }
   })
@@ -250,11 +259,7 @@ test('the annotations from Plannotator go to the model as a prompt', async ($, o
 
   on('agent.list', () => ({ value: agents }))
   on('command.run', { command: 'simplify' }, () => ({ text: '' }))
-  on('command.run', { command: 'code-review' }, () => {
-    agents = [reviewAgent]
-
-    return { text: '' }
-  })
+  on('command.run', { command: 'superpowers:requesting-code-review' }, () => ({ text: '' }))
   on('fs.write', () => ({ value: undefined }))
   on('process.spawn', async function* () {
     yield { stream: 'stdout' as const, text: '# File Feedback\n1. a.js:1 — переименуй' }
@@ -272,11 +277,12 @@ test('the annotations from Plannotator go to the model as a prompt', async ($, o
   await $.turn.start({ text: '/simplify', turnId: 't1' })
   await $.turn.complete(completion('t1', SIMPLIFY_ANSWER))
   await clock.advance(2000)
-  await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+  await $.turn.start({ text: '/superpowers:requesting-code-review', turnId: 't2' })
+  await $.turn.complete(completion('t2', REVIEW_ANSWER))
   await clock.advance(AFTER_GRACE_MS)
   await clock.settle()
 
-  expect(prompts.join('\n')).toContain('a.js:1 — переименуй')
+  expect(prompts.filter(text => text.includes(FEEDBACK_MARK)).join('\n')).toContain('a.js:1 — переименуй')
 })
 
 test('an empty Plannotator review sends nothing to the model', async ($, on) => {
@@ -287,11 +293,7 @@ test('an empty Plannotator review sends nothing to the model', async ($, on) => 
 
   on('agent.list', () => ({ value: agents }))
   on('command.run', { command: 'simplify' }, () => ({ text: '' }))
-  on('command.run', { command: 'code-review' }, () => {
-    agents = [reviewAgent]
-
-    return { text: '' }
-  })
+  on('command.run', { command: 'superpowers:requesting-code-review' }, () => ({ text: '' }))
   on('fs.write', () => ({ value: undefined }))
   on('process.spawn', async function* () {
     yield { stream: 'stdout' as const, text: 'User reviewed the document and has no feedback.\n' }
@@ -309,11 +311,12 @@ test('an empty Plannotator review sends nothing to the model', async ($, on) => 
   await $.turn.start({ text: '/simplify', turnId: 't1' })
   await $.turn.complete(completion('t1', SIMPLIFY_ANSWER))
   await clock.advance(2000)
-  await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+  await $.turn.start({ text: '/superpowers:requesting-code-review', turnId: 't2' })
+  await $.turn.complete(completion('t2', REVIEW_ANSWER))
   await clock.advance(AFTER_GRACE_MS)
   await clock.settle()
 
-  expect(prompts).toEqual([])
+  expect(prompts.filter(text => text.includes(FEEDBACK_MARK))).toEqual([])
 })
 
 type Ctx = Parameters<Parameters<typeof test>[1]>[0]
@@ -327,11 +330,7 @@ function chain(on: On) {
 
   on('agent.list', () => ({ value: state.agents }))
   on('command.run', { command: 'simplify' }, () => ({ text: '' }))
-  on('command.run', { command: 'code-review' }, () => {
-    state.agents = [reviewAgent]
-
-    return { text: '' }
-  })
+  on('command.run', { command: 'superpowers:requesting-code-review' }, () => ({ text: '' }))
   on('fs.write', ($, e) => {
     written.push(e.text)
 
@@ -346,14 +345,16 @@ function chain(on: On) {
   return { toasts, clock, written, prompts, state }
 }
 
-// Runs /polish up to the moment the /code-review agent has finished and handed its answer back.
+// Runs /polish up to the moment the review turn has finished and the assistant was asked to apply the findings.
 async function runToReviewDone($: Ctx, clock: ReturnType<typeof mock.clock>) {
   await $.command.run({ command: 'polish', args: '' })
   await clock.settle()
   await $.turn.start({ text: '/simplify', turnId: 't1' })
   await $.turn.complete(completion('t1', SIMPLIFY_ANSWER))
   await clock.advance(2000)
-  await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+  await $.turn.start({ text: '/superpowers:requesting-code-review', turnId: 't2' })
+  await $.turn.complete(completion('t2', REVIEW_ANSWER))
+  await clock.advance(2000)
 }
 
 test('without any turn after the review the report opens once the grace period has passed', async ($, on) => {
@@ -364,7 +365,6 @@ test('without any turn after the review the report opens once the grace period h
   })
 
   await runToReviewDone($, clock)
-  state.agents = [{ ...reviewAgent, status: 'completed' }]
   await clock.advance(2000)
 
   expect(written).toHaveLength(0)
@@ -385,19 +385,13 @@ test('an agent started while the fixes are applied holds the report back', async
 
   await runToReviewDone($, clock)
   await $.turn.start({ text: 'review reported', turnId: 't3' })
-  state.agents = [
-    { ...reviewAgent, status: 'completed' },
-    { id: 'fix-helper', description: 'checks the fix', type: 'Explore', status: 'running' },
-  ]
+  state.agents = [{ id: 'fix-helper', description: 'checks the fix', type: 'Explore', status: 'running' }]
   await $.turn.complete(completion('t3', FIX_ANSWER))
   await clock.advance(2000)
 
   expect(written).toHaveLength(0)
 
-  state.agents = [
-    { ...reviewAgent, status: 'completed' },
-    { id: 'fix-helper', description: 'checks the fix', type: 'Explore', status: 'completed' },
-  ]
+  state.agents = [{ id: 'fix-helper', description: 'checks the fix', type: 'Explore', status: 'completed' }]
   await $.turn.complete(completion('helper-turn', 'checked', 'fix-helper'))
   await clock.advance(2000)
 
@@ -442,10 +436,10 @@ test('the annotations from Plannotator wait for a running turn before they go to
   release()
   await clock.advance(2000)
 
-  expect(prompts).toEqual([])
+  expect(prompts.filter(text => text.includes(FEEDBACK_MARK))).toEqual([])
 
   await $.turn.complete(completion('t4', 'ответ'))
   await clock.advance(2000)
 
-  expect(prompts.join('\n')).toContain('a.js:1 — переименуй')
+  expect(prompts.filter(text => text.includes(FEEDBACK_MARK)).join('\n')).toContain('a.js:1 — переименуй')
 })
