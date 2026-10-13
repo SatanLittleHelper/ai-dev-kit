@@ -4,7 +4,6 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { Step } from '../types'
 
 const step = atom({ plugin: 'polish', key: 'step' } as const, 'idle' as Step)
-const reviewAgent = atom({ plugin: 'polish', key: 'reviewAgent' } as const, '')
 // Comma-joined ids of the agents that existed when the chain started: only newer ones count as ours.
 const baseline = atom({ plugin: 'polish', key: 'baseline' } as const, '')
 const turnCount = atom({ plugin: 'polish', key: 'turnCount' } as const, 0)
@@ -12,10 +11,12 @@ const turnsAtStart = atom({ plugin: 'polish', key: 'turnsAtStart' } as const, 0)
 // Id of the running main-loop turn, '' between turns: what Cancel aborts, and what advance waits out.
 const runningTurnId = atom({ plugin: 'polish', key: 'runningTurnId' } as const, '')
 const simplifyAnswer = atom({ plugin: 'polish', key: 'simplifyAnswer' } as const, '')
+const reviewAnswer = atom({ plugin: 'polish', key: 'reviewAnswer' } as const, '')
 const fixed = atom({ plugin: 'polish', key: 'fixed' } as const, '')
 const skipped = atom({ plugin: 'polish', key: 'skipped' } as const, '')
 const report = atom({ plugin: 'polish', key: 'report' } as const, '')
 
+const REVIEW_COMMAND = 'superpowers:requesting-code-review'
 const REPORT_PATH = '/tmp/polish-report.md'
 // The user's own prompts: a background agent's hand-back or a task notification must not cancel the chain.
 const USER_ORIGINS = ['composer', 'bridge']
@@ -29,8 +30,6 @@ const FEEDBACK_PREFIX = 'Замечания к отчёту Polish (из Plannot
 // What plannotator prints when the review is closed without a single annotation.
 const NO_FEEDBACK = /^user reviewed the document and has no feedback\.?$/i
 const SETTLE_MS = 1500
-const REVIEW_LOOKUP_ATTEMPTS = 20
-const REVIEW_LOOKUP_STEP_MS = 500
 const MAX_SKIPPED_CHARS = 6000
 const RAW_TAIL_LENGTH = 1500
 
@@ -44,6 +43,9 @@ End your final message with exactly two sections, in this order:
 - <file:line> — <the finding> — <why it was skipped>
 
 After every item of the skipped list add a fenced code block with the current code (at most 8 lines) and, when you know the change, a second fenced block labelled "Proposed:" with the code you would write. If nothing was skipped, write the single line "- none" under "## Polish: skipped". The user reads these as a report, so write the descriptions in Russian.`
+
+const REVIEW_SCOPE_INSTRUCTION = `## Polish scope (added by the polish mod)
+Review the uncommitted changes in the working tree: BASE_SHA is HEAD, the diff is \`git diff HEAD\` plus the untracked files. Do not fix anything and do not commit — report findings only. Put the reviewer's findings (Critical / Important / Minor, with file:line) into your final message.`
 
 const NOT_REPORTED_INSTRUCTION = `## Polish: candidates you did not report (added by the polish mod)
 After your report add a section "## ${SECTION_NOT_REPORTED}": the candidate issues you examined but left out of the main report (low confidence, out of scope for this level, or covered elsewhere). One item per line as "- <file:line> — <suspected issue> — <why it was not reported>", each followed by a fenced code block with the relevant code (at most 8 lines). If there are none, write the single line "- none". Write the descriptions in Russian.`
@@ -127,7 +129,6 @@ function buildReport(fixedText: string, skippedText: string, reviewText: string,
 
 async function reset($: EngineInterface): Promise<void> {
   await update($, step, () => 'idle')
-  await update($, reviewAgent, () => '')
 }
 
 // Cancel: stop the chain first (so no hook moves it on), then abort the running turn and the agents it started.
@@ -212,6 +213,7 @@ async function prepare($: EngineInterface): Promise<boolean> {
   await update($, baseline, () => ids)
   await update($, turnsAtStart, () => turns)
   await update($, simplifyAnswer, () => '')
+  await update($, reviewAnswer, () => '')
   await update($, fixed, () => '')
   await update($, skipped, () => '')
   await update($, step, () => 'simplify')
@@ -238,17 +240,18 @@ async function storeSimplifyResult($: EngineInterface): Promise<void> {
   await update($, skipped, () => extractSection(answer, SECTION_SKIPPED) ?? NOT_EXTRACTED)
 }
 
-// /simplify ends its own turn right after launching four review agents, then applies the fixes in a
-// later turn. So the first step is done only once a main turn started after the chain began, no main
-// turn is running or about to start, and none of the agents spawned since then is still working.
+// Both steps run as skills in the main loop and may end their turn right after launching background
+// agents (/simplify does, the reviewer subagent may), then finish in a later turn. So a step is done
+// only once a main turn started after the step began, no main turn is running or about to start, and
+// none of the agents spawned since the chain began is still working.
 // Called after every main turn and every agent turn; the settle pause lets a queued hand-back start
 // the next main turn first, and that turn's own completion calls back in here.
-async function advance($: EngineInterface): Promise<void> {
+async function advance($: EngineInterface, current: 'simplify' | 'review'): Promise<void> {
   const turnsBefore = await read($, turnCount)
 
   await $.clock.sleep(SETTLE_MS)
 
-  const isStale = (await read($, step)) !== 'simplify' || (await read($, turnCount)) !== turnsBefore
+  const isStale = (await read($, step)) !== current || (await read($, turnCount)) !== turnsBefore
   const isStarted = turnsBefore > (await read($, turnsAtStart))
 
   if (isStale || !isStarted || (await read($, runningTurnId)) !== '') {
@@ -266,55 +269,39 @@ async function advance($: EngineInterface): Promise<void> {
 
   let isClaimed = false
 
-  await update($, step, current => {
-    isClaimed = current === 'simplify'
+  // The next state is 'review' after simplify and 'idle' after the review: the claim itself is what keeps
+  // a second concurrent advance from running the same step's tail twice.
+  await update($, step, value => {
+    isClaimed = value === current
 
-    return isClaimed ? 'review' : current
+    return isClaimed ? (current === 'simplify' ? 'review' : 'idle') : value
   })
 
-  if (isClaimed) {
+  if (!isClaimed) {
+    return
+  }
+
+  if (current === 'simplify') {
     await storeSimplifyResult($)
     await runReview($)
+  } else {
+    await finish($, await read($, reviewAnswer), '')
   }
 }
 
-// /code-review runs as a background agent: its own turn.complete (carrying that agent's id) ends
-// the chain, so the new agent has to be found in the agent list after the command started.
+// The review is a skill run in the main loop: its steps count from here, and advance() ends it.
 async function runReview($: EngineInterface): Promise<void> {
-  const before = new Set((await $.agent.list()).map(agent => agent.id))
+  const turns = await read($, turnCount)
 
-  await run($, 'code-review', 'low')
-
-  for (let attempt = 0; attempt < REVIEW_LOOKUP_ATTEMPTS; attempt += 1) {
-    if ((await read($, step)) !== 'review') {
-      return
-    }
-
-    const added = (await $.agent.list()).find(agent => !before.has(agent.id))
-
-    if (added !== undefined) {
-      if (['completed', 'failed', 'killed'].includes(added.status)) {
-        await finish($, '', 'агент завершился до того, как мод его заметил')
-      } else {
-        await update($, reviewAgent, () => added.id)
-      }
-
-      return
-    }
-
-    await $.clock.sleep(REVIEW_LOOKUP_STEP_MS)
-  }
-
-  if ((await read($, step)) === 'review') {
-    await finish($, '', 'агент ревью не найден')
-  }
+  await update($, turnsAtStart, () => turns)
+  await run($, REVIEW_COMMAND, '')
 }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'polish',
-      description: 'simplify, затем code-review low; «/polish report» — последний отчёт в Plannotator',
+      description: 'simplify, затем superpowers:requesting-code-review; «/polish report» — последний отчёт в Plannotator',
     })
 
     return next(e)
@@ -345,7 +332,7 @@ export const register: Register = on => {
 
     return {
       text: isStarted
-        ? 'Запущено: /simplify → /code-review low'
+        ? 'Запущено: /simplify → /superpowers:requesting-code-review'
         : 'Цепочка уже выполняется',
     }
   })
@@ -362,7 +349,7 @@ export const register: Register = on => {
   })
 
   // The review is told what /simplify left alone, so it can judge those spots instead of re-finding them.
-  on('skill.prompt', { skill: 'code-review' }, async ($, e, next) => {
+  on('skill.prompt', { skill: REVIEW_COMMAND }, async ($, e, next) => {
     const result = await next(e)
 
     if ((await read($, step)) !== 'review') {
@@ -370,7 +357,7 @@ export const register: Register = on => {
     }
 
     const skippedText = await read($, skipped)
-    const parts = [result.text, hasSkips(skippedText) ? simplifySkipsInstruction(skippedText) : '', NOT_REPORTED_INSTRUCTION]
+    const parts = [result.text, REVIEW_SCOPE_INSTRUCTION, hasSkips(skippedText) ? simplifySkipsInstruction(skippedText) : '', NOT_REPORTED_INSTRUCTION]
 
     return { text: parts.filter(part => part !== '').join('\n\n') }
   })
@@ -386,10 +373,8 @@ export const register: Register = on => {
     const current = await read($, step)
 
     if (e.agentId !== undefined) {
-      if (current === 'review' && e.agentId === (await read($, reviewAgent))) {
-        await finish($, e.answer, e.reason === 'answer' ? '' : 'ревью прервано')
-      } else if (current === 'simplify') {
-        void advance($)
+      if (current !== 'idle') {
+        void advance($, current)
       }
 
       return next(e)
@@ -397,13 +382,17 @@ export const register: Register = on => {
 
     await update($, runningTurnId, () => '')
 
-    if (current === 'simplify') {
-      await update($, simplifyAnswer, previous => (e.answer.trim() === '' ? previous : e.answer))
+    if (current !== 'idle') {
+      if (current === 'simplify') {
+        await update($, simplifyAnswer, previous => (e.answer.trim() === '' ? previous : e.answer))
+      } else {
+        await update($, reviewAnswer, previous => (e.answer.trim() === '' ? previous : e.answer))
+      }
 
       if (e.reason !== 'answer') {
         await reset($)
       } else {
-        void advance($)
+        void advance($, current)
       }
     }
 
@@ -424,7 +413,6 @@ export const register: Register = on => {
     }
 
     const current = await read($, step)
-    const isReviewInBackground = (await read($, reviewAgent)) !== ''
     const { Box, Button, Text } = $.ui.resolve(e)
 
     if (current === 'idle') {
@@ -435,7 +423,7 @@ export const register: Register = on => {
       )
     }
 
-    const label = current === 'simplify' ? 'simplify' : isReviewInBackground ? 'review (в фоне)' : 'review'
+    const label = current === 'simplify' ? 'simplify' : 'review'
 
     return (
       <Box>

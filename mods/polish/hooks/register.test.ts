@@ -41,8 +41,6 @@ const REVIEW_ANSWER = [
   '- b.js:3 — maybe',
 ].join('\n')
 
-const reviewAgent: AgentInfo = { id: 'review-1', description: 'code-review', type: 'general-purpose', status: 'running' }
-
 function completion(turnId: string, answer: string, agentId?: string) {
   return { turnId, answer, reason: 'answer' as const, durationMs: 1, isAborted: false, ...(agentId ? { agentId } : {}) }
 }
@@ -83,9 +81,8 @@ test('the review waits for the simplify agents and its report is written once ev
 
     return { text: '' }
   })
-  on('command.run', { command: 'code-review' }, ($, e) => {
-    ran.push(`code-review ${e.args}`)
-    agents = [...agents, reviewAgent]
+  on('command.run', { command: 'superpowers:requesting-code-review' }, () => {
+    ran.push('review')
 
     return { text: '' }
   })
@@ -112,9 +109,12 @@ test('the review waits for the simplify agents and its report is written once ev
   await $.turn.complete(completion('t2', SIMPLIFY_ANSWER))
   await clock.advance(2000)
 
-  expect(ran).toEqual(['simplify', 'code-review low'])
+  expect(ran).toEqual(['simplify', 'review'])
 
-  await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+  // the review runs in the main loop: its answer ends the chain once the turn is over
+  await $.turn.start({ text: '/superpowers:requesting-code-review', turnId: 't3' })
+  await $.turn.complete(completion('t3', REVIEW_ANSWER))
+  await clock.advance(2000)
 
   expect(written).toHaveLength(1)
 
@@ -141,8 +141,8 @@ test('an aborted simplify turn stops the chain and /polish can start again', asy
 
     return { text: '' }
   })
-  on('command.run', { command: 'code-review' }, () => {
-    ran.push('code-review')
+  on('command.run', { command: 'superpowers:requesting-code-review' }, () => {
+    ran.push('review')
 
     return { text: '' }
   })
@@ -180,6 +180,10 @@ test('the skill prompts are extended only while the chain runs', async ($, on) =
 
   expect(during.text).toContain('## Polish: fixed')
   expect(during.text).toContain('## Polish: skipped')
+
+  const beforeReview = await $.skill.prompt({ skill: 'superpowers:requesting-code-review', text: 'base' })
+
+  expect(beforeReview.text).toBe('base')
 })
 
 test('Cancel aborts the running turn and stops the agents the chain started', async ($, on) => {
@@ -227,15 +231,9 @@ test('the annotations from Plannotator go to the model as a prompt', async ($, o
   engine(on)
   const clock = mock.clock(on)
   const prompts: string[] = []
-  let agents: AgentInfo[] = []
-
-  on('agent.list', () => ({ value: agents }))
+  on('agent.list', () => ({ value: [] }))
   on('command.run', { command: 'simplify' }, () => ({ text: '' }))
-  on('command.run', { command: 'code-review' }, () => {
-    agents = [reviewAgent]
-
-    return { text: '' }
-  })
+  on('command.run', { command: 'superpowers:requesting-code-review' }, () => ({ text: '' }))
   on('fs.write', () => ({ value: undefined }))
   on('process.spawn', async function* () {
     yield { stream: 'stdout' as const, text: '# File Feedback\n1. a.js:1 — переименуй' }
@@ -253,7 +251,9 @@ test('the annotations from Plannotator go to the model as a prompt', async ($, o
   await $.turn.start({ text: '/simplify', turnId: 't1' })
   await $.turn.complete(completion('t1', SIMPLIFY_ANSWER))
   await clock.advance(2000)
-  await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+  await $.turn.start({ text: '/superpowers:requesting-code-review', turnId: 't2' })
+  await $.turn.complete(completion('t2', REVIEW_ANSWER))
+  await clock.advance(2000)
   await clock.settle()
 
   expect(prompts.join('\n')).toContain('a.js:1 — переименуй')
@@ -263,15 +263,9 @@ test('an empty Plannotator review sends nothing to the model', async ($, on) => 
   engine(on)
   const clock = mock.clock(on)
   const prompts: string[] = []
-  let agents: AgentInfo[] = []
-
-  on('agent.list', () => ({ value: agents }))
+  on('agent.list', () => ({ value: [] }))
   on('command.run', { command: 'simplify' }, () => ({ text: '' }))
-  on('command.run', { command: 'code-review' }, () => {
-    agents = [reviewAgent]
-
-    return { text: '' }
-  })
+  on('command.run', { command: 'superpowers:requesting-code-review' }, () => ({ text: '' }))
   on('fs.write', () => ({ value: undefined }))
   on('process.spawn', async function* () {
     yield { stream: 'stdout' as const, text: 'User reviewed the document and has no feedback.\n' }
@@ -289,7 +283,9 @@ test('an empty Plannotator review sends nothing to the model', async ($, on) => 
   await $.turn.start({ text: '/simplify', turnId: 't1' })
   await $.turn.complete(completion('t1', SIMPLIFY_ANSWER))
   await clock.advance(2000)
-  await $.turn.complete(completion('review-turn', REVIEW_ANSWER, 'review-1'))
+  await $.turn.start({ text: '/superpowers:requesting-code-review', turnId: 't2' })
+  await $.turn.complete(completion('t2', REVIEW_ANSWER))
+  await clock.advance(2000)
   await clock.settle()
 
   expect(prompts).toEqual([])
