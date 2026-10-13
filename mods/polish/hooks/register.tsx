@@ -11,10 +11,17 @@ const turnsAtStart = atom({ plugin: 'polish', key: 'turnsAtStart' } as const, 0)
 // Id of the running main-loop turn, '' between turns: what Cancel aborts, and what advance waits out.
 const runningTurnId = atom({ plugin: 'polish', key: 'runningTurnId' } as const, '')
 const simplifyAnswer = atom({ plugin: 'polish', key: 'simplifyAnswer' } as const, '')
-const reviewAnswer = atom({ plugin: 'polish', key: 'reviewAnswer' } as const, '')
 const fixed = atom({ plugin: 'polish', key: 'fixed' } as const, '')
 const skipped = atom({ plugin: 'polish', key: 'skipped' } as const, '')
 const report = atom({ plugin: 'polish', key: 'report' } as const, '')
+// The review answer is kept until the fixes that follow it are done: only then the report opens.
+const reviewAnswer = atom({ plugin: 'polish', key: 'reviewAnswer' } as const, '')
+const reviewNote = atom({ plugin: 'polish', key: 'reviewNote' } as const, '')
+const turnsAtReview = atom({ plugin: 'polish', key: 'turnsAtReview' } as const, 0)
+// Last answer of the main assistant while it applied the review findings: what the report says was fixed.
+const fixAnswer = atom({ plugin: 'polish', key: 'fixAnswer' } as const, '')
+// Set once the wait for the assistant to start on the findings is over: a quiet session then ends the fixes.
+const fixGraceOver = atom({ plugin: 'polish', key: 'fixGraceOver' } as const, false)
 
 const REVIEW_COMMAND = 'superpowers:requesting-code-review'
 const REPORT_PATH = '/tmp/polish-report.md'
@@ -30,8 +37,18 @@ const FEEDBACK_PREFIX = 'Замечания к отчёту Polish (из Plannot
 // What plannotator prints when the review is closed without a single annotation.
 const NO_FEEDBACK = /^user reviewed the document and has no feedback\.?$/i
 const SETTLE_MS = 1500
+const FIX_START_GRACE_MS = 30 * 1000
+const FEEDBACK_IDLE_STEP_MS = 500
+const FEEDBACK_IDLE_ATTEMPTS = 120
+const MAX_FIX_CHARS = 6000
+const NO_FIXES = '- правок после ревью не было'
 const MAX_SKIPPED_CHARS = 6000
 const RAW_TAIL_LENGTH = 1500
+
+const APPLY_FINDINGS_PROMPT = `Ревью завершено. Примени находки ревью, которые стоит исправить (Critical и Important; Minor — по своему усмотрению), и кратко перечисли, что исправлено. Если исправлять нечего, так и скажи.`
+
+const REVIEW_SCOPE_INSTRUCTION = `## Polish scope (added by the polish mod)
+Review the uncommitted changes in the working tree: BASE_SHA is HEAD, the diff is \`git diff HEAD\` plus the untracked files. Do not fix anything and do not commit at this step — report findings only; the fixes are applied in a separate step afterwards. Put the reviewer's findings (Critical / Important / Minor, with file:line) into your final message.`
 
 const SIMPLIFY_INSTRUCTION = `## Polish report (added by the polish mod)
 End your final message with exactly two sections, in this order:
@@ -43,9 +60,6 @@ End your final message with exactly two sections, in this order:
 - <file:line> — <the finding> — <why it was skipped>
 
 After every item of the skipped list add a fenced code block with the current code (at most 8 lines) and, when you know the change, a second fenced block labelled "Proposed:" with the code you would write. If nothing was skipped, write the single line "- none" under "## Polish: skipped". The user reads these as a report, so write the descriptions in Russian.`
-
-const REVIEW_SCOPE_INSTRUCTION = `## Polish scope (added by the polish mod)
-Review the uncommitted changes in the working tree: BASE_SHA is HEAD, the diff is \`git diff HEAD\` plus the untracked files. Do not fix anything and do not commit — report findings only. Put the reviewer's findings (Critical / Important / Minor, with file:line) into your final message.`
 
 const NOT_REPORTED_INSTRUCTION = `## Polish: candidates you did not report (added by the polish mod)
 After your report add a section "## ${SECTION_NOT_REPORTED}": the candidate issues you examined but left out of the main report (low confidence, out of scope for this level, or covered elsewhere). One item per line as "- <file:line> — <suspected issue> — <why it was not reported>", each followed by a fenced code block with the relevant code (at most 8 lines). If there are none, write the single line "- none". Write the descriptions in Russian.`
@@ -107,7 +121,16 @@ ${capChars(skippedText, MAX_SKIPPED_CHARS)}
 Do not report them as new findings. For each one, judge whether leaving it is safe, should be fixed, or is a bug. Add a section "## ${SECTION_ASSESSMENT}" with one line per item: "- <file:line> — ok | fix | bug — <reason>"; for "fix" and "bug" add a fenced code block with the suggested change. Write in Russian.`
 }
 
-function buildReport(fixedText: string, skippedText: string, reviewText: string, note: string): string {
+interface ReportParts {
+  fixedText: string
+  skippedText: string
+  reviewText: string
+  note: string
+  // Undefined when the chain never reached the fixes after the review.
+  fixesText?: string
+}
+
+function buildReport({ fixedText, skippedText, reviewText, note, fixesText }: ReportParts): string {
   const assessment = extractSection(reviewText, SECTION_ASSESSMENT)
   const notReported = extractSection(reviewText, SECTION_NOT_REPORTED)
   const review = removeSection(removeSection(reviewText, SECTION_ASSESSMENT), SECTION_NOT_REPORTED)
@@ -120,6 +143,9 @@ function buildReport(fixedText: string, skippedText: string, reviewText: string,
     skippedText || '- нет данных',
     `## Code review${note ? ` (${note})` : ''}`,
     review || '- отчёт ревью не получен',
+    ...(fixesText === undefined
+      ? []
+      : ['## Code review: исправлено после ревью', fixesText.trim() === '' ? NO_FIXES : capChars(fixesText.trim(), MAX_FIX_CHARS)]),
     '## Code review: оценка пропусков simplify',
     assessment ?? (hasSkips(skippedText) ? '- нет данных' : '- пропусков simplify не было'),
     '## Code review: рассмотрено, но не заявлено',
@@ -129,6 +155,27 @@ function buildReport(fixedText: string, skippedText: string, reviewText: string,
 
 async function reset($: EngineInterface): Promise<void> {
   await update($, step, () => 'idle')
+  await update($, fixGraceOver, () => false)
+}
+
+// Agents started since the chain began that are still working.
+async function hasActiveAgents($: EngineInterface): Promise<boolean> {
+  const known = new Set((await read($, baseline)).split(','))
+
+  return (await $.agent.list()).some(agent => !known.has(agent.id) && ACTIVE_AGENT_STATUSES.includes(agent.status))
+}
+
+// Atomically moves the chain from one step to another; false when something else already did.
+async function claim($: EngineInterface, from: Step, to: Step): Promise<boolean> {
+  let isClaimed = false
+
+  await update($, step, current => {
+    isClaimed = current === from
+
+    return isClaimed ? to : current
+  })
+
+  return isClaimed
 }
 
 // Cancel: stop the chain first (so no hook moves it on), then abort the running turn and the agents it started.
@@ -175,7 +222,15 @@ async function watchPlannotator($: EngineInterface): Promise<void> {
   }
 
   if (feedback.trim() !== '' && !NO_FEEDBACK.test(feedback.trim())) {
+    await waitForIdleTurn($)
     void $.prompt.submit({ text: `${FEEDBACK_PREFIX}\n\n${feedback.trim()}` })
+  }
+}
+
+// The annotations must not land in the middle of a running turn: they go out once the session is quiet.
+async function waitForIdleTurn($: EngineInterface): Promise<void> {
+  for (let attempt = 0; attempt < FEEDBACK_IDLE_ATTEMPTS && (await read($, runningTurnId)) !== ''; attempt += 1) {
+    await $.clock.sleep(FEEDBACK_IDLE_STEP_MS)
   }
 }
 
@@ -184,9 +239,21 @@ async function openReport($: EngineInterface, text: string): Promise<void> {
   void watchPlannotator($)
 }
 
+interface FinishParts {
+  reviewText: string
+  note: string
+  fixesText?: string
+}
+
 // The chain is over: build the combined report from what the steps produced, open it in Plannotator.
-async function finish($: EngineInterface, reviewText: string, note: string): Promise<void> {
-  const text = buildReport(await read($, fixed), await read($, skipped), reviewText, note)
+async function finish($: EngineInterface, { reviewText, note, fixesText }: FinishParts): Promise<void> {
+  const text = buildReport({
+    fixedText: await read($, fixed),
+    skippedText: await read($, skipped),
+    reviewText,
+    note,
+    fixesText,
+  })
 
   await update($, report, () => text)
   await reset($)
@@ -213,9 +280,12 @@ async function prepare($: EngineInterface): Promise<boolean> {
   await update($, baseline, () => ids)
   await update($, turnsAtStart, () => turns)
   await update($, simplifyAnswer, () => '')
-  await update($, reviewAnswer, () => '')
   await update($, fixed, () => '')
   await update($, skipped, () => '')
+  await update($, reviewAnswer, () => '')
+  await update($, reviewNote, () => '')
+  await update($, fixAnswer, () => '')
+  await update($, fixGraceOver, () => false)
   await update($, step, () => 'simplify')
 
   return true
@@ -241,9 +311,9 @@ async function storeSimplifyResult($: EngineInterface): Promise<void> {
 }
 
 // Both steps run as skills in the main loop and may end their turn right after launching background
-// agents (/simplify does, the reviewer subagent may), then finish in a later turn. So a step is done
-// only once a main turn started after the step began, no main turn is running or about to start, and
-// none of the agents spawned since the chain began is still working.
+// agents (/simplify does, the reviewer subagent may), then finish in a later turn. So a step is done only
+// once a main turn started after the step began, no main turn is running or about to start, and none of
+// the agents spawned since the chain began is still working.
 // Called after every main turn and every agent turn; the settle pause lets a queued hand-back start
 // the next main turn first, and that turn's own completion calls back in here.
 async function advance($: EngineInterface, current: 'simplify' | 'review'): Promise<void> {
@@ -258,43 +328,88 @@ async function advance($: EngineInterface, current: 'simplify' | 'review'): Prom
     return
   }
 
-  const known = new Set((await read($, baseline)).split(','))
-  const isBusy = (await $.agent.list()).some(
-    agent => !known.has(agent.id) && ACTIVE_AGENT_STATUSES.includes(agent.status),
-  )
-
-  if (isBusy) {
-    return
-  }
-
-  let isClaimed = false
-
-  // The next state is 'review' after simplify and 'idle' after the review: the claim itself is what keeps
-  // a second concurrent advance from running the same step's tail twice.
-  await update($, step, value => {
-    isClaimed = value === current
-
-    return isClaimed ? (current === 'simplify' ? 'review' : 'idle') : value
-  })
-
-  if (!isClaimed) {
+  if (await hasActiveAgents($)) {
     return
   }
 
   if (current === 'simplify') {
-    await storeSimplifyResult($)
-    await runReview($)
-  } else {
-    await finish($, await read($, reviewAnswer), '')
+    if (await claim($, 'simplify', 'review')) {
+      await storeSimplifyResult($)
+      await runReview($)
+    }
+  } else if (await claim($, 'review', 'fix')) {
+    await startFixes($, await read($, reviewAnswer), '')
+    void $.prompt.submit({ text: APPLY_FINDINGS_PROMPT })
   }
 }
 
-// The review is a skill run in the main loop: its steps count from here, and advance() ends it.
+// The review is done and the main assistant is asked to apply the findings in its own turns. The report waits for them: it opens only once a turn started after the review, no turn is running
+// and no agent is still working. A review with nothing to fix may start no turn at all, hence the grace timer.
+async function startFixes($: EngineInterface, reviewText: string, note: string): Promise<void> {
+  const turns = await read($, turnCount)
+
+  await update($, reviewAnswer, () => reviewText)
+  await update($, reviewNote, () => note)
+  await update($, turnsAtReview, () => turns)
+  await update($, fixAnswer, () => '')
+  await update($, fixGraceOver, () => false)
+  await update($, step, () => 'fix')
+
+  $.clock.after(FIX_START_GRACE_MS, () => {
+    void expireFixGrace($)
+  })
+}
+
+async function expireFixGrace($: EngineInterface): Promise<void> {
+  if ((await read($, step)) !== 'fix') {
+    return
+  }
+
+  await update($, fixGraceOver, () => true)
+  await advanceFix($)
+}
+
+// Called after every main turn and every agent turn while the fixes run; the settle pause lets a queued
+// turn start first, and that turn's own completion calls back in here.
+async function advanceFix($: EngineInterface): Promise<void> {
+  const turnsBefore = await read($, turnCount)
+
+  await $.clock.sleep(SETTLE_MS)
+
+  const isStale = (await read($, step)) !== 'fix' || (await read($, turnCount)) !== turnsBefore
+  const isStarted = turnsBefore > (await read($, turnsAtReview)) || (await read($, fixGraceOver))
+
+  if (isStale || !isStarted || (await read($, runningTurnId)) !== '' || (await hasActiveAgents($))) {
+    return
+  }
+
+  if (await claim($, 'fix', 'idle')) {
+    await finish($, {
+      reviewText: await read($, reviewAnswer),
+      note: await read($, reviewNote),
+      fixesText: await read($, fixAnswer),
+    })
+  }
+}
+
+// The review is a skill run in the main loop: its turns count from here, and advance() ends it.
 async function runReview($: EngineInterface): Promise<void> {
   const turns = await read($, turnCount)
 
   await update($, turnsAtStart, () => turns)
   await run($, REVIEW_COMMAND, '')
+}
+
+function reviewLabel(current: Step): string {
+  if (current === 'simplify') {
+    return 'simplify'
+  }
+
+  if (current === 'fix') {
+    return 'правки по ревью'
+  }
+
+  return 'review'
 }
 
 export const register: Register = on => {
@@ -373,8 +488,10 @@ export const register: Register = on => {
     const current = await read($, step)
 
     if (e.agentId !== undefined) {
-      if (current !== 'idle') {
+      if (current === 'simplify' || current === 'review') {
         void advance($, current)
+      } else if (current === 'fix') {
+        void advanceFix($)
       }
 
       return next(e)
@@ -382,7 +499,12 @@ export const register: Register = on => {
 
     await update($, runningTurnId, () => '')
 
-    if (current !== 'idle') {
+    if (current === 'fix') {
+      await update($, fixAnswer, previous => (e.answer.trim() === '' ? previous : e.answer))
+      void advanceFix($)
+    }
+
+    if (current === 'simplify' || current === 'review') {
       if (current === 'simplify') {
         await update($, simplifyAnswer, previous => (e.answer.trim() === '' ? previous : e.answer))
       } else {
@@ -400,7 +522,10 @@ export const register: Register = on => {
   })
 
   on('prompt.submit', async ($, e, next) => {
-    if ((await read($, step)) !== 'idle' && USER_ORIGINS.includes(e.origin.kind)) {
+    // While the fixes run, a message from the user only adds a turn: the report still waits for it.
+    const current = await read($, step)
+
+    if (current !== 'idle' && current !== 'fix' && USER_ORIGINS.includes(e.origin.kind)) {
       await reset($)
     }
 
@@ -423,7 +548,7 @@ export const register: Register = on => {
       )
     }
 
-    const label = current === 'simplify' ? 'simplify' : 'review'
+    const label = reviewLabel(current)
 
     return (
       <Box>
