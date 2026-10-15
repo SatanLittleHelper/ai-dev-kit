@@ -28,6 +28,7 @@ Run from the project root. A part whose prerequisite is missing is skipped, and 
    ```
    `CLAUDE.md`'s `@import` of `rules/RULES.md` picks the new content up the next time it loads.
 3. **AGENTS.md, only if the project opted into Codex.** If `AGENTS.md` contains the marker `<!-- ai-dev-kit:rules:start`, run `bash .claude/ai-dev-kit/rules/build-agents-md.sh`. No marker → skip silently; the opt-in question belongs to `setup.sh`, asked once.
+   The script rewrites the block unformatted (e.g. markdown tables lose their column alignment), so a diff of dozens of lines may be pure whitespace. If the project formats markdown with Prettier (a `.prettierrc*` file or `prettier` in `package.json`), run `npx prettier --write AGENTS.md` right after the script, so the diff shows only real content changes. No Prettier in the project → leave the script's output as is.
 4. **Skills** (needs `skills-lock.json`):
    - Refresh the installed ones, project-scoped and non-interactive:
      ```
@@ -64,6 +65,7 @@ Run from the project root. A part whose prerequisite is missing is skipped, and 
 | Running plain `npx skills update` with no flags | Use `-p -y` — project scope, no interactive prompt |
 | Installing or removing skills from other sources | Only touch skills whose `source` is `SatanLittleHelper/ai-dev-kit` |
 | Regenerating `AGENTS.md` when the project never opted into Codex | Only if the `ai-dev-kit:rules:start` marker is already present |
+| Leaving `AGENTS.md` as `build-agents-md.sh` wrote it in a Prettier project | The script drops formatting (table alignment); run `npx prettier --write AGENTS.md` so the diff is not noise |
 | Committing the changes automatically | Ask first, per `rules/base/git-and-commits.md` |
 | Forgetting the restart note after a mod update | A mod reloads only on a new session — tell the user |
 | Retrying silently on a CLI error | Surface the actual error |
