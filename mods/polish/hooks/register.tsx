@@ -24,7 +24,8 @@ const fixAnswer = atom({ plugin: 'polish', key: 'fixAnswer' } as const, '')
 const fixGraceOver = atom({ plugin: 'polish', key: 'fixGraceOver' } as const, false)
 
 const REVIEW_COMMAND = 'superpowers:requesting-code-review'
-const REPORT_PATH = '/tmp/polish-report.md'
+// Every opened report gets its own file: one shared path let a report from another session or worktree overwrite the one still being read.
+const newReportPath = (): string => `/tmp/polish-report-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.md`
 // The user's own prompts: a background agent's hand-back or a task notification must not cancel the chain.
 const USER_ORIGINS = ['composer', 'bridge']
 const SECTION_FIXED = 'Polish: fixed'
@@ -206,11 +207,11 @@ async function fail($: EngineInterface, message: string): Promise<void> {
 
 // plannotator annotate stays alive until the review in the browser is submitted, then prints the
 // user's annotations on stdout: they are collected and handed to the model as a prompt.
-async function watchPlannotator($: EngineInterface): Promise<void> {
+async function watchPlannotator($: EngineInterface, reportPath: string): Promise<void> {
   let feedback = ''
 
   try {
-    for await (const piece of $.process.spawn({ argv: ['plannotator', 'annotate', REPORT_PATH] })) {
+    for await (const piece of $.process.spawn({ argv: ['plannotator', 'annotate', reportPath] })) {
       if ('stream' in piece && piece.stream === 'stdout') {
         feedback += piece.text
       }
@@ -235,8 +236,10 @@ async function waitForIdleTurn($: EngineInterface): Promise<void> {
 }
 
 async function openReport($: EngineInterface, text: string): Promise<void> {
-  await $.fs.write(REPORT_PATH, text)
-  void watchPlannotator($)
+  const reportPath = newReportPath()
+
+  await $.fs.write(reportPath, text)
+  void watchPlannotator($, reportPath)
 }
 
 interface FinishParts {
