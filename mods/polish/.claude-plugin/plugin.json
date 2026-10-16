@@ -1,7 +1,7 @@
 {
   "name": "polish",
-  "version": "0.2.0",
-  "description": "Кнопка и команда /polish: последовательно запускает /simplify и /superpowers:requesting-code-review и собирает общий отчёт в Plannotator",
+  "version": "0.3.0",
+  "description": "Кнопка и команда /polish: последовательно запускает /simplify и /superpowers:requesting-code-review; отчёт каждого шага открывается в Plannotator, замечания правятся до следующего шага",
   "author": { "name": "Aleksandr Fenin" },
   "types": "./types/index.d.ts"
 }
