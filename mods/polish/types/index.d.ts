@@ -1,4 +1,4 @@
-export type Step = 'idle' | 'simplify' | 'review' | 'fix'
+export type Step = 'idle' | 'simplify' | 'simplify-report' | 'simplify-fix' | 'review' | 'fix' | 'review-report' | 'review-fix'
 
 declare module 'claude-code' {
   interface PluginState {
@@ -13,8 +13,7 @@ declare module 'claude-code' {
       skipped: string
       report: string
       reviewAnswer: string
-      reviewNote: string
-      turnsAtReview: number
+      turnsAtFix: number
       fixAnswer: string
       fixGraceOver: boolean
     }

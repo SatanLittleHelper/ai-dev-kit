@@ -34,9 +34,6 @@ const SIMPLIFY_ANSWER = [
 const REVIEW_ANSWER = [
   'Found nothing.',
   '',
-  '## Polish: оценка пропусков simplify',
-  '- a.js:42 — ok — fine',
-  '',
   '## Polish: reviewed-not-reported',
   '- b.js:3 — maybe',
 ].join('\n')
@@ -122,6 +119,14 @@ test('the review waits for the simplify agents and the report is written once th
 
   expect(ran).toEqual(['simplify', 'review'])
 
+  // the simplify report was shown on its own, before the review
+  expect(written).toHaveLength(1)
+  expect(written[0]).toContain('## Simplify: исправлено')
+  expect(written[0]).toContain('a.js:1 — fixed it')
+  expect(written[0]).toContain('## Simplify: пропущено')
+  expect(written[0]).toContain('# not a heading')
+  expect(written[0]).not.toContain('Code review')
+
   // the review runs in the main loop: its answer ends the step, then the assistant is asked to apply the findings
   await $.turn.start({ text: '/superpowers:requesting-code-review', turnId: 't2r' })
   await $.turn.complete(completion('t2r', REVIEW_ANSWER))
@@ -129,33 +134,28 @@ test('the review waits for the simplify agents and the report is written once th
 
   expect(prompts).toHaveLength(1)
 
-  // the review is over, but the main assistant has not applied its findings yet: nothing is shown
-  expect(written).toHaveLength(0)
+  // the review is over, but the main assistant has not applied its findings yet: its report is not shown
+  expect(written).toHaveLength(1)
 
   await $.turn.start({ text: 'review reported', turnId: 't3' })
   await clock.advance(5000)
 
   // the fixes are being applied
-  expect(written).toHaveLength(0)
+  expect(written).toHaveLength(1)
 
   await $.turn.complete(completion('t3', FIX_ANSWER))
   await clock.advance(2000)
 
-  expect(written).toHaveLength(1)
+  expect(written).toHaveLength(2)
 
-  const report = written[0] ?? ''
+  const report = written[1] ?? ''
 
   expect(report).toContain('## Code review: исправлено после ревью')
   expect(report).toContain('проверка порта перенесена в начало')
-
-  expect(report).toContain('## Simplify: исправлено')
-  expect(report).toContain('a.js:1 — fixed it')
-  expect(report).toContain('## Simplify: пропущено')
-  expect(report).toContain('# not a heading')
-  expect(report).toContain('## Code review: оценка пропусков simplify')
-  expect(report).toContain('a.js:42 — ok — fine')
   expect(report).toContain('## Code review: рассмотрено, но не заявлено')
   expect(report).toContain('b.js:3 — maybe')
+  expect(report).not.toContain('Simplify')
+  expect(report).not.toContain('оценка пропусков')
 })
 
 test('an aborted simplify turn stops the chain and /polish can start again', async ($, on) => {
@@ -251,15 +251,19 @@ test('Cancel aborts the running turn and stops the agents the chain started', as
   expect(again.text).toContain('Запущено')
 })
 
-test('the annotations from Plannotator go to the model as a prompt', async ($, on) => {
+test('the annotations on the simplify report are fixed before the review starts', async ($, on) => {
   engine(on)
   const clock = mock.clock(on)
   const prompts: string[] = []
-  let agents: AgentInfo[] = []
+  const ran: string[] = []
 
-  on('agent.list', () => ({ value: agents }))
+  on('agent.list', () => ({ value: [] }))
   on('command.run', { command: 'simplify' }, () => ({ text: '' }))
-  on('command.run', { command: 'superpowers:requesting-code-review' }, () => ({ text: '' }))
+  on('command.run', { command: 'superpowers:requesting-code-review' }, () => {
+    ran.push('review')
+
+    return { text: '' }
+  })
   on('fs.write', () => ({ value: undefined }))
   on('process.spawn', async function* () {
     yield { stream: 'stdout' as const, text: '# File Feedback\n1. a.js:1 — переименуй' }
@@ -277,12 +281,15 @@ test('the annotations from Plannotator go to the model as a prompt', async ($, o
   await $.turn.start({ text: '/simplify', turnId: 't1' })
   await $.turn.complete(completion('t1', SIMPLIFY_ANSWER))
   await clock.advance(2000)
-  await $.turn.start({ text: '/superpowers:requesting-code-review', turnId: 't2' })
-  await $.turn.complete(completion('t2', REVIEW_ANSWER))
-  await clock.advance(AFTER_GRACE_MS)
-  await clock.settle()
 
   expect(prompts.filter(text => text.includes(FEEDBACK_MARK)).join('\n')).toContain('a.js:1 — переименуй')
+  expect(ran).toEqual([])
+
+  await $.turn.start({ text: 'annotations', turnId: 't2' })
+  await $.turn.complete(completion('t2', 'переименовал'))
+  await clock.advance(2000)
+
+  expect(ran).toEqual(['review'])
 })
 
 test('an empty Plannotator review sends nothing to the model', async ($, on) => {
@@ -367,13 +374,13 @@ test('without any turn after the review the report opens once the grace period h
   await runToReviewDone($, clock)
   await clock.advance(2000)
 
-  expect(written).toHaveLength(0)
+  expect(written).toHaveLength(1)
 
   await clock.advance(AFTER_GRACE_MS)
 
-  expect(written).toHaveLength(1)
-  expect(written[0]).toContain('## Code review: исправлено после ревью')
-  expect(written[0]).toContain('правок после ревью не было')
+  expect(written).toHaveLength(2)
+  expect(written[1]).toContain('## Code review: исправлено после ревью')
+  expect(written[1]).toContain('правок после ревью не было')
 })
 
 test('an agent started while the fixes are applied holds the report back', async ($, on) => {
@@ -389,13 +396,13 @@ test('an agent started while the fixes are applied holds the report back', async
   await $.turn.complete(completion('t3', FIX_ANSWER))
   await clock.advance(2000)
 
-  expect(written).toHaveLength(0)
+  expect(written).toHaveLength(1)
 
   state.agents = [{ id: 'fix-helper', description: 'checks the fix', type: 'Explore', status: 'completed' }]
   await $.turn.complete(completion('helper-turn', 'checked', 'fix-helper'))
   await clock.advance(2000)
 
-  expect(written).toHaveLength(1)
+  expect(written).toHaveLength(2)
 })
 
 test('a message typed while the fixes are applied does not drop the report', async ($, on) => {
@@ -411,19 +418,25 @@ test('a message typed while the fixes are applied does not drop the report', asy
   await $.turn.complete(completion('t3', FIX_ANSWER))
   await clock.advance(2000)
 
-  expect(written).toHaveLength(1)
+  expect(written).toHaveLength(2)
 })
 
 test('the annotations from Plannotator wait for a running turn before they go to the model', async ($, on) => {
   const { clock, prompts } = chain(on)
   let release = () => {}
+  let spawned = 0
   const released = new Promise<void>(resolve => {
     release = resolve
   })
 
+  // the first report (simplify) is closed at once, the review report only after release()
   on('process.spawn', async function* () {
-    await released
-    yield { stream: 'stdout' as const, text: '# File Feedback\n1. a.js:1 — переименуй' }
+    spawned += 1
+
+    if (spawned > 1) {
+      await released
+      yield { stream: 'stdout' as const, text: '# File Feedback\n1. a.js:1 — переименуй' }
+    }
 
     return { value: { code: 0, signal: null } }
   })
@@ -442,4 +455,38 @@ test('the annotations from Plannotator wait for a running turn before they go to
   await clock.advance(2000)
 
   expect(prompts.filter(text => text.includes(FEEDBACK_MARK)).join('\n')).toContain('a.js:1 — переименуй')
+})
+
+test('Cancel while the simplify report is open stops the chain: the review does not start', async ($, on) => {
+  const { clock } = chain(on)
+  const ran: string[] = []
+  let close = () => {}
+  const closed = new Promise<void>(resolve => {
+    close = resolve
+  })
+
+  on('command.run', { command: 'superpowers:requesting-code-review' }, () => {
+    ran.push('review')
+
+    return { text: '' }
+  })
+  on('process.spawn', async function* () {
+    await closed
+
+    return { value: { code: 0, signal: null } }
+  })
+
+  await $.command.run({ command: 'polish', args: '' })
+  await clock.settle()
+  await $.turn.start({ text: '/simplify', turnId: 't1' })
+  await $.turn.complete(completion('t1', SIMPLIFY_ANSWER))
+  await clock.advance(2000)
+
+  const band = await $.ui.mount({ plugin: 'polish', surface: 'terminal', component: 'AbovePrompt', props: { hasSurvey: false } })
+
+  await band.press({ key: 'cancel' })
+  close()
+  await clock.advance(2000)
+
+  expect(ran).toEqual([])
 })
