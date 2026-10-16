@@ -8,10 +8,12 @@ These rules define what to test and how to assert. The execution order is in `ru
 |---|---|
 | Services with branching/orchestration logic | **Yes** |
 | Guards, validation, fallback and error-handling branches | **Yes** |
-| UI components | **No** — cover delegated behavior through the service/store layer |
+| UI components | **No** — cover delegated behavior through the service/store layer. Exception: a shared UI-kit library with Storybook — cover component behavior with Playwright e2e over Storybook stories (stories are the fixtures, specs live in a separate `*-e2e` project) |
 | Repositories/DAOs (`*.repository.ts`), including ones with a guard or branch | **No** — cover through the calling service |
 | Thin outbound API clients | **No** — test how the caller uses the result |
 | Pure row/payload → domain mappers (only field assignment/`?? default`) | **No** |
+
+A UI-kit library never gets unit tests for components. Its behavior (clicks, input, keyboard, aria states) is covered by e2e specs that open Storybook stories by URL; this is the only component-level testing scenario for it.
 
 Skipped layers must still be covered indirectly where their behavior affects a tested caller. The exclusions above are specific; other decision points default to unit tests.
 
@@ -35,7 +37,7 @@ For async dependencies, cover timeout and upstream failure when the code has beh
 
 | Mistake | Fix |
 |---|---|
-| Spec for a component, repository, thin client, or pure mapper | Skip it; cover the caller where applicable |
+| Spec for a component, repository, thin client, or pure mapper | Skip it; cover the caller where applicable. A UI-kit library with Storybook is the exception: its components get e2e specs over stories (see Scope) |
 | Happy path only | Add meaningful negative/validation/failure branches |
 | `expect(fn.mock.calls[0][0])` | Use the matching call matcher |
 | Logger assertion | Assert surrounding behavior |
