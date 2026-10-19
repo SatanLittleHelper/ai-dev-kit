@@ -169,20 +169,40 @@ approval with nothing to address, confirm moving on via `AskUserQuestion` ("Cont
 
 ## Step 6: PR
 
-Check whether `gh` is installed and the remote is GitHub:
+Pick the PR-creation route (first match wins):
+
+1. **Forgejo** — `FORGEJO_TOKEN` is set in the environment (and the remote isn't github.com).
+   The API host is derived from `git remote get-url origin` (https or ssh form → `https://<host>`);
+   `owner/repo` from the same URL without a trailing `.git`.
+2. **GitHub** — `gh` is installed and the remote is GitHub:
+   ```bash
+   command -v gh >/dev/null 2>&1 && git remote get-url origin | grep -q 'github.com'
+   ```
+3. **Manual** — neither applies.
+
+For routes 1 and 2: draft the PR title/body from the block's commit message and reasoning, show
+it in chat, and ask for approval via `AskUserQuestion` ("Approve this PR" / "Edit title/body") —
+same discipline as the commit message. Only after approval, push, then create the PR:
 
 ```bash
-command -v gh >/dev/null 2>&1 && git remote get-url origin | grep -q 'github.com'
+git push -u origin <block branch>
 ```
 
-- **If yes:** draft the PR title/body from the block's commit message and reasoning, show it in
-  chat, and ask for approval via `AskUserQuestion` ("Approve this PR" / "Edit title/body") —
-  same discipline as the commit message. Only after approval:
+- **Forgejo:** create the PR through the API and read `html_url` from the response. Never echo
+  or log the token; write the JSON body to a scratchpad file so title/body quoting can't break
+  the request:
   ```bash
-  git push -u origin <block branch>
+  curl -sS -X POST "https://<host>/api/v1/repos/<owner>/<repo>/pulls" \
+    -H "Authorization: token $FORGEJO_TOKEN" -H "Content-Type: application/json" \
+    -d @<scratchpad>/pr-<N>.json
+  ```
+  with `{"base": "<block's baseBranch>", "head": "<block branch>", "title": "...", "body": "..."}`.
+  A non-2xx response → show the response message to the user and stop; don't record `prUrl`.
+- **GitHub:**
+  ```bash
   gh pr create --base <block's baseBranch> --head <block branch> --title "<title>" --body "<body>"
   ```
-- **If no:** push the branch, tell the user the PR must be created manually on their platform
+- **Manual:** push the branch, tell the user the PR must be created manually on their platform
   with the correct base (`<block's baseBranch>`), and ask them to paste back the created PR's
   URL — plain data entry, not an approve/reject choice, so a normal chat prompt (per `SKILL.md` →
   Approval Gates). Do not proceed to Step 7 until it's provided.
@@ -198,13 +218,13 @@ automated signal that something about this block is broken. If that happens:
 - Do not mark `status: "pr-created"` or set `prUrl` until the push actually succeeds.
 
 Once the push (and PR, if applicable) succeeds: record the URL, `state.json` `status:
-"pr-created"`, `prUrl` set.
+"pr-created"`, `prUrl` and `prTitle` set (the approved PR title).
 
 ## Step 7: Next branch
 
-If `unassignedFiles` is now empty, the split is done — delete
-`.claude/pr-split/<slug>-state.json` (per `SKILL.md` → Completion), tell the user, and stop (no
-Step 7 branch needed). Otherwise:
+If `unassignedFiles` is now empty, the split is done — print the final summary from
+`state.json` (per `SKILL.md` → Completion), then delete `.claude/pr-split/<slug>-state.json`,
+and stop (no Step 7 branch needed). Otherwise:
 
 ```bash
 git checkout -b <sourceBranch>-<N+1>
@@ -222,7 +242,8 @@ branch as its own `branch` (via `git branch --show-current`) as soon as it's pro
 |---|---|
 | Running a build/lint/test command before committing a block | Out of scope — the project's own pre-push hook is the verification, at Step 6's `git push` |
 | Skipping Step 5 because the diff "looks small" | Plannotator review runs on every block regardless of size |
-| Assuming `gh pr create` works without checking the remote is GitHub | Always check `gh` + GitHub remote first; fall back to manual delegation otherwise |
+| Assuming `gh pr create` works without checking the remote is GitHub | Check `FORGEJO_TOKEN` first, then `gh` + GitHub remote; fall back to manual delegation otherwise |
+| Printing or logging `FORGEJO_TOKEN` (in a command echo, error output, or chat) | Only reference it as `$FORGEJO_TOKEN` inside the `curl` header; never show its value |
 | Branching block N+1 before block N is committed | Step 7 only runs after Steps 4–6 of block N are fully done |
 | Treating a pre-push hook rejection at Step 6 as something to silently retry or bypass (`--no-verify`) | Show the hook's output to the user and let them decide how to fix forward |
 | Setting a failed block's `status` to some ad hoc value when a push is rejected | The commit still exists and stays `"committed"` — a rejected push isn't a build failure with a defined rollback, it's a stop-and-ask |

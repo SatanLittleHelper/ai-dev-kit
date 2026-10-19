@@ -47,7 +47,7 @@ review outcome) is asked via `AskUserQuestion` with concrete options (e.g. "Appr
 "Change grouping", "Approve" / "Edit message") — never by posting text in chat and waiting for a
 free-form reply. This lets the user approve with a click instead of typing anything back. The
 one exception is genuine data entry with no fixed option set — e.g. pasting a manually-created
-PR's URL when `gh` isn't available (`references/block-cycle.md` Step 6) — which stays a normal
+PR's URL when neither Forgejo nor `gh` is available (`references/block-cycle.md` Step 6) — which stays a normal
 chat prompt, since there's nothing to choose between.
 
 ## File Classification
@@ -93,8 +93,18 @@ run to empirically confirm this — the project's own pre-push hook is the real 
 
 The split is complete once every block in `blocks` has reached `status: "pr-created"` and
 `unassignedFiles` is empty. At that point, delete `.claude/pr-split/<slug>-state.json` as the
-last action of the workflow and tell the user it's done — the split's job was tracking progress
-while it was in flight, and once every block has a PR, `state.json` has nothing left to track.
+last action of the workflow — the split's job was tracking progress while it was in flight, and
+once every block has a PR, `state.json` has nothing left to track.
+
+**Before deleting it**, print the final summary to the user (read from `state.json`, so it must
+come first), so the whole chain can be forwarded for review as-is:
+
+1. A list of all PRs in block order, each as `N. <prTitle> — <prUrl>`.
+2. A table of the stack: `| # | PR | Head branch | Base branch |`, one row per block, with
+   `branch` as head and `baseBranch` as base (block 1 targets the original base; every later
+   block targets the previous block's branch).
+
+Then tell the user the split is done.
 This is unrelated to the backup branch (`<sourceBranch>_backup`, see Storage above), which this
 skill's automation never deletes regardless of completion status.
 
@@ -124,7 +134,8 @@ is a direct, visible text edit — there is no need for a JSON-processing tool i
       "files": { "logic": ["src/a.ts"], "assets": ["README.md"] },
       "status": "approved",
       "commitSha": null,
-      "prUrl": null
+      "prUrl": null,
+      "prTitle": null
     }
   ],
   "unassignedFiles": ["src/z.ts"]
@@ -168,10 +179,12 @@ is a direct, visible text edit — there is no need for a JSON-processing tool i
   `<sourceBranch>-<N+1>` (e.g. `feature-x-2`, `feature-x-3`, ...). Its PR's base is block N's
   branch — this is a stacked chain, not everything based on `main`. Repointing a merged block's
   PR base back to `main` is left to the user, not automated here.
-- PR creation: if `gh` is installed and the remote is a GitHub remote, use `gh pr create`.
-  Otherwise, push the branch and ask the user to open the PR manually on whatever platform
-  they use, then wait for them to paste back the PR URL before recording it and moving on —
-  PR creation is delegated, never silently skipped.
+- PR creation, first match wins: (1) `FORGEJO_TOKEN` is set in the environment → create the PR
+  through the Forgejo API (`POST /api/v1/repos/<owner>/<repo>/pulls`, host and repo derived from
+  the `origin` URL); (2) `gh` is installed and the remote is GitHub → `gh pr create`;
+  (3) otherwise push the branch and ask the user to open the PR manually, then wait for them to
+  paste back the PR URL before recording it and moving on — PR creation is never silently
+  skipped. Details in `references/block-cycle.md` Step 6.
 
 ## Common Mistakes
 
