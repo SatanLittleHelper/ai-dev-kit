@@ -149,20 +149,20 @@ the new commit's SHA (`git rev-parse HEAD`).
 ## Step 5: Plannotator review
 
 Invoke the `plannotator-review` skill (it has `disable-model-invocation: true`, so it must be
-invoked explicitly by name, not expected to auto-trigger) against the current worktree — no
-special arguments needed:
+invoked explicitly by name, not expected to auto-trigger) with explicit arguments:
 
-> Invoke skill `plannotator-review` with no arguments (reviews the current worktree).
+> Invoke skill `plannotator-review` with arguments `--git --diff-type last-commit`.
 
-`plannotator review --git` reviews commits since the current branch diverged from its
-base/upstream. Since block 1's branch is `sourceBranch` itself and every block N+1's branch is
-created fresh in Step 7 with exactly one commit added on top (this block's), that diff is already
-scoped to just this block's commit — no extra isolation step is needed to keep the review
-focused, the stacked-branch structure does it by construction.
+Never invoke it without arguments: the default diff is "merge-base vs working tree + untracked
+files", and every other block's files are still uncommitted in the working tree at this point
+(that is the whole premise of the split), so they would all show up in the review next to this
+block's commit. `--diff-type last-commit` scopes the review to exactly the commit made in
+Step 4.
 
 If Plannotator's result carries feedback/annotations, apply the requested changes in the same
-conversation (as a further commit or amendment to this block, per the user's own commit-approval
-discipline — same as Step 4) and re-run the review. If the result is already an LGTM-style
+conversation (as an amendment to this block's commit — `git commit --amend`, not a separate commit, so
+`last-commit` keeps covering the whole block — per the user's own commit-approval discipline,
+same as Step 4; update `commitSha` afterward) and re-run the review. If the result is already an LGTM-style
 approval with nothing to address, confirm moving on via `AskUserQuestion` ("Continue to PR" /
 "Request more changes") rather than assuming silence means yes. Once confirmed, set `state.json`
 `status: "review-passed"`.
