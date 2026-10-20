@@ -30,6 +30,7 @@ const USER_ORIGINS = ['composer', 'bridge']
 const SECTION_FIXED = 'Polish: fixed'
 const SECTION_SKIPPED = 'Polish: skipped'
 const SECTION_NOT_REPORTED = 'Polish: reviewed-not-reported'
+const SECTION_FINDINGS = 'Polish: review-findings'
 const NOT_EXTRACTED = 'не удалось выделить'
 const ACTIVE_AGENT_STATUSES = ['pending', 'running']
 const FEEDBACK_PREFIX = 'Замечания к отчёту Polish (из Plannotator). Разбери каждое и исправь, что нужно:'
@@ -55,7 +56,12 @@ const MAX_FIX_CHARS = 6000
 const NO_FIXES = '- правок после ревью не было'
 const RAW_TAIL_LENGTH = 1500
 
-const APPLY_FINDINGS_PROMPT = `Ревью завершено. Примени находки ревью, которые стоит исправить (Critical и Important; Minor — по своему усмотрению), и кратко перечисли, что исправлено. Если исправлять нечего, так и скажи.`
+const APPLY_FINDINGS_PROMPT = `Ревью завершено. Примени находки ревью, которые стоит исправить (Critical и Important; Minor — по своему усмотрению).
+
+Закончи финальное сообщение секцией "## ${SECTION_FINDINGS}" со ВСЕМИ замечаниями ревью (Critical / Important / Minor), по одному на строку:
+- ✅ <file:line> — [Critical|Important|Minor] <замечание> — <что исправлено>
+- ⬜ <file:line> — [Critical|Important|Minor] <замечание> — <почему не исправлено>
+Исправленные помечай ✅, неисправленные ⬜. Если у ревью не было замечаний, напиши одну строку "- none".`
 
 const REVIEW_SCOPE_INSTRUCTION = `## Polish scope (added by the polish mod)
 Review the uncommitted changes in the working tree: BASE_SHA is HEAD, the diff is \`git diff HEAD\` plus the untracked files. Do not fix anything and do not commit at this step — report findings only; the fixes are applied in a separate step afterwards. Put the reviewer's findings (Critical / Important / Minor, with file:line) into your final message.`
@@ -130,6 +136,18 @@ function buildSimplifyReport(fixedText: string, skippedText: string): string {
 function buildReviewReport(reviewText: string, fixesText: string): string {
   const notReported = extractSection(reviewText, SECTION_NOT_REPORTED)
   const review = removeSection(reviewText, SECTION_NOT_REPORTED)
+  const findings = extractSection(fixesText, SECTION_FINDINGS)
+
+  // The fix step lists every finding with its status, so the reviewer's own text (written before any fix) is not repeated.
+  if (findings !== undefined) {
+    return [
+      '# Polish: code review',
+      '## Code review: замечания (✅ — исправлено)',
+      findings,
+      '## Code review: рассмотрено, но не заявлено',
+      notReported ?? '- нет данных',
+    ].join('\n\n')
+  }
 
   return [
     '# Polish: code review',
