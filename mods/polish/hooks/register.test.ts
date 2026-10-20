@@ -41,6 +41,13 @@ const REVIEW_ANSWER = [
 const FEEDBACK_MARK = 'Замечания к отчёту Polish'
 
 const FIX_ANSWER = 'Исправил b.js:3: проверка порта перенесена в начало.'
+const FIX_ANSWER_WITH_FINDINGS = [
+  'Исправил.',
+  '',
+  '## Polish: review-findings',
+  '- ✅ b.js:3 — [Critical] порт не проверяется — проверка перенесена в начало',
+  '- ⬜ c.js:9 — [Minor] имя переменной — не трогал',
+].join('\n')
 const AFTER_GRACE_MS = 35 * 1000
 
 function completion(turnId: string, answer: string, agentId?: string) {
@@ -156,6 +163,26 @@ test('the review waits for the simplify agents and the report is written once th
   expect(report).toContain('b.js:3 — maybe')
   expect(report).not.toContain('Simplify')
   expect(report).not.toContain('оценка пропусков')
+})
+
+test('the review report lists every finding with its fixed status', async ($, on) => {
+  const { clock, written } = chain(on)
+
+  on('process.spawn', async function* () {
+    return { value: { code: 0, signal: null } }
+  })
+
+  await runToReviewDone($, clock)
+  await $.turn.start({ text: 'review reported', turnId: 't3' })
+  await $.turn.complete(completion('t3', FIX_ANSWER_WITH_FINDINGS))
+  await clock.advance(2000)
+
+  const report = written[1] ?? ''
+
+  expect(report).toContain('✅ b.js:3 — [Critical]')
+  expect(report).toContain('⬜ c.js:9 — [Minor]')
+  expect(report).not.toContain('исправлено после ревью')
+  expect(report).toContain('b.js:3 — maybe')
 })
 
 test('an aborted simplify turn stops the chain and /polish can start again', async ($, on) => {
