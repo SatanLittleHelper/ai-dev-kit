@@ -103,15 +103,22 @@ Who updates the file, and when:
 
 ## Dependencies
 
-A checkpoint's markdown line may end with a machine-readable dependency tag: `(depends: <id>[, <id>...])`, listing the ids of other checkpoints **in the same roadmap** that must be closed first. Omit the tag entirely when a checkpoint has no internal dependency — most checkpoints, especially ones in different steps that just wait on their own design, have none. External dependencies (another roadmap, an auth/user prerequisite, etc.) stay as free prose in the checkpoint's own line or in the roadmap's `Context`/`Зависимости от ...` sections — `(depends: ...)` only ever references ids inside this same roadmap.
+A checkpoint's markdown line may end with a machine-readable dependency tag: `(depends: <id>[, <id>...])`, listing the checkpoints that must be closed first. A bare `<id>` refers to a checkpoint **in the same roadmap**; `<feature-slug>:<id>` refers to a checkpoint in a **neighbouring roadmap** — `<feature-slug>` is the name of that roadmap's `docs/<feature-slug>/` folder. Omit the tag entirely when a checkpoint has no dependency — most checkpoints, especially ones in different steps that just wait on their own design, have none. Other external dependencies (an auth/user prerequisite, a merge of an unrelated PR, etc.) stay as free prose in the checkpoint's own line or in the roadmap's `Context`/`Зависимости от ...` sections.
 
 ```markdown
 - [ ] 1.1b — [backend] ... (Jira: ACD-59) (depends: 1.1a)
+- [ ] A1 — [ui-kit] ... (Jira: TBD) (depends: ui-kit-e2e:B1, ui-kit-e2e:B2)
 ```
 
-`docs/<feature-slug>/roadmap-state.json` mirrors the same information machine-readably: every step entry gets a `"dependsOn": string[]` field (array of checkpoint ids, empty array when there's no internal dependency) — `references/writing.md` populates it straight from the markdown tags when creating the state file (see `## State File` above).
+`docs/<feature-slug>/roadmap-state.json` mirrors the same information machine-readably: every step entry gets a `"dependsOn": string[]` field (array of checkpoint ids, written exactly as in the tag — `"A1"` or `"ui-kit-e2e:B1"`; empty array when there's no dependency) — `references/writing.md` populates it straight from the markdown tags when creating the state file (see `## State File` above).
 
-A checkpoint is **ready to pick up** when it is unchecked (`- [ ]`) and every id in its `dependsOn` has `status: "closed"` in `roadmap-state.json`. Multiple checkpoints can be ready at once — that's exactly what makes them safe to parallelize. `references/executing-checkpoints.md` uses this to decide which checkpoint(s) it can offer, instead of always assuming strict top-to-bottom order.
+A checkpoint is **ready to pick up** when it is unchecked (`- [ ]`) and every entry in its `dependsOn` is satisfied. A bare id is satisfied when that step has `status: "closed"` in this roadmap's `roadmap-state.json`. A `<slug>:<id>` entry is resolved against `docs/<slug>/roadmap-state.json` the same way, and:
+
+- if `docs/<slug>/` no longer exists, it is **satisfied** — a fully checked-off roadmap is deleted (see "When a roadmap is fully checked off"), so absence means it finished;
+- if the folder exists but has no state file, fall back to the dependency's checkbox in that roadmap's markdown (`- [x]` = satisfied);
+- if the state file exists but has no step with that id, the reference is **broken**: treat the checkpoint as blocked and tell the user to fix the tag instead of guessing.
+
+Cross-roadmap references are one-directional and read-only: a checkpoint never edits the other roadmap's files. Multiple checkpoints can be ready at once — that's exactly what makes them safe to parallelize. `references/executing-checkpoints.md` uses this to decide which checkpoint(s) it can offer, instead of always assuming strict top-to-bottom order.
 
 ## Commit policy
 

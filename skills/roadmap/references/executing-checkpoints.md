@@ -18,7 +18,7 @@ Use this reference when the user names a specific checkpoint/task and asks to ta
 
 ### 2. Find the next checkpoint
 
-Read the roadmap top to bottom and collect every unchecked `- [ ] <TICKET> <name>` line, in document order. For each one, check its `(depends: <id>...)` tag, if any, against `docs/<slug>/roadmap-state.json` (`roadmap/SKILL.md` → `## Dependencies`): it's **ready** if the tag is absent/empty or every listed id has `status: "closed"`; otherwise it's **blocked**. If `roadmap-state.json` doesn't exist for this roadmap, fall back to checking each dependency id's own checkbox directly in the roadmap markdown (`- [x]` = satisfied).
+Read the roadmap top to bottom and collect every unchecked `- [ ] <TICKET> <name>` line, in document order. For each one, check its `(depends: <id>...)` tag, if any, against `docs/<slug>/roadmap-state.json` — and, for `<other-slug>:<id>` entries, against `docs/<other-slug>/roadmap-state.json` (`roadmap/SKILL.md` → `## Dependencies`, including the rules for a missing folder/state file and a broken reference): it's **ready** if the tag is absent/empty or every listed id is satisfied; otherwise it's **blocked** (say which roadmap's checkpoint it waits on). If `roadmap-state.json` doesn't exist for this roadmap, fall back to checking each dependency id's own checkbox directly in the roadmap markdown (`- [x]` = satisfied).
 
 - No unchecked line exists → the roadmap is already fully done. Report this and ask whether to delete it now (see step 6); do not delete unasked when you didn't just finish the work yourself.
 - Exactly one ready checkpoint → that's the next checkpoint.
