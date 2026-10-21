@@ -41,7 +41,7 @@ If `docs/<slug>/roadmap-state.json` exists (`roadmap/SKILL.md` → `## State Fil
 
 Before writing code, confirm this checkpoint has its own step folder `docs/<slug>/steps/<step-slug>/` (`roadmap/SKILL.md` naming; derive `<step-slug>` from the checkpoint's own heading — ask the user if it's ambiguous, don't silently invent one) containing:
 
-- a step-level PRD (`writing-prd`) — write it first if missing,
+- a step-level PRD (`writing-prd`) — if missing, ask via `AskUserQuestion` whether to write it first or skip it (plan only); never skip silently. A skipped PRD leaves `prdPath: null` and the state goes straight to `plan-drafted`,
 - an implementation plan (`superpowers:writing-plans`) — write it after the PRD if missing. Once written, if `roadmap-state.json` exists, set this checkpoint's `status` to `"plan-drafted"` and `planPath` to the new file's path.
 
 A design doc in that folder (from `brainstorming`, written at roadmap-authoring time) is optional and only present if the step needed its own architectural decision — carry it forward as-is, don't regenerate it. Skip the PRD/plan requirement only if the user explicitly says the checkpoint is trivial enough to go straight to code.
@@ -75,5 +75,5 @@ Only after the implementation's own final verification step has passed:
 | Asking the implementation-mode question as free prose | Always a single `AskUserQuestion` call for the method |
 | Leaving a fully-checked roadmap file in place | Delete it (and the empty folder) once the last checkbox is ticked |
 | Committing the checkbox/deletion changes automatically | Never — explicit request only |
-| Starting implementation with no step-level PRD, only a plan | Write the PRD first (`writing-prd`), then the plan — both are required in `steps/<step-slug>/`, not just the plan |
+| Starting implementation with no step-level PRD, only a plan, without asking | Offer to write the PRD first (`writing-prd`) or skip it via `AskUserQuestion` — skipping is the user's call, never assumed |
 | Deleting the whole `steps/<step-slug>/` folder (PRD + design included) on checkpoint close-out | Delete only the plan file — PRD/design stay as permanent history, same as the roadmap itself |

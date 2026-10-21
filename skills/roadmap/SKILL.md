@@ -65,7 +65,7 @@ Every roadmap has exactly one feature-level PRD, written with `writing-prd` and 
 | `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<step-slug>-design.md` | Step spec — the step's own architectural decision, when it needs one (from `brainstorming`). |
 | `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<ticket>-<name>.md` | Detailed implementation plan for the step (from `writing-plans`). |
 
-Each step gets its own folder under `docs/<feature-slug>/steps/`, named by the step's own slug (e.g. `steps/general-information/`) — not a bare number. All three of a step's docs (PRD, spec, plan) live together in that folder; a step with no architectural decision to make still gets a PRD and a plan, just no `-design.md`.
+Each step gets its own folder under `docs/<feature-slug>/steps/`, named by the step's own slug (e.g. `steps/general-information/`) — not a bare number. All three of a step's docs (PRD, spec, plan) live together in that folder; a step with no architectural decision to make still gets a PRD and a plan, just no `-design.md`. A PRD itself can be skipped on the user's explicit choice when a step is picked up (`references/executing-checkpoints.md` step 4) — the step then has only a plan.
 
 ## State File
 
@@ -93,7 +93,7 @@ Each step gets its own folder under `docs/<feature-slug>/steps/`, named by the s
 }
 ```
 
-`status` is one of, in order: `not-started` → `prd-drafted` → `spec-drafted` → `spec-validated` → `plan-drafted` → `implemented` → `closed`. For a step whose Phase 2 drafting skill was `writing-plans` directly (not design-only), the `spec-*` stages are skipped — status goes straight from `prd-drafted` to `plan-drafted`.
+`status` is one of, in order: `not-started` → `prd-drafted` → `spec-drafted` → `spec-validated` → `plan-drafted` → `implemented` → `closed`. For a step whose Phase 2 drafting skill was `writing-plans` directly (not design-only), the `spec-*` stages are skipped — status goes straight from `prd-drafted` to `plan-drafted`. A step whose PRD was skipped at pickup goes from `not-started` straight to `plan-drafted` with `prdPath: null`.
 
 Who updates the file, and when:
 
