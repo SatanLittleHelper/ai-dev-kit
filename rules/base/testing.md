@@ -32,6 +32,7 @@ For async dependencies, cover timeout and upstream failure when the code has beh
 - In mixed-stack repos, use a DOM environment only for browser suites; keep backend suites on Node.
 - Test descriptions use the user's communication language (default: Russian).
 - Cast mocks/fixtures as `unknown as Type`, never `as any`.
+- Playwright: to check that a disabled element ignores a click, use `locator.dispatchEvent('click')`, never `click({ force: true })` (`playwright/no-force-option`). `force` bypasses actionability checks; `dispatchEvent` sends the event directly and still proves the element does not react.
 
 ## Common Mistakes
 
@@ -42,3 +43,4 @@ For async dependencies, cover timeout and upstream failure when the code has beh
 | `expect(fn.mock.calls[0][0])` | Use the matching call matcher |
 | Logger assertion | Assert surrounding behavior |
 | `mockObject as any` | Use `mockObject as unknown as Type` |
+| Playwright `click({ force: true })` on a disabled element | Use `dispatchEvent('click')` |
