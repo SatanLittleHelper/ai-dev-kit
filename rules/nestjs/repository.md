@@ -20,6 +20,8 @@ This keeps the repository-layer params type structurally locked to the shared re
 
 **Repository method naming:** `get*` throws when missing, `find*` returns `null`/`undefined` when missing.
 
+**Data errors are thrown from the repository, not the service.** Every error caused by the state of the stored data — a row that is missing, an ownership/precondition check against a row, a unique/slot conflict, a row in a state the caller cannot use — is raised as a NestJS exception inside the repository method (`get*`, `assert*`, or a write method that detects the conflict). The service calls the method and does not re-check the result with `if (!row) throw …`, so the same data rule gives the same error from every caller. A service keeps only decisions that are business rules rather than data lookups (limits, state transitions, orchestration across several repositories or external calls).
+
 ## Known Gotchas
 
 ### Prisma: Optional Filters and `undefined`
@@ -39,3 +41,4 @@ This applies to Prisma specifically — verify the same guarantee before relying
 | Repository params type hand-duplicates fields from an existing shared request contract | Derive via `Omit<SharedRequest, 'fieldsOwnedElsewhere'> & { serverDerivedField }` |
 | `...(value ? { column: value } : {})` for an optional Prisma filter | Pass `{ column: value }` directly — Prisma ignores `undefined` |
 | Repeating the `txHost` constructor param + `client` getter in every repository | Extend the shared `PrismaTransactionalRepository` base class instead |
+| Service does `const row = await repo.find…(); if (!row) throw new NotFoundException(…)` | Add a `get*` method that throws from the repository; the service just awaits it |
