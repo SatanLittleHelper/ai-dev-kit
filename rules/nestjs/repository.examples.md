@@ -91,3 +91,35 @@ async findUsers(email: string | undefined) {
   return this.prisma.user.findMany({ where: { email } });
 }
 ```
+
+## Check and change in one conditional write
+
+```typescript
+// ❌ Read, check, then write: parallel requests all read attempts = 2 and all pass the limit
+async confirm(applicationId: number) {
+  const record = await this.repository.getByApplicationId(applicationId);
+  if (record.attempts >= MAX_ATTEMPTS) throw new HttpException('Limit reached', 429);
+  await this.externalApi.check(record.salt); // slow call
+  await this.repository.incrementAttempts(applicationId);
+}
+
+// ✅ The limit and the increment are one statement; the slow call runs only after it succeeded
+@Injectable()
+export class SignatureCodeRepository extends PrismaTransactionalRepository {
+  async reserveAttempt(applicationId: number): Promise<string> {
+    try {
+      const { salt } = await this.client.signatureCode.update({
+        where: { applicationId, attempts: { lt: MAX_ATTEMPTS } },
+        data: { attempts: { increment: 1 } },
+        select: { salt: true },
+      });
+
+      return salt;
+    } catch (err) {
+      if (!isPrismaError(err, PRISMA_RECORD_NOT_FOUND)) throw err;
+
+      throw await this.toReserveError(applicationId); // reads the row only to pick 400 / 429 / 409
+    }
+  }
+}
+```
