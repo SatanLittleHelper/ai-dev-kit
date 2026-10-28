@@ -38,6 +38,7 @@ Do not silently fall back to a weaker layer: covering a repository only through 
 - Never assert logger/`console` calls. Assert observable behavior: return value, resolution/rejection, thrown error, or calls that must or must not occur. If logging is the only effect, accept the weaker guard.
 - Apply the tautology check: delete a test if it would pass with the method replaced by `return mockResult` or with its logic hardcoded.
 - Reuse shared fixtures/mocks before creating new ones.
+- Test data and test values (seed rows, fixture literals, timeouts of a test config) are defined in the test file or in a test-support file next to it, as local named constants. Do not extract them into a `*.constants.ts` file — those are for production constants.
 - In mixed-stack repos, use a DOM environment only for browser suites; keep backend suites on Node.
 - Test descriptions use the user's communication language (default: Russian).
 - Cast mocks/fixtures as `unknown as Type`, never `as any`.
@@ -55,3 +56,4 @@ Do not silently fall back to a weaker layer: covering a repository only through 
 | Logger assertion | Assert surrounding behavior |
 | `mockObject as any` | Use `mockObject as unknown as Type` |
 | Playwright `click({ force: true })` on a disabled element | Use `dispatchEvent('click')` |
+| Seed/fixture values extracted to a `*.constants.ts` file | Keep them as local named constants in the test or test-support file |
