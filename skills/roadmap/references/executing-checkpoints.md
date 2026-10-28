@@ -2,7 +2,7 @@
 
 Drives one roadmap checkpoint from "find it" to "check it off": locate the roadmap, pick the first unfinished checkpoint, branch correctly, agree on an implementation mode, then close out (checkbox + cleanup) once done.
 
-**REQUIRED BACKGROUND:** `roadmap/SKILL.md` (file locations/naming used below, including the per-step `steps/<step-slug>/` folder). Implementation itself is delegated to `writing-prd`, `superpowers:writing-plans`, `superpowers:subagent-driven-development`/`superpowers:executing-plans`, or `codex-implement` — this reference sequences them, it doesn't replace them.
+**REQUIRED BACKGROUND:** `roadmap/SKILL.md` (file locations/naming used below, including the per-step `steps/<step-slug>/` folder). Implementation itself is delegated to `superpowers:writing-plans`, `superpowers:subagent-driven-development`/`superpowers:executing-plans`, or `codex-implement` — this reference sequences them, it doesn't replace them.
 
 Use this reference when the user names a specific checkpoint/task and asks to take/start it. For a generic "continue the roadmap" request that doesn't specify implementation vs. documentation, use `references/resuming-work.md` first — it decides whether this reference or `references/batch-plan-validate.md` applies.
 
@@ -37,14 +37,11 @@ Read the roadmap top to bottom and collect every unchecked `- [ ] <TICKET> <name
 
 ### 4. Agree on implementation mode
 
-If `docs/<slug>/roadmap-state.json` exists (`roadmap/SKILL.md` → `## State File`), read this checkpoint's entry first — its `status`, `prdPath`, and `specPath` tell you what's already there without needing to probe the filesystem.
+If `docs/<slug>/roadmap-state.json` exists (`roadmap/SKILL.md` → `## State File`), read this checkpoint's entry first — its `status` and `specPath` tell you what's already there without needing to probe the filesystem.
 
-Before writing code, confirm this checkpoint has its own step folder `docs/<slug>/steps/<step-slug>/` (`roadmap/SKILL.md` naming; derive `<step-slug>` from the checkpoint's own heading — ask the user if it's ambiguous, don't silently invent one) containing:
+Before writing code, confirm this checkpoint has its own step folder `docs/<slug>/steps/<step-slug>/` (`roadmap/SKILL.md` naming; derive `<step-slug>` from the checkpoint's own heading — ask the user if it's ambiguous, don't silently invent one) containing an implementation plan (`superpowers:writing-plans`) — write it if missing, using the step's design doc as input when one exists. Once written, if `roadmap-state.json` exists, set this checkpoint's `status` to `"plan-drafted"` and `planPath` to the new file's path.
 
-- a step-level PRD (`writing-prd`) — if missing, ask via `AskUserQuestion` whether to write it first or skip it (plan only); never skip silently. A skipped PRD leaves `prdPath: null` and the state goes straight to `plan-drafted`,
-- an implementation plan (`superpowers:writing-plans`) — write it after the PRD if missing. Once written, if `roadmap-state.json` exists, set this checkpoint's `status` to `"plan-drafted"` and `planPath` to the new file's path.
-
-A design doc in that folder (from `brainstorming`, written at roadmap-authoring time) is optional and only present if the step needed its own architectural decision — carry it forward as-is, don't regenerate it. Skip the PRD/plan requirement only if the user explicitly says the checkpoint is trivial enough to go straight to code.
+A design doc in that folder (from `brainstorming`, written at roadmap-authoring time) is optional and only present if the step needed its own architectural decision — carry it forward as-is, don't regenerate it. Skip the plan requirement only if the user explicitly says the checkpoint is trivial enough to go straight to code.
 
 Then ask **one** `AskUserQuestion` call to decide the method (never fold this into freeform prose):
 
@@ -60,9 +57,9 @@ Only after the implementation's own final verification step has passed:
 
 1. If `docs/<slug>/roadmap-state.json` exists, set this checkpoint's `status` to `"implemented"`.
 2. Edit the roadmap file: flip this checkpoint's `- [ ]` to `- [x]`. Touch only this line.
-3. Delete only the checkpoint's implementation plan file (`docs/<slug>/steps/<step-slug>/YYYY-MM-DD-<ticket>-<name>.md`) — it's a mechanical execution artifact, same as any other plan. Leave the step's PRD and design doc (if any) in that folder in place: like the roadmap itself, they're kept as permanent history, not deleted after implementation. If the plan was the only file in the step folder, delete the now-empty folder too.
+3. Delete only the checkpoint's implementation plan file (`docs/<slug>/steps/<step-slug>/YYYY-MM-DD-<ticket>-<name>.md`) — it's a mechanical execution artifact, same as any other plan. Leave the step's design doc (if any) in that folder in place: like the roadmap itself, they're kept as permanent history, not deleted after implementation. If the plan was the only file in the step folder, delete the now-empty folder too.
 4. If `roadmap-state.json` exists, set this checkpoint's `status` to `"closed"` and `planPath` to `null` (the plan file was just deleted in the previous step).
-5. If that was the **last** remaining `- [ ]` in the roadmap, also delete the roadmap file itself, and the `docs/<slug>/` folder if it's now empty (this removes any remaining step PRDs/design docs — and `roadmap-state.json` itself — along with it, same as deleting a fully-shipped roadmap always has).
+5. If that was the **last** remaining `- [ ]` in the roadmap, also delete the roadmap file itself, and the `docs/<slug>/` folder if it's now empty (this removes any remaining step design docs — and `roadmap-state.json` itself — along with it, same as deleting a fully-shipped roadmap always has).
 6. Do not `git add`/`git commit` any of this — commit only on explicit user request, same as everywhere else.
 7. Tell the user what got checked off and what got deleted.
 
@@ -75,5 +72,4 @@ Only after the implementation's own final verification step has passed:
 | Asking the implementation-mode question as free prose | Always a single `AskUserQuestion` call for the method |
 | Leaving a fully-checked roadmap file in place | Delete it (and the empty folder) once the last checkbox is ticked |
 | Committing the checkbox/deletion changes automatically | Never — explicit request only |
-| Starting implementation with no step-level PRD, only a plan, without asking | Offer to write the PRD first (`writing-prd`) or skip it via `AskUserQuestion` — skipping is the user's call, never assumed |
-| Deleting the whole `steps/<step-slug>/` folder (PRD + design included) on checkpoint close-out | Delete only the plan file — PRD/design stay as permanent history, same as the roadmap itself |
+| Deleting the whole `steps/<step-slug>/` folder (design included) on checkpoint close-out | Delete only the plan file — the design stays as permanent history, same as the roadmap itself |

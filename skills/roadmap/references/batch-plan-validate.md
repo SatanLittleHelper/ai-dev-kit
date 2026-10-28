@@ -4,7 +4,7 @@ Orchestrates `superpowers:writing-plans` / `superpowers:brainstorming` (or anoth
 
 Drafting and validation are decoupled: **Phase 1 always drafts the entire queue** (a full roadmap can be dozens of tasks), while **Phase 2 validates at most 3 tasks per invocation**. Progress across both phases is persisted in a **queue state file**, so the user can validate 3 tasks, go implement them, and re-invoke this reference later — it resumes exactly where it left off instead of re-drafting or re-validating anything.
 
-**REQUIRED BACKGROUND:** the underlying skills for each task are `writing-prd`, `superpowers:writing-plans`, and `superpowers:brainstorming` — this reference only adds the queue/phase orchestration around them. Storage/naming (the per-task `docs/<feature-slug>/steps/<step-slug>/` folder) is governed by `roadmap/SKILL.md` — read it before drafting anything. Read the project overrides for the underlying skills (`.claude/rules/skills/writing-plans.md`, `.claude/rules/skills/brainstorming.md`) if the current project has them.
+**REQUIRED BACKGROUND:** the underlying skills for each task are `superpowers:writing-plans` and `superpowers:brainstorming` — this reference only adds the queue/phase orchestration around them. Storage/naming (the per-task `docs/<feature-slug>/steps/<step-slug>/` folder) is governed by `roadmap/SKILL.md` — read it before drafting anything. Read the project overrides for the underlying skills (`.claude/rules/skills/writing-plans.md`, `.claude/rules/skills/brainstorming.md`) if the current project has them.
 
 Use this reference for a roadmap's remaining steps, or an explicit list of independent tasks. For a generic "continue the roadmap" request that doesn't specify documentation vs. implementation, use `references/resuming-work.md` first — it decides whether this reference or `references/executing-checkpoints.md` applies.
 
@@ -18,14 +18,14 @@ Use this reference for a roadmap's remaining steps, or an explicit list of indep
 
 Ask the user (if not already given) which of these the task queue comes from:
 
-1. **Roadmap file** — parse top-level unchecked `- [ ]` checklist items as queue entries; task id = the item's label/number (e.g. `B4`, `C`); step-slug = the slug for that task's `docs/<feature-slug>/steps/<step-slug>/` folder (`roadmap/SKILL.md`). If the step folder already has a `-design.md` or `-prd.md`, pass it as context to the drafting skill instead of redrafting it.
+1. **Roadmap file** — parse top-level unchecked `- [ ]` checklist items as queue entries; task id = the item's label/number (e.g. `B4`, `C`); step-slug = the slug for that task's `docs/<feature-slug>/steps/<step-slug>/` folder (`roadmap/SKILL.md`). If the step folder already has a `-design.md`, pass it as context to the drafting skill instead of redrafting it.
 2. **Explicit list** — the user names the tasks directly in the request.
 
-Every task drafts a step-level PRD (`writing-prd`) first, unless one already exists in its step folder. Then confirm which of these three per-task drafting modes to use — the user may override per task:
+Confirm which of these three per-task drafting modes to use — the user may override per task:
 
 - **`writing-plans`** (plan directly) — default when an approved design already exists or the step needs no architectural decision.
 - **`brainstorming` → `writing-plans`** (design, then auto-chain into a plan once approved) — default for any task without settled architecture, when the plan is wanted now.
-- **`brainstorming`, design-only** (design, no follow-up plan pass) — use when implementation plans will be written later, just-in-time, per step (see `references/executing-checkpoints.md`). This is the mode `roadmap/SKILL.md` → `## Workflow Recipe` uses for Phase 2 of the roadmap workflow: validate every step's PRD+spec now, write plans later.
+- **`brainstorming`, design-only** (design, no follow-up plan pass) — use when implementation plans will be written later, just-in-time, per step (see `references/executing-checkpoints.md`). This is the mode `roadmap/SKILL.md` → `## Workflow Recipe` uses for Phase 2 of the roadmap workflow: validate every step's spec now, write plans later.
 
 The queue state file's `drafting skill` column records which of the three was chosen per task: `writing-plans`, `brainstorming`, or `brainstorming (design-only)`.
 
@@ -43,11 +43,11 @@ Default drafting skill: writing-plans
 
 ## Tasks
 
-| id | title | step folder | drafting skill | prd path | draft path | status | notes |
-|----|-------|-------------|-----------------|----------|------------|--------|-------|
-| B4 | ... | docs/feature/steps/b4-name/ | writing-plans | 2026-08-13-b4-name-prd.md | 2026-08-13-b4-feature.md | validated | |
-| C  | ... | docs/feature/steps/c-name/ | brainstorming  | 2026-08-13-c-name-prd.md | 2026-08-13-c-name-design.md | ready-for-validation | |
-| D  | ... | docs/feature/steps/d-name/ | writing-plans | (none) | (none) | blocked | needs decision on X |
+| id | title | step folder | drafting skill | draft path | status | notes |
+|----|-------|-------------|-----------------|------------|--------|-------|
+| B4 | ... | docs/feature/steps/b4-name/ | writing-plans | 2026-08-13-b4-feature.md | validated | |
+| C  | ... | docs/feature/steps/c-name/ | brainstorming  | 2026-08-13-c-name-design.md | ready-for-validation | |
+| D  | ... | docs/feature/steps/d-name/ | writing-plans | (none) | blocked | needs decision on X |
 ```
 
 **Statuses** (in order): `queued` → `drafted` (has assumptions, needs Phase 1.5) → `ready-for-validation` (Phase 1.5 done or no open questions) → `validated` (Phase 2 approved). `blocked` is a terminal state for tasks that couldn't be drafted at all (see Phase 1) until the blocker is resolved.
@@ -84,11 +84,11 @@ digraph phases {
 
 ### Phase 1 — Draft all (outside native Plan Mode)
 
-For each queue task still `queued` or `drafted`, in order: if the task's step folder has no PRD yet, run `writing-prd` first, inline, saving to `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<step-slug>-prd.md`; then run the chosen drafting skill **inline** (not as a subagent — you need to intercept its blocking-question points), using its normal research subagents (`Explore`/`Plan`) as usual. Save the draft into the same step folder (`roadmap/SKILL.md` naming: `writing-plans` → `YYYY-MM-DD-<ticket>-<name>.md`; `brainstorming` → `YYYY-MM-DD-<step-slug>-design.md`) via plain `Write` — do not enter native Plan Mode for this phase, since Plan Mode would force `ExitPlanMode`/`AskUserQuestion` at the end of every turn and you need to move through the whole queue in one pass.
+For each queue task still `queued` or `drafted`, in order: run the chosen drafting skill **inline** (not as a subagent — you need to intercept its blocking-question points), using its normal research subagents (`Explore`/`Plan`) as usual. Save the draft into the same step folder (`roadmap/SKILL.md` naming: `writing-plans` → `YYYY-MM-DD-<ticket>-<name>.md`; `brainstorming` → `YYYY-MM-DD-<step-slug>-design.md`) via plain `Write` — do not enter native Plan Mode for this phase, since Plan Mode would force `ExitPlanMode`/`AskUserQuestion` at the end of every turn and you need to move through the whole queue in one pass.
 
-**Design-only mode:** if the task's drafting mode is `brainstorming (design-only)`, stop after the design doc is drafted — do not run the auto-chain `writing-plans` pass that the plain `brainstorming` mode runs. The task is ready for Phase 2 validation with just the PRD + design.
+**Design-only mode:** if the task's drafting mode is `brainstorming (design-only)`, stop after the design doc is drafted — do not run the auto-chain `writing-plans` pass that the plain `brainstorming` mode runs. The task is ready for Phase 2 validation with just the design (which carries the step's requirements and success criteria).
 
-If the roadmap this queue was built from has a `docs/<feature-slug>/roadmap-state.json` (`roadmap/SKILL.md` → `## State File`), update that task's entry after each artifact is drafted: PRD written → `status: "prd-drafted"`, `prdPath` set; design or plan drafted → `status: "spec-drafted"` + `specPath`, or `status: "plan-drafted"` + `planPath` (for `writing-plans` chosen directly); fill `stepFolder` if it was empty. This is in addition to, not instead of, the `tmp/reports/batch-plan-queue.md` update below — the two files track different things (this queue's own progress vs. the roadmap's overall progress).
+If the roadmap this queue was built from has a `docs/<feature-slug>/roadmap-state.json` (`roadmap/SKILL.md` → `## State File`), update that task's entry after each artifact is drafted: design or plan drafted → `status: "spec-drafted"` + `specPath`, or `status: "plan-drafted"` + `planPath` (for `writing-plans` chosen directly); fill `stepFolder` if it was empty. This is in addition to, not instead of, the `tmp/reports/batch-plan-queue.md` update below — the two files track different things (this queue's own progress vs. the roadmap's overall progress).
 
 Whenever the drafting skill would normally stop and ask the user a blocking question:
 
@@ -98,7 +98,7 @@ Whenever the drafting skill would normally stop and ask the user a blocking ques
 
 If a task can't be drafted at all without an answer (a hard blocker, not an assumption-able gap): log it as `BLOCKING` in the same file and skip to the next task — it gets raised first in Phase 1.5.
 
-**After each task finishes drafting**, update its row in the queue state file: set `step folder`, `prd path`, and `draft path`, and set `status` to `ready-for-validation` (no open questions) or `drafted` (has `[ASSUMPTION]` markers pending Phase 1.5). If the task is a hard blocker (per the `BLOCKING` rule above), set `status` to `blocked` and fill `notes` with a one-line reason.
+**After each task finishes drafting**, update its row in the queue state file: set `step folder` and `draft path`, and set `status` to `ready-for-validation` (no open questions) or `drafted` (has `[ASSUMPTION]` markers pending Phase 1.5). If the task is a hard blocker (per the `BLOCKING` rule above), set `status` to `blocked` and fill `notes` with a one-line reason.
 
 Phase 1 always covers the entire queue in one pass — there is no cap on how many tasks get drafted. The 3-task cap applies only to Phase 2 (see below).
 
@@ -152,5 +152,4 @@ If the batch emptied the queue (no `ready-for-validation` tasks left and none `b
 - **Editing the draft's real target path during a Phase 2 revision round instead of the Plan Mode plan file.** Triggers a permission prompt on every single revision — apply Plannotator feedback to the plan file only, and write to the target path once, on final approval.
 - **Forgetting to update the state file after a status change.** Resumability depends on the file reflecting reality at every phase transition, not just at the end of a run.
 - **Silently adding or dropping newly-appeared roadmap tasks on resume.** Always ask via `AskUserQuestion` when the source has unchecked items not yet in the state file.
-- **Skipping the step-level PRD and drafting a plan/design straight away.** `roadmap/SKILL.md` requires a PRD in every task's `steps/<step-slug>/` folder — write it first with `writing-prd` unless one already exists there.
-- **Saving drafts to the project root instead of the task's `steps/<step-slug>/` folder.** All three of a task's docs (PRD, design, plan) live together under `docs/<feature-slug>/steps/<step-slug>/`, not scattered in the repo root.
+- **Saving drafts to the project root instead of the task's `steps/<step-slug>/` folder.** Both of a task's docs (design, plan) live together under `docs/<feature-slug>/steps/<step-slug>/`, not scattered in the repo root.
