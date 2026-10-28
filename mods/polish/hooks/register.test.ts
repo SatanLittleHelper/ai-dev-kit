@@ -3,8 +3,10 @@ import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 
 // What the engine itself answers beneath the plugin in every test; toasts are kept for the assertions.
-function engine(on: On): string[] {
+function engine(on: On, sessionId: () => string = () => 'session-a'): string[] {
   const toasts: string[] = []
+
+  on('session.id', () => ({ value: sessionId() }))
 
   on('ui.toast', ($, e) => {
     toasts.push(JSON.stringify(e))
@@ -74,6 +76,36 @@ test('/polish runs /simplify first and refuses a second start', async ($, on) =>
   expect(first.text).toContain('Запущено')
   expect(second.text).toContain('уже выполняется')
   expect(ran).toEqual(['simplify'])
+})
+
+test('a chain running in one session does not block /polish in another', async ($, on) => {
+  let sessionId = 'session-a'
+  const toasts = engine(on, () => sessionId)
+  const ran: string[] = []
+
+  on('agent.list', () => ({ value: [] }))
+  on('command.run', { command: 'simplify' }, () => {
+    ran.push(sessionId)
+
+    return { text: '' }
+  })
+
+  const clock = mock.clock(on)
+  const first = await $.command.run({ command: 'polish', args: '' })
+  await clock.settle()
+
+  sessionId = 'session-b'
+  const other = await $.command.run({ command: 'polish', args: '' })
+  await clock.settle()
+
+  sessionId = 'session-a'
+  const again = await $.command.run({ command: 'polish', args: '' })
+
+  expect(toasts).toEqual([])
+  expect(first.text).toContain('Запущено')
+  expect(other.text).toContain('Запущено')
+  expect(again.text).toContain('уже выполняется')
+  expect(ran).toEqual(['session-a', 'session-b'])
 })
 
 test('the review waits for the simplify agents and the report is written once the fixes after the review are done', async ($, on) => {
