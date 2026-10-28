@@ -26,14 +26,14 @@ For every queue row with `status: blocked`, surface its `notes` reason and ask t
 
 ### 4. Classify every unchecked step
 
-Using `roadmap-state.json` status (`roadmap/SKILL.md` order: `not-started → prd-drafted → spec-drafted → spec-validated → plan-drafted → implemented → closed`):
+Using `roadmap-state.json` status (`roadmap/SKILL.md` order: `not-started → spec-drafted → spec-validated → plan-drafted → implemented → closed`):
 
-- **Doc-complete** — `spec-validated` or later. PRD + design both exist and are validated; ready for a plan.
+- **Doc-complete** — `spec-validated` or later. The design exists and is validated; ready for a plan.
 - **Doc-in-progress** — anything before `spec-validated` (including `not-started`).
 
 ### 5. Propose, don't assume
 
-- **No step is doc-complete yet** → tell the user documentation is still open on N steps, then `AskUserQuestion`: keep drafting/validating PRDs+designs in batch (`references/batch-plan-validate.md`) vs. take a single step straight into work (`references/executing-checkpoints.md`). The second option is always available, even on a brand-new roadmap: `references/executing-checkpoints.md` step 4 writes the missing step PRD and plan itself, and the step's design doc is optional there.
+- **No step is doc-complete yet** → tell the user documentation is still open on N steps, then `AskUserQuestion`: keep drafting/validating designs in batch (`references/batch-plan-validate.md`) vs. take a single step straight into work (`references/executing-checkpoints.md`). The second option is always available, even on a brand-new roadmap: `references/executing-checkpoints.md` step 4 writes the missing step plan itself, and the step's design doc is optional there.
 - **Some doc-complete, some not** → report both counts, then `AskUserQuestion`: continue documentation on the remaining steps (`references/batch-plan-validate.md`) vs. start implementation on a step (`references/executing-checkpoints.md`) — a doc-complete one, or any other ready step the user prefers to take without waiting for its docs.
 - **Every remaining step is doc-complete** → for the next doc-complete step, `AskUserQuestion`: write the implementation plan only (`rules/skills/writing-plans.md`, standalone) vs. write the plan and implement it (`references/executing-checkpoints.md`, which writes the plan itself as part of its own flow — don't pre-write one before handing off, that would duplicate step 4 of that reference).
 

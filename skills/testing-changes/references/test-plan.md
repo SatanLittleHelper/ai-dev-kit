@@ -8,10 +8,10 @@
 ## 2. Find the task documents
 
 1. Ticket id: the first match of `[A-Z]+-[0-9]+` in the branch name (`git branch --show-current`).
-2. Roadmap step: `docs/*/roadmap-state.json` and step folders `docs/*/steps/*/` that mention the ticket. Read the step PRD, design and plan there.
+2. Roadmap step: `docs/*/roadmap-state.json` and step folders `docs/*/steps/*/` that mention the ticket. Read the step design and plan there.
 3. Otherwise search `docs/` for the ticket id.
 
-No documents is fine: say so in the plan. Take expected results from the documents' requirements and success criteria. Where a document and the code disagree, record it under "Open questions" in the plan instead of choosing silently.
+No documents is fine: say so in the plan. Take expected results from the design's requirements and success criteria and the plan's checks. Where a document and the code disagree, record it under "Open questions" in the plan instead of choosing silently.
 
 ## 3. Turn changes into tests
 
