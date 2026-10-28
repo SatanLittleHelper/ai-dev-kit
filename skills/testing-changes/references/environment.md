@@ -50,7 +50,7 @@ Only when the plan has `web`, `max-bot` or `max-miniapp` tests.
 
 ## Start the apps
 
-Start every app from `testing.apps` (or the discovered `start:*` list): the whole monorepo, including apps the tests do not touch. The test plan lists them, and approving the plan approves the list; never ask which ones to start. Per app:
+Start every app from `testing.apps` (or the discovered `start:*` list): the whole monorepo, including apps the tests do not touch. The test plan lists them; never ask which ones to start. Per app:
 
 1. Readiness before start: if the check already passes, the app belongs to someone else. Record it with `"owned": false` and do not start it.
 2. Start it detached in its own process group, output to a log (`mkdir -p tmp/logs` once):

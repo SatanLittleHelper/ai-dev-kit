@@ -45,11 +45,9 @@ Match each changed path against `testing.surfaces` (glob → kind). Without conf
 | `max-bot`, `max-miniapp` | Playwright on the web version of Max | never a desktop or mobile client |
 | `e2e` | the project's own e2e command | an existing automated spec that covers a changed behavior |
 
-## 5. Write the plan (Plan Mode)
+## 5. Write the plan
 
-1. `EnterPlanMode`.
-2. Write the plan in Russian with the template below. Every test has preconditions and data, numbered steps, an expected result, side effects and cleanup. Secrets appear as variable names, never values.
-3. `ExitPlanMode` (the user reviews it in Plannotator). Changes requested: revise and call `ExitPlanMode` again. Tests start only after approval.
+Write the plan in Russian with the template below. Every test has preconditions and data, numbered steps, an expected result, side effects and cleanup. Secrets appear as variable names, never values. The plan is not sent for approval: save it (§ 6) and go on to Phase 3.
 
 ```markdown
 # Тест-план: <тикет> <название>
@@ -83,7 +81,7 @@ Match each changed path against `testing.surfaces` (glob → kind). Without conf
 <что и почему>
 ```
 
-## 6. Save after approval
+## 6. Save the plan
 
 - Task belongs to a roadmap step: `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<ticket>-test-plan.md`.
 - Otherwise: `tmp/test-plans/YYYY-MM-DD-<branch>-test-plan.md`.
