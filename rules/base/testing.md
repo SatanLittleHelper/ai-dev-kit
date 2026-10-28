@@ -9,7 +9,10 @@ These rules define what to test and how to assert. The execution order is in `ru
 | Services with branching/orchestration logic | **Yes** |
 | Guards, validation, fallback and error-handling branches | **Yes** |
 | UI components | **No** — cover delegated behavior through the service/store layer. Exception: a shared UI-kit library with Storybook — cover component behavior with Playwright e2e over Storybook stories (stories are the fixtures, specs live in a separate `*-e2e` project) |
-| Repositories/DAOs (`*.repository.ts`), including ones with a guard or branch | **No** — cover through the calling service |
+| Markdown files (rules, skills, docs, plans, roadmaps) | **No** — no tests and no grep-style checks; verify by reading the diff |
+| Repositories/DAOs with query logic (filters, `include`/joins, raw SQL, transactions, conditional writes, branches) | **Yes, integration** — a test against a real database, never a mocked client; required for full TDD |
+| Thin repositories (plain create/read/update/delete wrappers with no logic of their own) | **No** — cover through the calling service |
+| Application pages and user flows | **Yes, e2e** — a fast e2e with a mocked API for page behavior; a full-stack e2e only for cross-system scenarios |
 | Thin outbound API clients | **No** — test how the caller uses the result |
 | Pure row/payload → domain mappers (only field assignment/`?? default`) | **No** |
 
@@ -22,6 +25,12 @@ Skipped layers must still be covered indirectly where their behavior affects a t
 Cover the happy path and every meaningful failure, validation, fallback, timeout, upstream-error, non-`Error` rejection, or unexpected-result branch present in the code. A `try/catch`, null-check, or conditional early return normally means at least two cases.
 
 For async dependencies, cover timeout and upstream failure when the code has behavior for them. Do not add tests for branches the code does not implement.
+
+## Missing Test Infrastructure
+
+If the layer a change needs has no test infrastructure in the project (no integration target for a repository with query logic, no fast e2e for a page, no scoped run command), stop. Say which layer is blocked, state that full TDD is impossible for it without the infrastructure, and propose a preparatory task that adds it.
+
+Do not silently fall back to a weaker layer: covering a repository only through its service with a mocked client, or skipping the page test. Fall back only when the user explicitly chooses it, and record that choice in the plan.
 
 ## Assertions
 
@@ -38,7 +47,9 @@ For async dependencies, cover timeout and upstream failure when the code has beh
 
 | Mistake | Fix |
 |---|---|
-| Spec for a component, repository, thin client, or pure mapper | Skip it; cover the caller where applicable. A UI-kit library with Storybook is the exception: its components get e2e specs over stories (see Scope) |
+| Spec for a component, thin repository, thin client, or pure mapper | Skip it; cover the caller where applicable. A UI-kit library with Storybook is the exception: its components get e2e specs over stories (see Scope) |
+| Tests or grep-style checks for a Markdown edit | Skip them; read the diff |
+| Repository with query logic covered only through a service test with a mocked client | Integration test against a real database; if the project has none, stop and insist on adding it |
 | Happy path only | Add meaningful negative/validation/failure branches |
 | `expect(fn.mock.calls[0][0])` | Use the matching call matcher |
 | Logger assertion | Assert surrounding behavior |
