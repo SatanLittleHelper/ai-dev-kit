@@ -8,6 +8,10 @@ Use this reference for a generic "продолжим роадмап"-style reque
 
 ## Process
 
+### 0. Fresh main and PR sync
+
+Run `references/sync-and-isolate.md` sections A and B first. All state below is read from the fresh default branch plus the in-flight PR overlay; steps in flight in an open PR are not offered as next work.
+
 ### 1. Find the roadmap
 
 Same rule as `references/executing-checkpoints.md` step 1: named feature → `docs/<slug>/*-roadmap.md`; otherwise glob `docs/*/*-roadmap.md`; zero matches → report and stop; multiple matches → `AskUserQuestion`, one option per roadmap.

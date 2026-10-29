@@ -26,6 +26,9 @@ This skill is the single trigger for everything roadmap-related. It owns storage
 | Generic "let's continue the roadmap" — unclear whether that means more documentation or starting implementation | `references/resuming-work.md` |
 | User names a specific checkpoint/task and asks to take/start it | `references/executing-checkpoints.md` |
 | Batch-drafting and validating several steps' specs/plans (from this roadmap, or an explicit list of tasks) | `references/batch-plan-validate.md` |
+| Fresh default branch, open-PR state overlay, hiding other roadmaps in the branch (shared by all of the above) | `references/sync-and-isolate.md` |
+
+**Before any of the above** (except writing a brand-new roadmap), run `references/sync-and-isolate.md` sections A and B: fetch, check what changed in the default branch (whether you work from it or from a roadmap-related branch) and read roadmap data accordingly, then overlay the state of roadmap work already in open PRs. Section C of the same file (strip other roadmaps from the working tree) runs once a checkpoint is picked and its branch created.
 
 Read only the reference the situation calls for — they all assume this file's storage/naming/state-file conventions as shared background, so don't re-derive them per reference.
 
