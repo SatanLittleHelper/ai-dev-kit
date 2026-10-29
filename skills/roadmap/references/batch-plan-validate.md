@@ -54,6 +54,8 @@ Default drafting skill: writing-plans
 
 ### On every invocation, before building a queue
 
+Run `references/sync-and-isolate.md` sections A and B first: roadmap steps are read from the fresh default branch, and steps already in flight in an open PR are left out of the queue.
+
 1. Check whether `tmp/reports/batch-plan-queue.md` already exists.
 2. **If it doesn't exist** — build a fresh queue as described in Input, write the state file with every task as `queued`, then proceed to Phase 1.
 3. **If it exists and its `Source` matches the current request** (same roadmap file, or same explicit list) — this is a resume. Do not rebuild the queue or re-run Phase 1/1.5 for tasks already `ready-for-validation` or `validated`. Reconcile new tasks:
