@@ -319,6 +319,35 @@ test('the annotations on the simplify report are fixed before the review starts'
   expect(ran).toEqual(['review'])
 })
 
+test('simplify with nothing fixed or skipped opens no report and goes straight to the review', async ($, on) => {
+  engine(on)
+  const clock = mock.clock(on)
+  const ran: string[] = []
+  const written: string[] = []
+
+  on('agent.list', () => ({ value: [] }))
+  on('command.run', { command: 'simplify' }, () => ({ text: '' }))
+  on('command.run', { command: 'superpowers:requesting-code-review' }, () => {
+    ran.push('review')
+
+    return { text: '' }
+  })
+  on('fs.write', ($, e) => {
+    written.push(e.text)
+
+    return { value: undefined }
+  })
+
+  await $.command.run({ command: 'polish', args: '' })
+  await clock.settle()
+  await $.turn.start({ text: '/simplify', turnId: 't1' })
+  await $.turn.complete(completion('t1', 'Nothing to simplify.\n\n## Polish: fixed\n- none\n\n## Polish: skipped\n- none'))
+  await clock.advance(2000)
+
+  expect(written).toEqual([])
+  expect(ran).toEqual(['review'])
+})
+
 test('an empty Plannotator review sends nothing to the model', async ($, on) => {
   engine(on)
   const clock = mock.clock(on)
