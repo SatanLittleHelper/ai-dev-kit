@@ -34,6 +34,20 @@ The superpowers tooling matches some plan markup by literal English text, so the
 
 Everything else (plan title, goal, architecture, task and step descriptions, prose) is Russian.
 
+## Test part of every task
+
+For every test-worthy task, build the task around its tests instead of appending them. Each such task states:
+
+- **Test first:** a "write the failing test" step precedes the implementation step, with the expected failure reason, so the run proves the test fails for the right reason and not because of a typo.
+- **Layer and file:** the layer from `rules/base/test-execution-policy.md` → "TDD workflow", the spec file path, and the `describe` name.
+- **Case list:** every case spelled out: the happy path, each `try/catch` branch, null check and early return, upstream error, timeout, non-`Error` rejection. Each case has its input and the expected observable behavior. Cases deliberately left uncovered are named with the reason.
+- **Data and mocks:** which shared fixtures are reused and from where, what is mocked and why.
+- **Loop command:** the scoped command for the file; the full build, type-check, lint, and whole-suite pass stays a single final step.
+- **Tautology check:** for each test, why it would fail if the implementation were replaced with `return mockResult`.
+- **Missing infrastructure:** if the layer has none, the task starts with adding it, or the plan stops and says so (`rules/base/testing.md` → "Missing Test Infrastructure"). The test is never dropped.
+
+A plan for Markdown-only changes has no test steps: it lists each edit as before/after.
+
 ## Common Mistakes
 
 | Mistake | Fix |
@@ -45,3 +59,6 @@ Everything else (plan title, goal, architecture, task and step descriptions, pro
 | Commit step in the plan | Remove it |
 | Writing the plan in English (or the request's language) | Write it in Russian — the plan document itself, not just trigger phrases |
 | Translating the `Task N` heading ("Задача 1") | Keep `### Task N: <русское название>` — `task-brief` parses the English word |
+| Tests as one line at the end of a task | Test-first step with layer, file, case list, mocks, loop command, and expected failure reason |
+| A plan task for a layer with no test infrastructure that just omits the test | Start the task with adding the infrastructure, or stop and report it |
+| Test or grep-check steps in a plan that only edits Markdown | List the edits as before/after; no test steps |

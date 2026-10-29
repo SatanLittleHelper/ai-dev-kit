@@ -8,10 +8,10 @@
 ## 2. Find the task documents
 
 1. Ticket id: the first match of `[A-Z]+-[0-9]+` in the branch name (`git branch --show-current`).
-2. Roadmap step: `docs/*/roadmap-state.json` and step folders `docs/*/steps/*/` that mention the ticket. Read the step PRD, design and plan there.
+2. Roadmap step: `docs/*/roadmap-state.json` and step folders `docs/*/steps/*/` that mention the ticket. Read the step design and plan there.
 3. Otherwise search `docs/` for the ticket id.
 
-No documents is fine: say so in the plan. Take expected results from the documents' requirements and success criteria. Where a document and the code disagree, record it under "Open questions" in the plan instead of choosing silently.
+No documents is fine: say so in the plan. Take expected results from the design's requirements and success criteria and the plan's checks. Where a document and the code disagree, record it under "Open questions" in the plan instead of choosing silently.
 
 ## 3. Turn changes into tests
 
@@ -45,11 +45,9 @@ Match each changed path against `testing.surfaces` (glob → kind). Without conf
 | `max-bot`, `max-miniapp` | Playwright on the web version of Max | never a desktop or mobile client |
 | `e2e` | the project's own e2e command | an existing automated spec that covers a changed behavior |
 
-## 5. Write the plan (Plan Mode)
+## 5. Write the plan
 
-1. `EnterPlanMode`.
-2. Write the plan in Russian with the template below. Every test has preconditions and data, numbered steps, an expected result, side effects and cleanup. Secrets appear as variable names, never values.
-3. `ExitPlanMode` (the user reviews it in Plannotator). Changes requested: revise and call `ExitPlanMode` again. Tests start only after approval.
+Write the plan in Russian with the template below. Every test has preconditions and data, numbered steps, an expected result, side effects and cleanup. Secrets appear as variable names, never values. The plan is not sent for approval: save it (§ 6) and go on to Phase 3.
 
 ```markdown
 # Тест-план: <тикет> <название>
@@ -83,7 +81,7 @@ Match each changed path against `testing.surfaces` (glob → kind). Without conf
 <что и почему>
 ```
 
-## 6. Save after approval
+## 6. Save the plan
 
 - Task belongs to a roadmap step: `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<ticket>-test-plan.md`.
 - Otherwise: `tmp/test-plans/YYYY-MM-DD-<branch>-test-plan.md`.

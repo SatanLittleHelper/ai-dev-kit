@@ -62,7 +62,7 @@ End your final message with exactly two sections, in this order:
 ## Polish: skipped
 - <file:line> — <the finding> — <why it was skipped>
 
-After every item of the skipped list add a fenced code block with the current code (at most 8 lines) and, when you know the change, a second fenced block labelled "Proposed:" with the code you would write. If nothing was skipped, write the single line "- none" under "## Polish: skipped". The user reads these as a report, so write the descriptions in Russian.`
+After every item of the skipped list add a fenced code block with the current code (at most 8 lines) and, when you know the change, a second fenced block labelled "Proposed:" with the code you would write. If nothing was fixed, write the single line "- none" under "## Polish: fixed"; if nothing was skipped, write the single line "- none" under "## Polish: skipped". The user reads these as a report, so write the descriptions in Russian.`
 
 const NOT_REPORTED_INSTRUCTION = `## Polish: candidates you did not report (added by the polish mod)
 After your report add a section "## ${SECTION_NOT_REPORTED}": the candidate issues you examined but left out of the main report (low confidence, out of scope for this level, or covered elsewhere). One item per line as "- <file:line> — <suspected issue> — <why it was not reported>", each followed by a fenced code block with the relevant code (at most 8 lines). If there are none, write the single line "- none". Write the descriptions in Russian.`
@@ -108,6 +108,11 @@ function removeSection(text: string, title: string): string {
 
 function capChars(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max)}\n- … (список обрезан)`
+}
+
+// True for a list the model left empty on purpose ("- none"); a failed extraction is not empty.
+function isNoneList(text: string): boolean {
+  return /^-?\s*none\.?$/i.test(text.trim())
 }
 
 function buildSimplifyReport(fixedText: string, skippedText: string): string {
@@ -259,7 +264,19 @@ async function applyFeedback($: EngineInterface, from: Step, to: Step, feedback:
 
 // The simplify report: no annotations -> straight to the review, otherwise the fixes first.
 async function presentSimplifyReport($: EngineInterface): Promise<void> {
-  const feedback = await showReport($, buildSimplifyReport(await read($, atom({ plugin: 'polish', key: 'fixed', id: await $.session.id() } as const, '')), await read($, atom({ plugin: 'polish', key: 'skipped', id: await $.session.id() } as const, ''))))
+  const fixedText = await read($, atom({ plugin: 'polish', key: 'fixed', id: await $.session.id() } as const, ''))
+  const skippedText = await read($, atom({ plugin: 'polish', key: 'skipped', id: await $.session.id() } as const, ''))
+
+  // Nothing to simplify: there is nothing to report, so the review starts right away.
+  if (isNoneList(fixedText) && isNoneList(skippedText)) {
+    if (await claim($, 'simplify-report', 'review')) {
+      await runReview($)
+    }
+
+    return
+  }
+
+  const feedback = await showReport($, buildSimplifyReport(fixedText, skippedText))
 
   if ((await read($, atom({ plugin: 'polish', key: 'step', id: await $.session.id() } as const, 'idle' as Step))) !== 'simplify-report') {
     return

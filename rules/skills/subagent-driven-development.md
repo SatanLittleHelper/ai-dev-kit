@@ -7,7 +7,7 @@
 ## Rules
 
 - **Native Plan Mode is not required** for this workflow — go straight to reading the plan and delegating tasks. Don't enable Plan Mode solely to use this workflow, unless the user or another skill separately requires it.
-- **Before delegating, read the project's own durable context** — its memory file, a fast codebase index (e.g. via `codebase-domain-map`), the target subagent's role definition, and the rules relevant to the task's scope. The dispatching agent does this itself; a subagent doesn't read these on its own.
+- **Before delegating, read the project's own durable context** — its memory file, the target subagent's role definition, and the rules relevant to the task's scope. The dispatching agent does this itself; a subagent doesn't read these on its own.
 - **Pass a full context packet explicitly in each subagent's prompt:** goal, scope, interfaces, applicable constraints (including which stack-convention rules to apply — a subagent doesn't discover rules from a bare task description), the chosen workflow mode, verification policy, and readiness criteria.
 - **Default to a mini/cheap model** for implementation and review subagents, unless the user specifies a different one.
 - **Implementer subagents never commit** — explicitly forbid `git commit` in the prompt; changes stay uncommitted (see `rules/base/git-and-commits.md`).
