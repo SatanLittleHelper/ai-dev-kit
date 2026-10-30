@@ -12,7 +12,7 @@ SUBMODULE_PATH=".claude/ai-dev-kit"
 IMPORT_LINE="@${SUBMODULE_PATH}/rules/RULES.md"
 OUR_SKILLS=(roadmap scaffolding-nestjs-app update-ai-dev-kit splitting-pr testing-changes)
 # Mods from mods/ (listed in .claude-plugin/marketplace.json) enabled in the project's settings.json.
-OUR_MODS=(polish)
+OUR_MODS=(polish pr-flow)
 
 log() { echo "-- $*"; }
 die() { echo "Error: $*" >&2; exit 1; }
