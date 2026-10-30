@@ -90,8 +90,8 @@ On-demand файлы отдельно импортировать не нужно
 `rules/nestjs/index.md` и `rules/angular/index.md` начинаются с «REQUIRED SUB-SKILL: invoke `nestjs-best-practices`/`angular-best-practices` первым» — это не наши скиллы, они не входят в этот репозиторий и не ставятся вместе с ним. Без них личные конвенции применяются поверх пустоты: правило говорит «сначала вызови X», а X в проекте не установлен. Ставить их в проект отдельно:
 
 ```bash
-npx skills add alfredoperez/angular-best-practices --skill angular-best-practices
-npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices
+npx skills add alfredoperez/angular-best-practices --skill angular-best-practices -a claude-code
+npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices -a claude-code
 ```
 
 Без установки эти правила не откажут — по `rules/orchestrator.md` отсутствующий скилл просто пропускается молча, — но тогда `rules/angular/`/`rules/nestjs/` реально дают только личный, более узкий слой конвенций, без базового общефреймворкового пласта, который эти best-practices скиллы должны были закрыть.
@@ -127,7 +127,7 @@ curl -fsSL https://raw.githubusercontent.com/SatanLittleHelper/ai-dev-kit/main/s
 **Скиллы.** Живут в `skills/<name>`, но `--skill` берёт имя скилла (значение `name:` в его `SKILL.md`, совпадает с именем папки), а не путь:
 
 ```bash
-npx skills add SatanLittleHelper/ai-dev-kit --skill roadmap
+npx skills add SatanLittleHelper/ai-dev-kit --skill roadmap -a claude-code
 ```
 
 Обновление — скилл `update-ai-dev-kit` («обнови скиллы» / «обнови правила» / «обнови кит»): обновляет правила, скиллы и моды и доустанавливает новые скиллы и моды из репозитория. Голый `npx skills update` обновляет только уже установленные скиллы и новых не добавляет. Пин версий — в `skills-lock.json` проекта.

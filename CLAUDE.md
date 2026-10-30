@@ -35,7 +35,7 @@ bash .claude/ai-dev-kit/rules/build-agents-md.sh
 
 Install or update a single skill for local testing without the full setup flow:
 ```bash
-npx skills add SatanLittleHelper/ai-dev-kit --skill <name>
+npx skills add SatanLittleHelper/ai-dev-kit --skill <name> -a claude-code
 npx skills update
 ```
 
