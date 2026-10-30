@@ -13,9 +13,15 @@
 
 Detect stacks from the requested plan, not the repository's overall technology list. Read relevant rules before presenting tasks. If a referenced local rule is unavailable, continue with the best-practices skill and do not treat it as a blocker. Enter native Plan Mode before writing; after preparing the plan, use the standard `ExitPlanMode` review and save only after approval.
 
+## Precondition: approved test plan (Stage B)
+
+This file is Stage B of two-stage planning; Stage A is `rules/skills/writing-test-plans.md`. For any task with a test-worthy layer, an approved test plan must exist before drafting. If it does not, go back to Stage A first. If the change has no test-worthy layer (Markdown-only, excluded layers), Stage A is skipped; write one line in the plan: «План тестов не требуется: <причина>».
+
+Start Stage B in a fresh Plan Mode file that does not contain the test plan: each document has its own approval cycle.
+
 ## Required plan
 
-Include: goal, architecture, file map, implementation tasks, test scenarios, constraints, and one final verification pass. Every task must show concrete before/after code (or the full new file), not only prose. For test-worthy layers, show test code before implementation and follow TDD. Excluded layers from `rules/base/testing.md` need no test block.
+Include: goal, architecture, file map, implementation tasks, constraints, and one final verification pass. Every task must show concrete before/after code (or the full new file), not only prose. Test cases are not redesigned here: each test-worthy task references test IDs from the approved test plan, shows their test code before the implementation, and follows TDD. Excluded layers from `rules/base/testing.md` need no test block.
 
 The final pass runs build, type-check, lint, and tests exactly once at the end. It is separate from TDD's scoped red/green runs. Do not include `git add`, `git commit`, or PR creation steps.
 
@@ -36,15 +42,18 @@ Everything else (plan title, goal, architecture, task and step descriptions, pro
 
 ## Test part of every task
 
-For every test-worthy task, build the task around its tests instead of appending them. Each such task states:
+The cases, their Given / When / Then, tautology checks, and mock rationale are decided in the approved test plan and are not repeated here. For every test-worthy task, build the task around its tests instead of appending them. Each such task states:
 
-- **Test first:** a "write the failing test" step precedes the implementation step, with the expected failure reason, so the run proves the test fails for the right reason and not because of a typo.
+- **Test IDs:** the IDs from the test plan this task implements (`U1`, `U2`, …). Every ID of the test plan appears in exactly one task.
+- **Test first:** a "write the failing test" step with the actual test code for those IDs precedes the implementation step, with the expected failure reason, so the run proves the test fails for the right reason and not because of a typo.
 - **Layer and file:** the layer from `rules/base/test-execution-policy.md` → "TDD workflow", the spec file path, and the `describe` name.
-- **Case list:** every case spelled out: the happy path, each `try/catch` branch, null check and early return, upstream error, timeout, non-`Error` rejection. Each case has its input and the expected observable behavior. Cases deliberately left uncovered are named with the reason.
-- **Data and mocks:** which shared fixtures are reused and from where, what is mocked and why.
+- **Fixtures and mocks in code:** which shared fixtures are reused and from where; the mock setup that realizes the test plan's «Моки и фикстуры».
 - **Loop command:** the scoped command for the file; the full build, type-check, lint, and whole-suite pass stays a single final step.
-- **Tautology check:** for each test, why it would fail if the implementation were replaced with `return mockResult`.
 - **Missing infrastructure:** if the layer has none, the task starts with adding it, or the plan stops and says so (`rules/base/testing.md` → "Missing Test Infrastructure"). The test is never dropped.
+
+**Order:** tasks follow the test plan's layers: unit tasks first, then integration, then e2e.
+
+**No new tests in Stage B.** Do not add tests that are not in the test plan, and do not change what a case verifies. If a case is wrong or missing, go back to Stage A (edit and review loop), then continue.
 
 A plan for Markdown-only changes has no test steps: it lists each edit as before/after.
 
@@ -59,6 +68,9 @@ A plan for Markdown-only changes has no test steps: it lists each edit as before
 | Commit step in the plan | Remove it |
 | Writing the plan in English (or the request's language) | Write it in Russian — the plan document itself, not just trigger phrases |
 | Translating the `Task N` heading ("Задача 1") | Keep `### Task N: <русское название>` — `task-brief` parses the English word |
-| Tests as one line at the end of a task | Test-first step with layer, file, case list, mocks, loop command, and expected failure reason |
+| Tests as one line at the end of a task | Test-first step with test IDs, test code, layer, file, loop command, and expected failure reason |
+| Drafting the implementation plan before the test plan is approved | Run Stage A first (`rules/skills/writing-test-plans.md`), unless it is skipped for lack of test-worthy layers |
+| A test in the plan that has no ID in the test plan, or a test-plan ID in no task | Go back to Stage A, or place the ID in exactly one task |
+| Appending this plan to the approved test plan's Plan Mode file | Fresh Plan Mode file per document |
 | A plan task for a layer with no test infrastructure that just omits the test | Start the task with adding the infrastructure, or stop and report it |
 | Test or grep-check steps in a plan that only edits Markdown | List the edits as before/after; no test steps |

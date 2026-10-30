@@ -40,7 +40,7 @@ A roadmap-sized feature moves through three phases, each handled entirely by one
 
 - **Phase 1 — Roadmap:** `references/writing.md`. Analyzes the feature, decomposes it into checkpoints (Core Principle: the app stays buildable after every step), writes the roadmap. The feature's goals and requirements live in the roadmap's own `Context` section — there is no separate PRD document.
 - **Phase 2 — Per-step spec, validated:** `references/batch-plan-validate.md` over the roadmap's checklist, with the per-task drafting mode set to **`brainstorming`, design-only** — no implementation plan is produced yet. Result: for every step, a validated design/spec (`brainstorming`) that also carries the step's requirements and success criteria, reviewed through the standard `EnterPlanMode → ExitPlanMode → Plannotator` loop.
-- **Phase 3 — Implementation plan per step, just-in-time:** `references/executing-checkpoints.md`, invoked when a step is actually picked up for work. It finds the step's approved spec and writes the implementation plan (`superpowers:writing-plans`) at that point — not earlier — so the plan reflects the repo state at the moment work starts, not whatever it looked like when the roadmap was first decomposed.
+- **Phase 3 — Implementation plan per step, just-in-time:** `references/executing-checkpoints.md`, invoked when a step is actually picked up for work. It finds the step's approved spec and writes, at that point — not earlier — first the test plan (`rules/skills/writing-test-plans.md`, with its reviewer loop; skipped when the step has no test-worthy layer), then the implementation plan (`superpowers:writing-plans`) that references the test plan's IDs, so both reflect the repo state at the moment work starts, not whatever it looked like when the roadmap was first decomposed.
 
 Do not write every step's implementation plan upfront in Phase 2 — that is what the design-only mode in Phase 2 exists to prevent.
 
@@ -64,9 +64,10 @@ A roadmap and its steps carry no PRD. Feature-level goals, current/target state,
 | `docs/<feature-slug>/YYYY-MM-DD-<feature-slug>-roadmap.md` | The roadmap itself. Each checkpoint/step is a top-level checkbox: `- [ ] <TICKET> <short name>`. Use the project's real issue-tracker prefix (e.g. `SCB-NNN`); before a ticket exists, use the literal placeholder `TBD` in its place. |
 | `docs/<feature-slug>/roadmap-state.json` | Machine-readable progress state for every checkpoint — see `## State File` below. |
 | `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<step-slug>-design.md` | Step spec — the step's requirements, success criteria, and architectural decision, when it needs one (from `brainstorming`). |
-| `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<ticket>-<name>.md` | Detailed implementation plan for the step (from `writing-plans`). |
+| `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<ticket>-<name>-tests.md` | Test plan for the step (from `rules/skills/writing-test-plans.md`): what each test verifies, by layer. Absent when the step has no test-worthy layer. |
+| `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<ticket>-<name>.md` | Detailed implementation plan for the step (from `writing-plans`), referencing the test plan's test IDs. |
 
-Each step gets its own folder under `docs/<feature-slug>/steps/`, named by the step's own slug (e.g. `steps/general-information/`) — not a bare number. Both of a step's docs (spec, plan) live together in that folder; a step with no architectural decision to make has only a plan, just no `-design.md`.
+Each step gets its own folder under `docs/<feature-slug>/steps/`, named by the step's own slug (e.g. `steps/general-information/`) — not a bare number. All of a step's docs (spec, test plan, plan) live together in that folder; a step with no architectural decision to make has only a plan (and test plan), just no `-design.md`.
 
 ## State File
 
@@ -86,6 +87,7 @@ Each step gets its own folder under `docs/<feature-slug>/steps/`, named by the s
       "stepFolder": "docs/<feature-slug>/steps/<step-slug>/",
       "status": "not-started",
       "specPath": null,
+      "testPlanPath": null,
       "planPath": null
     }
   ]
@@ -98,7 +100,7 @@ Who updates the file, and when:
 
 - `references/writing.md` creates it right after saving the roadmap — one entry per checkpoint, `status: "not-started"`, `stepFolder` filled in only for checkpoints that got a folder immediately (most stay flat until picked up in Phase 2/3).
 - `references/batch-plan-validate.md` updates it after every phase transition for a task: Phase 1 design/plan drafted → `spec-drafted` + `specPath`, or `plan-drafted` + `planPath` if `writing-plans` was chosen directly; Phase 2 approval → `spec-validated` (or stays `plan-drafted` if a plan was validated directly). Also fills `stepFolder` if it was still empty.
-- `references/executing-checkpoints.md` updates it when a step is picked up (Phase 3): after writing the implementation plan → `plan-drafted` + `planPath`; after implementation's final verification passes → `implemented`; at close-out (checkbox ticked, plan file deleted) → `closed`, `planPath: null`.
+- `references/executing-checkpoints.md` updates it when a step is picked up (Phase 3): after writing the test plan → `testPlanPath` (status unchanged); after writing the implementation plan → `plan-drafted` + `planPath` (`plan-drafted` means both documents are ready; `testPlanPath` stays `null` for a step with no test-worthy layer); after implementation's final verification passes → `implemented`; at close-out (checkbox ticked, plan files deleted) → `closed`, `planPath: null`, `testPlanPath: null`.
 
 ## Dependencies
 
