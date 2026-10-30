@@ -8,7 +8,8 @@
 
 - **Reread the plan before executing**, and check it for contradictions with the repository's current state — the repo may have moved since the plan was written.
 - **A detailed plan is ready for mechanical execution.** Do not ask a subagent to redesign the solution, or reread the whole plan itself, when the plan already contains exact steps and interfaces — that's re-litigating a decision already made at plan-writing time.
-- **Execute tasks in the order the plan defines**, not reordered for convenience.
+- **Execute tasks in the order the plan defines**, not reordered for convenience. The plan orders tasks by test layer (unit → integration → e2e), following its approved test plan; keep that order.
+- **If a test plan exists, read it alongside the plan.** Its test IDs are the traceability between what each test verifies and the task that implements it. Do not add, drop, or reinterpret a case while executing; a wrong or missing case goes back to the test-plan stage. Delete the test plan together with the implementation plan.
 - **Run the plan's single final verification pass after all tasks** — not per-task, not skipped. This is the *full* build/type-check/lint/whole-suite pass; it's separate from TDD's own per-step scoped test runs (verify-red/verify-green) inside each task, which are required throughout, not deferred to this pass — don't skip those while waiting for the final one.
 - **No `git add`/`git commit`/PR creation without a direct request from the user** — see `rules/base/git-and-commits.md` for the general rule this instance follows.
 

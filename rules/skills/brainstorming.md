@@ -6,7 +6,7 @@
 
 Use this for ideas, new behavior, architecture, or any request equivalent to «давай подумаем» / “let's think about this”. Enter native Plan Mode first. Explore project context, ask one question at a time, compare 2–3 approaches, present the design, and get approval before implementation.
 
-After design approval, hand off to `rules/skills/writing-plans.md`; do not invoke `superpowers:writing-plans` directly. Do not implement before the design is agreed when the task requires an architectural choice.
+After design approval, hand off to `rules/skills/writing-test-plans.md` when the change touches test-worthy layers, otherwise to `rules/skills/writing-plans.md`; do not invoke `superpowers:writing-plans` directly. Do not implement before the design is agreed when the task requires an architectural choice.
 
 ## Plan Mode and artifacts
 

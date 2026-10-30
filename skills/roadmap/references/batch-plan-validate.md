@@ -29,6 +29,8 @@ Confirm which of these three per-task drafting modes to use — the user may ove
 
 The queue state file's `drafting skill` column records which of the three was chosen per task: `writing-plans`, `brainstorming`, or `brainstorming (design-only)`.
 
+Planning is two-stage (`rules/skills/writing-test-plans.md`, then `rules/skills/writing-plans.md`). When a task's plan touches test-worthy layers, its drafting pass first produces the test plan (with its reviewer loop) in the same step folder, then the implementation plan that references its test IDs; a task with no test-worthy layer skips the test plan. The reviewer loop runs inline like the rest of drafting.
+
 ## Queue state file
 
 **Path:** `tmp/reports/batch-plan-queue.md` (falls back to the session scratchpad directory if the project has no `tmp/` artifacts convention — same rule as the decision log below). One state file tracks one active queue.
@@ -90,7 +92,7 @@ For each queue task still `queued` or `drafted`, in order: run the chosen drafti
 
 **Design-only mode:** if the task's drafting mode is `brainstorming (design-only)`, stop after the design doc is drafted — do not run the auto-chain `writing-plans` pass that the plain `brainstorming` mode runs. The task is ready for Phase 2 validation with just the design (which carries the step's requirements and success criteria).
 
-If the roadmap this queue was built from has a `docs/<feature-slug>/roadmap-state.json` (`roadmap/SKILL.md` → `## State File`), update that task's entry after each artifact is drafted: design or plan drafted → `status: "spec-drafted"` + `specPath`, or `status: "plan-drafted"` + `planPath` (for `writing-plans` chosen directly); fill `stepFolder` if it was empty. This is in addition to, not instead of, the `tmp/reports/batch-plan-queue.md` update below — the two files track different things (this queue's own progress vs. the roadmap's overall progress).
+If the roadmap this queue was built from has a `docs/<feature-slug>/roadmap-state.json` (`roadmap/SKILL.md` → `## State File`), update that task's entry after each artifact is drafted: design or plan drafted → `status: "spec-drafted"` + `specPath`, or `status: "plan-drafted"` + `planPath` (for `writing-plans` chosen directly; also `testPlanPath` when a test plan was written first); fill `stepFolder` if it was empty. This is in addition to, not instead of, the `tmp/reports/batch-plan-queue.md` update below — the two files track different things (this queue's own progress vs. the roadmap's overall progress).
 
 Whenever the drafting skill would normally stop and ask the user a blocking question:
 

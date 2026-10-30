@@ -5,7 +5,8 @@ These compact guardrails are always in context through `rules/RULES.md`. User in
 ## Required reads and gates
 
 - Before design or an architectural decision: enter native Plan Mode, then read `rules/skills/brainstorming.md` and invoke `superpowers:brainstorming`. The resulting design spec is written in Russian — see `rules/base/workflow-and-misc.md` → "Documentation Language".
-- Before writing a multi-step plan: read `rules/skills/writing-plans.md`, enter native Plan Mode, and invoke `superpowers:writing-plans`. The resulting plan document is written in Russian, except the machine-parsed markup that must stay English (`### Task N:` headings, checkboxes, `Step`/`Files`/`Global Constraints` labels) — see `rules/skills/writing-plans.md`.
+- Before writing a multi-step plan that touches test-worthy layers: first write and get approved a test plan — read `rules/skills/writing-test-plans.md`, enter native Plan Mode, and run its reviewer loop (unit → integration → e2e; behavior, no code). Skip it when no layer is test-worthy.
+- Before writing a multi-step plan: read `rules/skills/writing-plans.md`, enter native Plan Mode (a fresh file, after the test plan is approved when one is required), and invoke `superpowers:writing-plans`. The resulting plan document is written in Russian, except the machine-parsed markup that must stay English (`### Task N:` headings, checkboxes, `Step`/`Files`/`Global Constraints` labels) — see `rules/skills/writing-plans.md`.
 - Before test-worthy implementation: read `rules/base/testing.md` and `rules/base/test-execution-policy.md`, then invoke `superpowers:test-driven-development`. Follow the testing layer table; do not expand it from a generic TDD checklist.
 - Before committing or branching: read `rules/base/git-and-commits.md`. Never commit automatically.
 - Before reading a known file or choosing between Bash and a dedicated tool: apply `rules/base/mcp-tool-priority.md`.

@@ -70,7 +70,9 @@ rules/
 | Файл | Группа | Что внутри |
 |---|---|---|
 | `brainstorming.md` | on-demand | Обёртка над `superpowers:brainstorming`: Plan Mode wiring, триггер-фразы, куда сохранять дизайн-документ |
-| `writing-plans.md` | on-demand | Обёртка над `superpowers:writing-plans`: детект стека → какие `rules/angular\|nestjs` подгрузить перед написанием плана |
+| `writing-test-plans.md` | on-demand | Этап A двухэтапного планирования: план тестов (что и зачем проверяет каждый тест, поведением и без кода; порядок unit → integration → e2e), цикл ревью с субагентом-ревьюером до показа пользователю; пропускается, если нет тестируемых слоёв |
+| `test-plan-reviewer.md` | on-demand | Промпт read-only субагента-ревьюера плана тестов: чеклист (покрытие требований, слои, поведение вместо реализации, tautology, anti-patterns) и вердикт `NO_MAJOR_ISSUES` / `MAJOR_ISSUES`; цикл — до вердикта или максимум 3 итерации |
+| `writing-plans.md` | on-demand | Этап B: обёртка над `superpowers:writing-plans`: детект стека → какие `rules/angular\|nestjs` подгрузить перед написанием плана; код тестов и реализация привязаны к тест-ID из плана тестов |
 | `verification-before-completion.md` | on-demand | Требования к отчёту о проверке работы перед тем, как считать задачу выполненной |
 | `executing-plans.md` | on-demand | Дисциплина исполнения уже написанного плана |
 | `subagent-driven-development.md` | on-demand | Как делегировать задачи плана субагентам |
