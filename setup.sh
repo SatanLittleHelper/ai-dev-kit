@@ -111,17 +111,17 @@ esac
 # 5. Our skills — installed all at once; -s takes skill *names* (SKILL.md's `name:` field,
 # which matches each folder's basename here), not paths within the repo.
 log "installing skills: ${OUR_SKILLS[*]}"
-npx skills add "$REPO" --skill "${OUR_SKILLS[@]}" --yes || log "  (one or more failed or already installed, continuing)"
+npx skills add "$REPO" --skill "${OUR_SKILLS[@]}" -a claude-code --yes || log "  (one or more failed or already installed, continuing)"
 
 # 6. Stack-detected best-practices skills — rules/angular/ and rules/nestjs/ depend on these
 if [ -f package.json ]; then
   if grep -q '"@angular/core"' package.json; then
     log "Angular detected, installing angular-best-practices"
-    npx skills add alfredoperez/angular-best-practices --skill angular-best-practices --yes || log "  (failed, install manually — see README)"
+    npx skills add alfredoperez/angular-best-practices --skill angular-best-practices -a claude-code --yes || log "  (failed, install manually — see README)"
   fi
   if grep -q '"@nestjs/core"' package.json; then
     log "NestJS detected, installing nestjs-best-practices"
-    npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices --yes || log "  (failed, install manually — see README)"
+    npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices -a claude-code --yes || log "  (failed, install manually — see README)"
   fi
 else
   log "no package.json found, skipping stack-specific best-practices skills (see README to install them manually later)"

@@ -37,7 +37,7 @@ Run from the project root. A part whose prerequisite is missing is skipped, and 
      `-p` never touches global `~/.claude/skills`; `-y` skips the scope prompt so it doesn't hang.
    - Find the new ones: folder names in `.claude/ai-dev-kit/skills/` minus the keys of `skills-lock.json` whose `"source"` is `SatanLittleHelper/ai-dev-kit`. Skills from other sources are never touched. Install all missing ones in one call, without asking:
      ```
-     npx skills add SatanLittleHelper/ai-dev-kit --skill <name>... --yes
+     npx skills add SatanLittleHelper/ai-dev-kit --skill <name>... -a claude-code --yes
      ```
    - If `skills-lock.json` lists `update-project-skills` or `update-project-rules` (the two skills this one replaced), mention in the report that `npx skills remove update-project-skills update-project-rules` cleans them up. Don't remove them yourself.
 5. **Mods** (needs the submodule):
