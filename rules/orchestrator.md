@@ -14,6 +14,7 @@ This file is always in context through `rules/RULES.md`. It routes work to detai
 | Known file path, Bash vs MCP, or dedicated-tool choice | Read `rules/base/mcp-tool-priority.md` |
 | Claim work complete, fixed, or passing | Read `rules/skills/verification-before-completion.md` and run its required checks |
 | Test the current changes by hand ("протестируй изменения", "test my changes") | Invoke `testing-changes` |
+| Create a PR ("сделай ПР", "open a PR") | Нет действия: поток подмешивает мод `pr-flow`; следуй добавленным инструкциям |
 | Execute a written plan via subagents | Read `rules/skills/subagent-driven-development.md` |
 | Execute a written plan with checkpoints | Read `rules/skills/executing-plans.md` |
 | Long-running Plannotator process | Read `rules/skills/plannotator.md` |

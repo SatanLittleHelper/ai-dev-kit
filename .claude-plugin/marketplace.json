@@ -7,6 +7,11 @@
       "name": "polish",
       "source": "./mods/polish",
       "description": "Кнопка и команда /polish: /simplify, затем /superpowers:requesting-code-review, общий отчёт в Plannotator"
+    },
+    {
+      "name": "pr-flow",
+      "source": "./mods/pr-flow",
+      "description": "Поток создания ПР: инструкции на «сделай ПР», запрет коммита в trunk, проверка серьёзности и описания перед созданием ПР"
     }
   ]
 }
