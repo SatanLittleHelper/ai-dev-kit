@@ -9,7 +9,7 @@ There is no `superpowers:*` skill for Stage A; this file owns the process. The e
 
 ## When it runs and when it is skipped
 
-Runs after the design is approved and before `rules/skills/writing-plans.md`. Read `rules/base/testing.md` and `rules/base/test-execution-policy.md` first; the layer table in `testing.md` decides scope.
+Runs after the design is approved and before `rules/skills/writing-plans.md`. It starts automatically once the design is approved and saved; and once the test plan is approved and saved, Stage B starts automatically the same way. Do not ask for confirmation between stages. Read `rules/base/testing.md` and `rules/base/test-execution-policy.md` first; the layer table in `testing.md` decides scope.
 
 **Skip Stage A entirely** when the change has no test-worthy layer: Markdown-only edits, components, thin repositories/API clients, pure mappers. Where a test cannot be written, planning one is pointless. Skip without a Plan Mode cycle and record one line in the implementation plan: «План тестов не требуется: <причина>».
 
