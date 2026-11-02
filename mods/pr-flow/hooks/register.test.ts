@@ -32,8 +32,10 @@ function files(on: On, table: Record<string, string>): void {
   })
 }
 
+const EMOJI: Record<string, string> = { Лёгкие: '🟢', Средние: '🟡', Серьёзные: '🟠', Критичные: '🔴' }
+
 const BODY = (level: string): string =>
-  [`**Серьёзность: ${level}** — причина`, '', '## Зачем', 'x', '', '## Что сделано', '- y'].join('\n')
+  [`${EMOJI[level] ?? '🟢'} **Серьёзность: ${level}** — причина`, '', '## Зачем', 'x', '', '## Что сделано', '- y'].join('\n')
 
 const DIFF = 'diff --name-status -M origin/main...HEAD'
 const HEAD = 'symbolic-ref --short refs/remotes/origin/HEAD'

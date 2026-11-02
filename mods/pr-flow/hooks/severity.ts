@@ -1,6 +1,13 @@
 export const LEVELS = ['Лёгкие', 'Средние', 'Серьёзные', 'Критичные'] as const
 export type Level = (typeof LEVELS)[number]
 
+export const LEVEL_EMOJI: Record<Level, string> = {
+  Лёгкие: '🟢',
+  Средние: '🟡',
+  Серьёзные: '🟠',
+  Критичные: '🔴',
+}
+
 export type ChangedFile = { status: string; path: string }
 export type Severity = { level: Level; reason: string }
 export type DiffInput = {

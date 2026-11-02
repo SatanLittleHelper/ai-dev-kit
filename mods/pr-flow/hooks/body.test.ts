@@ -3,7 +3,7 @@ import { expect, test } from 'claude-code/testing'
 import { validateBody } from './body'
 
 const GOOD = [
-  '**Серьёзность: Серьёзные** — затронута миграция БД',
+  '🟠 **Серьёзность: Серьёзные** — затронута миграция БД',
   '',
   '## Зачем',
   'x',
@@ -28,10 +28,15 @@ test('уровень ниже границы отклоняется с прич�
 
 test('неверная первая строка отклоняется', async () => {
   expect(validateBody('## Что сделано\n- y')?.includes('Первая строка')).toBe(true)
-  expect(validateBody('**Серьёзность: Огромные** — x\n\n## Что сделано')?.includes('Первая строка')).toBe(true)
-  expect(validateBody('**Серьёзность: Лёгкие**\n\n## Что сделано')?.includes('Первая строка')).toBe(true)
+  expect(validateBody('🟠 **Серьёзность: Огромные** — x\n\n## Что сделано')?.includes('Первая строка')).toBe(true)
+  expect(validateBody('🟢 **Серьёзность: Лёгкие**\n\n## Что сделано')?.includes('Первая строка')).toBe(true)
+})
+
+test('эмодзи не по уровню или его отсутствие отклоняется', async () => {
+  expect(validateBody(GOOD.replace('🟠', '🟢'))?.includes('Эмодзи')).toBe(true)
+  expect(validateBody(GOOD.replace('🟠 ', ''))?.includes('Первая строка')).toBe(true)
 })
 
 test('без раздела «Что сделано» отклоняется', async () => {
-  expect(validateBody('**Серьёзность: Лёгкие** — док\n\n## Зачем\nx')?.includes('Что сделано')).toBe(true)
+  expect(validateBody('🟢 **Серьёзность: Лёгкие** — док\n\n## Зачем\nx')?.includes('Что сделано')).toBe(true)
 })

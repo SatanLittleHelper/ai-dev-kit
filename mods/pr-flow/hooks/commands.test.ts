@@ -35,9 +35,9 @@ test('detectPrCreate разбирает gh pr create', async () => {
   expect(withFile?.base).toBe('main')
   expect(withFile?.file).toBe('/tmp/b.md')
 
-  const inline = detectPrCreate('gh pr create -B dev -b "**Серьёзность: Лёгкие** — док"')
+  const inline = detectPrCreate('gh pr create -B dev -b "🟢 **Серьёзность: Лёгкие** — док"')
   expect(inline?.base).toBe('dev')
-  expect(inline?.body).toBe('**Серьёзность: Лёгкие** — док')
+  expect(inline?.body).toBe('🟢 **Серьёзность: Лёгкие** — док')
 
   const dynamic = detectPrCreate('gh pr create --body "$(cat f)"')
   expect(dynamic?.kind).toBe('gh')
