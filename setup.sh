@@ -108,6 +108,26 @@ case "$CODEX_ANSWER" in
     ;;
 esac
 
+# 4b. .gitignore — skills installed by `npx skills` are pinned via skills-lock.json (committed),
+# so the installed copies themselves must not be tracked. Append only the entries that are missing.
+GITIGNORE_SKILL_PATHS=("/.agents/skills/" "/.claude/skills/")
+touch .gitignore
+GITIGNORE_ADDED=0
+for p in "${GITIGNORE_SKILL_PATHS[@]}"; do
+  if grep -qxF "$p" .gitignore; then
+    continue
+  fi
+  if [ "$GITIGNORE_ADDED" -eq 0 ]; then
+    # make sure we start on a fresh line, then add a header comment once
+    [ -s .gitignore ] && [ -n "$(tail -c1 .gitignore)" ] && echo "" >> .gitignore
+    echo "# Installed skills (managed by npx skills, pinned via skills-lock.json)" >> .gitignore
+    GITIGNORE_ADDED=1
+  fi
+  echo "$p" >> .gitignore
+  log "added '$p' to .gitignore"
+done
+[ "$GITIGNORE_ADDED" -eq 0 ] && log ".gitignore already ignores installed skills, skipping"
+
 # 5. Our skills — installed all at once; -s takes skill *names* (SKILL.md's `name:` field,
 # which matches each folder's basename here), not paths within the repo.
 log "installing skills: ${OUR_SKILLS[*]}"
