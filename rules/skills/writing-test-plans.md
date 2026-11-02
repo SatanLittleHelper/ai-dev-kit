@@ -21,23 +21,39 @@ Runs after the design is approved and before `rules/skills/writing-plans.md`. Re
 2. **Integration** — only where a layer requires it (repositories with query logic against a real database).
 3. **E2E** — fast e2e with a mocked API for pages; backend e2e for HTTP contract and authorization; full-stack only for cross-system scenarios; Storybook e2e for a UI-kit library.
 
-For each layer state explicitly: needed or not, and why. A missing layer infrastructure follows `rules/base/testing.md` → "Missing Test Infrastructure": add a preparatory task or stop; never drop the test or silently fall back to a weaker layer.
+## Before drafting: check the runners
+
+For each layer you plan to use, check that it has a runner and a scoped command. This check is the author's step and does **not** appear in the document. A gap follows `rules/base/testing.md` → "Missing Test Infrastructure": add a preparatory task to the implementation plan or stop; never drop the test or silently fall back to a weaker layer.
 
 ## Document
 
-Store at `docs/superpowers/plans/YYYY-MM-DD-<feature>-tests.md` after approval (inside a roadmap step: the step folder, next to the plan). **Write it in Russian** — see `rules/base/workflow-and-misc.md` → "Documentation Language"; test IDs, layer names, and identifiers stay as-is. Sections:
+Store at `docs/superpowers/plans/YYYY-MM-DD-<feature>-tests.md` after approval (inside a roadmap step: the step folder, next to the plan). **Write it in Russian** — see `rules/base/workflow-and-misc.md` → "Documentation Language"; test IDs, layer names, and identifiers stay as-is. The document is meant to be read by a person, so keep it scannable: no separate matrix, no per-case boilerplate. Sections:
 
 1. **Спека и цель** — link to the approved design, one-sentence goal.
-2. **Инфраструктура** — which layers have a runner and a scoped command, which do not; a gap becomes a preparatory task or a stop.
-3. **Матрица покрытия** — spec requirement → test IDs. A requirement with no test needs a stated reason.
-4. **Кейсы по слоям** — unit, then integration, then e2e. Each case:
-   - **ID** (`U1`, `I1`, `E1`) and a name that states the behavior;
-   - **Given / When / Then** in observable terms (return value, rejection, thrown error, calls that must or must not happen);
-   - **Какую регрессию ловит** — the concrete break this case would catch;
-   - **Tautology check** — why it fails if the implementation is replaced with `return mockResult`;
-   - **Моки и фикстуры** — what is mocked and why, which shared fixtures are reused; no mock configuration.
-5. **Не покрываем** — excluded units/branches with the reason.
-6. **Сигналы дизайна** — places where a test is hard to describe or needs "mock everything" (see TDD's "Test hard = design unclear"); these go back to the spec, not around it.
+2. **Требования и кейсы** — the main section. Cases are grouped by spec requirement (see below).
+3. **Не покрываем** — table `Что | Почему` for excluded units/branches.
+4. **Сигналы дизайна** — places where a test is hard to describe or needs "mock everything" (see TDD's "Test hard = design unclear"); these go back to the spec, not around it. Include the section only if there are signals.
+
+### Requirements and cases
+
+Each spec requirement is a level-2 heading: `## R1 · <requirement>`. Under it go its cases, ordered unit → integration → e2e; the layer is a tag in the case title. A requirement with no case still gets its heading and one line `Не покрываем: <причина>` — a coverage gap is visible from the structure, without a separate matrix. A layer that is not needed gets no line of its own.
+
+Group the cases of one unit together and state its mocks once, as the first line of the group: `Моки: UserRepository — внешняя граница`. Do not repeat mocks per case; state no mock configuration.
+
+### Case card
+
+```
+**U1 · 404, если пользователь удалён**  [unit]
+- Дано: пользователь с deletedAt
+- Когда: getUser(id)
+- Тогда: NotFoundException
+- Ловит: удалённый пользователь снова отдаётся
+```
+
+- **ID** (`U1`, `I1`, `E1`, numbered continuously through the document) and a title that states the behavior.
+- **Дано / Когда / Тогда** in observable terms (return value, rejection, thrown error, calls that must or must not happen), with concrete values.
+- **Ловит** — the concrete break this case would catch. Mandatory.
+- **Tautology check is not written in the card.** The author verifies it silently: the case must fail if the implementation is replaced with `return mockResult`. Add one line `- Tautology: …` only when the reason is not obvious from Дано/Когда/Тогда.
 
 One case, one behavior; an "and" in the name means two cases. Branch coverage follows `rules/base/testing.md` → Coverage: a `try/catch`, null check, or early return in the spec normally means at least two cases; timeout, upstream error, and non-`Error` rejection are covered when the spec defines behavior for them.
 
@@ -63,7 +79,9 @@ After approval, save to the target path. Stage B starts a new Plan Mode cycle wi
 | Case named after a method («тест getUser») | Name the behavior: «возвращает 404, если пользователь удалён» |
 | Planning tests for components, thin repositories/clients, mappers | Skip them; name the exclusion in «Не покрываем» |
 | Starting Stage A for a Markdown-only change | Skip it; write the one-line «План тестов не требуется» in the plan |
-| Requirement with no test ID and no stated reason | Fix the coverage matrix |
+| Requirement with no cases and no `Не покрываем: <причина>` line | Add the line or the cases |
 | Showing the user a draft before the review loop | Run the loop first; the user sees the result |
+| Five-field prose block per case | Four-line card: Дано / Когда / Тогда / Ловит |
+| Separate coverage matrix or infrastructure section in the document | Group cases under requirement headings; the runner check is the author's step, not a section |
 | Reviewer loop with no limit | Stop at `NO_MAJOR_ISSUES` or after 3 iterations, with a «Не сошлись» block |
 | Appending the implementation plan to the approved test plan's Plan Mode file | One document per Plan Mode cycle; start Stage B in a fresh file |

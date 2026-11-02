@@ -42,7 +42,7 @@ Everything else (plan title, goal, architecture, task and step descriptions, pro
 
 ## Test part of every task
 
-The cases, their Given / When / Then, tautology checks, and mock rationale are decided in the approved test plan and are not repeated here. For every test-worthy task, build the task around its tests instead of appending them. Each such task states:
+The cases, their Дано / Когда / Тогда, and mock rationale are decided in the approved test plan and are not repeated here. For every test-worthy task, build the task around its tests instead of appending them. Each such task states:
 
 - **Test IDs:** the IDs from the test plan this task implements (`U1`, `U2`, …). Every ID of the test plan appears in exactly one task.
 - **Test first:** a "write the failing test" step with the actual test code for those IDs precedes the implementation step, with the expected failure reason, so the run proves the test fails for the right reason and not because of a typo.
