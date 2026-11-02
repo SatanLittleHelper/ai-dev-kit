@@ -18,7 +18,7 @@ This contract only points to the detailed files: read the one that matches the a
 
 Apply the imported naming, class-structure, file-structure, and workflow rules to TypeScript work. Apply the router for Angular/NestJS rules, roadmap work, codebase exploration, plan execution, subagents, and Plannotator.
 
-When a task matches a situation in the routing table, apply its rule or skill, and follow the checklist of any skill you invoke. Keep durable markdown artifacts in Plan Mode until `ExitPlanMode` approval; after approval, ask before starting implementation. While native Plan Mode is active, end the turn with `ExitPlanMode` or `AskUserQuestion`.
+When a task matches a situation in the routing table, apply its rule or skill, and follow the checklist of any skill you invoke. Keep durable markdown artifacts in Plan Mode until `ExitPlanMode` approval; after approval, ask before starting implementation. Moving to the next planning document (design → test plan → implementation plan) is not implementation: start it automatically in a fresh Plan Mode file, without asking for confirmation. While native Plan Mode is active, end the turn with `ExitPlanMode` or `AskUserQuestion`.
 
 ## Autonomy
 
