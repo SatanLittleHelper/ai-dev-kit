@@ -20,6 +20,8 @@ Apply the imported naming, class-structure, file-structure, and workflow rules t
 
 When a task matches a situation in the routing table, apply its rule or skill, and follow the checklist of any skill you invoke. Keep durable markdown artifacts in Plan Mode until `ExitPlanMode` approval; after approval, ask before starting implementation. Moving to the next planning document (design → test plan → implementation plan) is not implementation: start it automatically in a fresh Plan Mode file, without asking for confirmation. While native Plan Mode is active, end the turn with `ExitPlanMode` or `AskUserQuestion`.
 
+Writing the Plan Mode file: the file may already hold a stale plan and may change between `Read` and `Write` ("file modified since read"). `Read` it immediately before `Write`, with no other tool calls in between. If the write fails, do not call `ExitPlanMode` — re-`Read` and `Write` again. After a successful write, `Read` the head of the file and confirm it is the current document, not the stale one; only then call `ExitPlanMode`, because Plannotator shows whatever is in the file.
+
 ## Autonomy
 
 Make reversible local edits within the task on your own. Wait for confirmation before anything irreversible or visible outside the repo: deleting files beyond the task, push, PR merge, DB or infra changes, calls to external services. If a requirement is ambiguous, ask one focused question instead of guessing. On long tasks, keep a progress checklist in a file so it survives context compaction.
