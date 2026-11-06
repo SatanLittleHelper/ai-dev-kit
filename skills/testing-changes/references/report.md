@@ -18,29 +18,33 @@ Written after the tests while the apps are still running, in Russian, from the r
 
 ## Сводка
 
-| Всего | Пройдено | Провалено | Пропущено |
-|---|---|---|---|
-| N | N | N | N |
+| Всего | Пройдено | Пройдено с замечаниями | Провалено | Пропущено |
+|---|---|---|---|---|
+| N | N | N | N | N |
 
 ## Результаты
 
 | ID | Тест | Статус |
 |---|---|---|
-| T1 | <название> | пройден |
+| T1 | <название> | пройден с замечаниями |
 | T2 | <название> | провален |
+| T3 | <название> | пройден |
 
 ## Подробности
 
-### T1. <название>
+Порядок: сначала тесты «пройден с замечаниями», затем остальные пройденные. Провалы описаны в разделе «Ошибки».
+
+### T1. <название> (с замечаниями)
 - **Ожидалось:** <из тест-плана>
 - **Получено:** <факт одной-двумя строками>
+- **Замечания:** <что отклоняется от идеала, хотя ожидаемое выполнено>
 - **Данные:**
 
 ```
 <вывод БД, статус и тело ответа curl, вывод скрипта: сами данные, не ссылка на файл>
 ```
 
-(блок на каждый тест, пройденный или проваленный)
+(блок на каждый пройденный тест; у тестов с замечаниями поле «Замечания» обязательно)
 
 ## Ошибки
 
@@ -65,6 +69,8 @@ Written after the tests while the apps are still running, in Russian, from the r
 <какие приложения запущены и работают до одобрения отчёта, какие были чужими, где логи>
 ```
 
+Status `пройден с замечаниями`: the expected result is met, but something worth the reader's attention was seen (warning in logs, slow response, UI glitch, deviation from the plan that is not a failure). Such tests count as passed in the verdict, and their details come first in «Подробности», before plain passed tests.
+
 Verdict: `ПРОЙДЕНО` only when every test passed; any failed test gives `ЕСТЬ ОШИБКИ`; skipped tests without failures give `ЕСТЬ ПРОПУСКИ`.
 
 ## Save
@@ -74,4 +80,4 @@ Verdict: `ПРОЙДЕНО` only when every test passed; any failed test gives `
 
 ## Show
 
-Show the saved report with Plannotator: invoke the `plannotator-annotate` skill on the report file (`plannotator annotate <path>`). Keep the turn open until it returns a final result; an empty poll is not a result. Outcomes: approved ("Done") → Teardown, then Cleanup of documents: delete the test plan, ask whether to delete the report (`references/environment.md`). Annotations → handle each one; the apps keep running, so a re-check is possible; show the updated report again. Dismissed → Teardown only (plan and report stay). Then process every annotation before continuing. Fix code only if the user asks. Never commit the report unless the user asks.
+Show the saved report with Plannotator: invoke the `plannotator-annotate` skill on the report file (`plannotator annotate <path>`). Keep the turn open until it returns a final result; an empty poll is not a result. Outcomes: approved ("Done") → Teardown, then Cleanup of documents: delete the test plan and the report (`references/environment.md`). Annotations → handle each one; the apps keep running, so a re-check is possible; show the updated report again. Dismissed → Teardown only (plan and report stay). Then process every annotation before continuing. Fix code only if the user asks. Never commit the report unless the user asks.
