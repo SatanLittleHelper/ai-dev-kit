@@ -16,6 +16,11 @@ test('пустой дифф и «лёгкие» файлы дают Лёгкие
   expect(run([M('docs/auth.md')]).level).toBe('Лёгкие')
 })
 
+test('обновление дев-кита (сабмодуль, skills-lock.json, AGENTS.md) даёт Лёгкие', async () => {
+  expect(run([M('.claude/ai-dev-kit'), M('skills-lock.json'), M('AGENTS.md')]).level).toBe('Лёгкие')
+  expect(run([M('.claude/ai-dev-kit/rules/a.ts')]).level).toBe('Средние')
+})
+
 test('обычная правка исходников даёт Средние', async () => {
   expect(run([M('src/a.ts')]).level).toBe('Средние')
   expect(run([M('src/authors/list.ts')]).level).toBe('Средние')
