@@ -18,8 +18,8 @@ export type DiffInput = {
 
 export const MIGRATION_PATH = /(^|\/)(migrations?|db\/migrate)\//i
 
-// Документация, тесты и стили: правка по таким путям не поднимает уровень по имени пути.
-const LIGHT_PATH = /(\.mdx?$|(^|\/)docs\/|\.(spec|test)\.[cm]?[jt]sx?$|\.(s?css|less)$)/
+// Документация, тесты, стили и обновление дев-кита (указатель сабмодуля, skills-lock.json): правка по таким путям не поднимает уровень по имени пути.
+const LIGHT_PATH = /(\.mdx?$|(^|\/)docs\/|\.(spec|test)\.[cm]?[jt]sx?$|\.(s?css|less)$|^\.claude\/ai-dev-kit$|(^|\/)skills-lock\.json$)/
 const CRITICAL_PATH = /(^|[/_.-])(payments?|billing|crypto|secrets?)([/_.-]|$)/i
 const DESTRUCTIVE_SQL = /^\+.*\b(DROP\s+(TABLE|COLUMN)|TRUNCATE)\b/im
 const SERIOUS_PATHS: readonly (readonly [RegExp, string])[] = [
