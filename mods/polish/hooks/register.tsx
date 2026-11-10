@@ -5,152 +5,27 @@ import type { Step } from '../types'
 
 // Comma-joined ids of the agents that existed when the chain started: only newer ones count as ours.
 // Id of the running main-loop turn, '' between turns: what Cancel aborts, and what advance waits out.
-// The review answer is kept until the fixes that follow it are done: only then the review report opens.
-// Last answer of the main assistant while it applied the fixes: what the review report says was fixed.
 // Set once the wait for the assistant to start on the findings is over: a quiet session then ends the fixes.
 
 const REVIEW_COMMAND = 'superpowers:requesting-code-review'
-// Every opened report gets its own file: one shared path let a report from another session or worktree overwrite the one still being read.
-const newReportPath = (): string => `/tmp/polish-report-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.md`
 // The user's own prompts: a background agent's hand-back or a task notification must not cancel the chain.
 const USER_ORIGINS = ['composer', 'bridge']
-const SECTION_FIXED = 'Polish: fixed'
-const SECTION_SKIPPED = 'Polish: skipped'
-const SECTION_NOT_REPORTED = 'Polish: reviewed-not-reported'
-const SECTION_FINDINGS = 'Polish: review-findings'
-const NOT_EXTRACTED = 'не удалось выделить'
 const ACTIVE_AGENT_STATUSES = ['pending', 'running']
-const FEEDBACK_PREFIX = 'Замечания к отчёту Polish (из Plannotator). Разбери каждое и исправь, что нужно:'
-// Steps where the main assistant applies fixes, and the step that follows each of them.
-const FIX_NEXT: Partial<Record<Step, Step>> = { 'simplify-fix': 'review', fix: 'review-report', 'review-fix': 'idle' }
+// The step where the main assistant applies the review findings, and the step that follows it.
+const FIX_NEXT: Partial<Record<Step, Step>> = { fix: 'idle' }
 const STEP_LABELS: Record<Step, string> = {
   idle: '',
   simplify: 'simplify',
-  'simplify-report': 'отчёт simplify в Plannotator',
-  'simplify-fix': 'правки по замечаниям simplify',
   review: 'review',
   fix: 'правки по ревью',
-  'review-report': 'отчёт ревью в Plannotator',
-  'review-fix': 'правки по замечаниям ревью',
 }
-// What plannotator prints when the review is closed without a single annotation.
-const NO_FEEDBACK = /^user reviewed the document and has no feedback\.?$/i
 const SETTLE_MS = 1500
 const FIX_START_GRACE_MS = 30 * 1000
-const FEEDBACK_IDLE_STEP_MS = 500
-const FEEDBACK_IDLE_ATTEMPTS = 120
-const MAX_FIX_CHARS = 6000
-const NO_FIXES = '- правок после ревью не было'
-const RAW_TAIL_LENGTH = 1500
 
-const APPLY_FINDINGS_PROMPT = `Ревью завершено. Примени находки ревью, которые стоит исправить (Critical и Important; Minor — по своему усмотрению).
-
-Закончи финальное сообщение секцией "## ${SECTION_FINDINGS}" со ВСЕМИ замечаниями ревью (Critical / Important / Minor), по одному на строку:
-- ✅ <file:line> — [Critical|Important|Minor] <замечание> — <что исправлено>
-- ⬜ <file:line> — [Critical|Important|Minor] <замечание> — <почему не исправлено>
-Исправленные помечай ✅, неисправленные ⬜. Если у ревью не было замечаний, напиши одну строку "- none".`
+const APPLY_FINDINGS_PROMPT = `Ревью завершено. Молча примени находки ревью, которые стоит исправить (Critical и Important; Minor — по своему усмотрению). Не пиши отчёт и не перечисляй замечания: после правок ответь одной короткой строкой.`
 
 const REVIEW_SCOPE_INSTRUCTION = `## Polish scope (added by the polish mod)
 Review the uncommitted changes in the working tree: BASE_SHA is HEAD, the diff is \`git diff HEAD\` plus the untracked files. Do not fix anything and do not commit at this step — report findings only; the fixes are applied in a separate step afterwards. Put the reviewer's findings (Critical / Important / Minor, with file:line) into your final message.`
-
-const SIMPLIFY_INSTRUCTION = `## Polish report (added by the polish mod)
-End your final message with exactly two sections, in this order:
-
-## Polish: fixed
-- <file:line> — <what was fixed>
-
-## Polish: skipped
-- <file:line> — <the finding> — <why it was skipped>
-
-After every item of the skipped list add a fenced code block with the current code (at most 8 lines) and, when you know the change, a second fenced block labelled "Proposed:" with the code you would write. If nothing was fixed, write the single line "- none" under "## Polish: fixed"; if nothing was skipped, write the single line "- none" under "## Polish: skipped". The user reads these as a report, so write the descriptions in Russian.`
-
-const NOT_REPORTED_INSTRUCTION = `## Polish: candidates you did not report (added by the polish mod)
-After your report add a section "## ${SECTION_NOT_REPORTED}": the candidate issues you examined but left out of the main report (low confidence, out of scope for this level, or covered elsewhere). One item per line as "- <file:line> — <suspected issue> — <why it was not reported>", each followed by a fenced code block with the relevant code (at most 8 lines). If there are none, write the single line "- none". Write the descriptions in Russian.`
-
-// Line range of the "## <title>" section: from its heading to the next heading outside code fences.
-function findSection(lines: string[], title: string): { start: number; end: number } | undefined {
-  const heading = `## ${title}`.toLowerCase()
-  const start = lines.findIndex(line => line.trim().toLowerCase() === heading)
-
-  if (start === -1) {
-    return undefined
-  }
-
-  let isFenced = false
-
-  for (let index = start + 1; index < lines.length; index += 1) {
-    const line = lines[index] ?? ''
-
-    if (line.trim().startsWith('```')) {
-      isFenced = !isFenced
-    } else if (!isFenced && /^#{1,6}\s/.test(line)) {
-      return { start, end: index }
-    }
-  }
-
-  return { start, end: lines.length }
-}
-
-// The body of the "## <title>" section, or undefined when there is none.
-function extractSection(text: string, title: string): string | undefined {
-  const lines = text.split('\n')
-  const range = findSection(lines, title)
-
-  return range === undefined ? undefined : lines.slice(range.start + 1, range.end).join('\n').trim()
-}
-
-function removeSection(text: string, title: string): string {
-  const lines = text.split('\n')
-  const range = findSection(lines, title)
-
-  return range === undefined ? text : [...lines.slice(0, range.start), ...lines.slice(range.end)].join('\n').trim()
-}
-
-function capChars(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max)}\n- … (список обрезан)`
-}
-
-// True for a list the model left empty on purpose ("- none"); a failed extraction is not empty.
-function isNoneList(text: string): boolean {
-  return /^-?\s*none\.?$/i.test(text.trim())
-}
-
-function buildSimplifyReport(fixedText: string, skippedText: string): string {
-  return [
-    '# Polish: simplify',
-    '## Simplify: исправлено',
-    fixedText || '- нет данных',
-    '## Simplify: пропущено',
-    skippedText || '- нет данных',
-  ].join('\n\n')
-}
-
-function buildReviewReport(reviewText: string, fixesText: string): string {
-  const notReported = extractSection(reviewText, SECTION_NOT_REPORTED)
-  const review = removeSection(reviewText, SECTION_NOT_REPORTED)
-  const findings = extractSection(fixesText, SECTION_FINDINGS)
-
-  // The fix step lists every finding with its status, so the reviewer's own text (written before any fix) is not repeated.
-  if (findings !== undefined) {
-    return [
-      '# Polish: code review',
-      '## Code review: замечания (✅ — исправлено)',
-      findings,
-      '## Code review: рассмотрено, но не заявлено',
-      notReported ?? '- нет данных',
-    ].join('\n\n')
-  }
-
-  return [
-    '# Polish: code review',
-    '## Code review',
-    review || '- отчёт ревью не получен',
-    '## Code review: исправлено после ревью',
-    fixesText.trim() === '' ? NO_FIXES : capChars(fixesText.trim(), MAX_FIX_CHARS),
-    '## Code review: рассмотрено, но не заявлено',
-    notReported ?? '- нет данных',
-  ].join('\n\n')
-}
 
 async function reset($: EngineInterface): Promise<void> {
   await update($, atom({ plugin: 'polish', key: 'step', id: await $.session.id() } as const, 'idle' as Step), () => 'idle')
@@ -203,109 +78,6 @@ async function fail($: EngineInterface, message: string): Promise<void> {
   $.ui.toast(message)
 }
 
-// plannotator annotate stays alive until the review in the browser is submitted, then prints the
-// user's annotations on stdout. Resolves with them once it exits; '' when there are none or it failed to open.
-async function watchPlannotator($: EngineInterface, reportPath: string): Promise<string> {
-  let feedback = ''
-
-  try {
-    for await (const piece of $.process.spawn({ argv: ['plannotator', 'annotate', reportPath] })) {
-      if ('stream' in piece && piece.stream === 'stdout') {
-        feedback += piece.text
-      }
-    }
-  } catch (error) {
-    $.ui.toast(`Polish: не удалось открыть Plannotator: ${String(error)}`)
-
-    return ''
-  }
-
-  const trimmed = feedback.trim()
-
-  return NO_FEEDBACK.test(trimmed) ? '' : trimmed
-}
-
-// The annotations must not land in the middle of a running turn: they go out once the session is quiet.
-async function waitForIdleTurn($: EngineInterface): Promise<void> {
-  for (let attempt = 0; attempt < FEEDBACK_IDLE_ATTEMPTS && (await read($, atom({ plugin: 'polish', key: 'runningTurnId', id: await $.session.id() } as const, ''))) !== ''; attempt += 1) {
-    await $.clock.sleep(FEEDBACK_IDLE_STEP_MS)
-  }
-}
-
-// Opens the report and waits until the user closes it; resolves with the annotations ('' when none).
-async function showReport($: EngineInterface, text: string): Promise<string> {
-  const reportPath = newReportPath()
-
-  await update($, atom({ plugin: 'polish', key: 'report', id: await $.session.id() } as const, ''), () => text)
-  await $.fs.write(reportPath, text)
-
-  return watchPlannotator($, reportPath)
-}
-
-// "/polish report": the last report outside the chain; its annotations go straight to the model.
-async function reopenReport($: EngineInterface, text: string): Promise<void> {
-  const feedback = await showReport($, text)
-
-  if (feedback !== '') {
-    await waitForIdleTurn($)
-    void $.prompt.submit({ text: `${FEEDBACK_PREFIX}\n\n${feedback}` })
-  }
-}
-
-// The annotations of a chain report go to the main assistant as a fix phase; nothing happens when the chain moved on meanwhile.
-async function applyFeedback($: EngineInterface, from: Step, to: Step, feedback: string): Promise<void> {
-  await waitForIdleTurn($)
-
-  if (await claim($, from, to)) {
-    await startFixes($, to)
-    void $.prompt.submit({ text: `${FEEDBACK_PREFIX}\n\n${feedback}` })
-  }
-}
-
-// The simplify report: no annotations -> straight to the review, otherwise the fixes first.
-async function presentSimplifyReport($: EngineInterface): Promise<void> {
-  const fixedText = await read($, atom({ plugin: 'polish', key: 'fixed', id: await $.session.id() } as const, ''))
-  const skippedText = await read($, atom({ plugin: 'polish', key: 'skipped', id: await $.session.id() } as const, ''))
-
-  // Nothing to simplify: there is nothing to report, so the review starts right away.
-  if (isNoneList(fixedText) && isNoneList(skippedText)) {
-    if (await claim($, 'simplify-report', 'review')) {
-      await runReview($)
-    }
-
-    return
-  }
-
-  const feedback = await showReport($, buildSimplifyReport(fixedText, skippedText))
-
-  if ((await read($, atom({ plugin: 'polish', key: 'step', id: await $.session.id() } as const, 'idle' as Step))) !== 'simplify-report') {
-    return
-  }
-
-  if (feedback === '') {
-    if (await claim($, 'simplify-report', 'review')) {
-      await runReview($)
-    }
-  } else {
-    await applyFeedback($, 'simplify-report', 'simplify-fix', feedback)
-  }
-}
-
-// The review report is the last one: annotations are fixed and the chain ends, none ends it at once.
-async function presentReviewReport($: EngineInterface): Promise<void> {
-  const feedback = await showReport($, buildReviewReport(await read($, atom({ plugin: 'polish', key: 'reviewAnswer', id: await $.session.id() } as const, '')), await read($, atom({ plugin: 'polish', key: 'fixAnswer', id: await $.session.id() } as const, ''))))
-
-  if ((await read($, atom({ plugin: 'polish', key: 'step', id: await $.session.id() } as const, 'idle' as Step))) !== 'review-report') {
-    return
-  }
-
-  if (feedback === '') {
-    await reset($)
-  } else {
-    await applyFeedback($, 'review-report', 'review-fix', feedback)
-  }
-}
-
 async function run($: EngineInterface, command: string, args: string): Promise<void> {
   try {
     await $.command.run({ command, args })
@@ -325,11 +97,6 @@ async function prepare($: EngineInterface): Promise<boolean> {
 
   await update($, atom({ plugin: 'polish', key: 'baseline', id: await $.session.id() } as const, ''), () => ids)
   await update($, atom({ plugin: 'polish', key: 'turnsAtStart', id: await $.session.id() } as const, 0), () => turns)
-  await update($, atom({ plugin: 'polish', key: 'simplifyAnswer', id: await $.session.id() } as const, ''), () => '')
-  await update($, atom({ plugin: 'polish', key: 'fixed', id: await $.session.id() } as const, ''), () => '')
-  await update($, atom({ plugin: 'polish', key: 'skipped', id: await $.session.id() } as const, ''), () => '')
-  await update($, atom({ plugin: 'polish', key: 'reviewAnswer', id: await $.session.id() } as const, ''), () => '')
-  await update($, atom({ plugin: 'polish', key: 'fixAnswer', id: await $.session.id() } as const, ''), () => '')
   await update($, atom({ plugin: 'polish', key: 'fixGraceOver', id: await $.session.id() } as const, false), () => false)
   await update($, atom({ plugin: 'polish', key: 'step', id: await $.session.id() } as const, 'idle' as Step), () => 'simplify')
 
@@ -344,15 +111,6 @@ async function start($: EngineInterface): Promise<boolean> {
   }
 
   return isPrepared
-}
-
-// Splits the last /simplify answer into the "fixed" and "skipped" lists the mod asked it to write.
-async function storeSimplifyResult($: EngineInterface): Promise<void> {
-  const answer = await read($, atom({ plugin: 'polish', key: 'simplifyAnswer', id: await $.session.id() } as const, ''))
-  const tail = answer.trim().slice(-RAW_TAIL_LENGTH)
-
-  await update($, atom({ plugin: 'polish', key: 'fixed', id: await $.session.id() } as const, ''), () => extractSection(answer, SECTION_FIXED) ?? `${NOT_EXTRACTED}. Ответ simplify:\n\n${tail}`)
-  await update($, atom({ plugin: 'polish', key: 'skipped', id: await $.session.id() } as const, ''), () => extractSection(answer, SECTION_SKIPPED) ?? NOT_EXTRACTED)
 }
 
 // Both steps run as skills in the main loop and may end their turn right after launching background
@@ -378,9 +136,8 @@ async function advance($: EngineInterface, current: 'simplify' | 'review'): Prom
   }
 
   if (current === 'simplify') {
-    if (await claim($, 'simplify', 'simplify-report')) {
-      await storeSimplifyResult($)
-      await presentSimplifyReport($)
+    if (await claim($, 'simplify', 'review')) {
+      await runReview($)
     }
   } else if (await claim($, 'review', 'fix')) {
     await startFixes($, 'fix')
@@ -388,14 +145,13 @@ async function advance($: EngineInterface, current: 'simplify' | 'review'): Prom
   }
 }
 
-// The main assistant applies fixes in its own turns (the review findings, or the annotations of a report).
+// The main assistant applies the review findings in its own turns.
 // The next step waits for them: it starts once a turn started after the fixes began, no turn is running
 // and no agent is still working. Nothing to fix may start no turn at all, hence the grace timer.
 async function startFixes($: EngineInterface, phase: Step): Promise<void> {
   const turns = await read($, atom({ plugin: 'polish', key: 'turnCount', id: await $.session.id() } as const, 0))
 
   await update($, atom({ plugin: 'polish', key: 'turnsAtFix', id: await $.session.id() } as const, 0), () => turns)
-  await update($, atom({ plugin: 'polish', key: 'fixAnswer', id: await $.session.id() } as const, ''), () => '')
   await update($, atom({ plugin: 'polish', key: 'fixGraceOver', id: await $.session.id() } as const, false), () => false)
 
   $.clock.after(FIX_START_GRACE_MS, () => {
@@ -432,13 +188,7 @@ async function advanceFix($: EngineInterface): Promise<void> {
     return
   }
 
-  if (next === 'review') {
-    await runReview($)
-  } else if (next === 'review-report') {
-    await presentReviewReport($)
-  } else {
-    await update($, atom({ plugin: 'polish', key: 'fixGraceOver', id: await $.session.id() } as const, false), () => false)
-  }
+  await update($, atom({ plugin: 'polish', key: 'fixGraceOver', id: await $.session.id() } as const, false), () => false)
 }
 
 // The review is a skill run in the main loop: its turns count from here, and advance() ends it.
@@ -453,25 +203,13 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'polish',
-      description: 'simplify → отчёт → superpowers:requesting-code-review → отчёт, каждый в Plannotator; «/polish report» — последний отчёт',
+      description: 'simplify → superpowers:requesting-code-review → правки по находкам, без отчётов',
     })
 
     return next(e)
   })
 
   on('command.run', { command: 'polish' }, async ($, e) => {
-    if (e.args.trim() === 'report') {
-      const text = await read($, atom({ plugin: 'polish', key: 'report', id: await $.session.id() } as const, ''))
-
-      if (text === '') {
-        return { text: 'Отчёта Polish пока нет.' }
-      }
-
-      void reopenReport($, text)
-
-      return { text: 'Отчёт Polish открыт в Plannotator.' }
-    }
-
     const isStarted = await prepare($)
 
     // A command run may not start another command from inside its own hook: the first step goes out
@@ -484,23 +222,12 @@ export const register: Register = on => {
 
     return {
       text: isStarted
-        ? 'Запущено: /simplify → отчёт → /superpowers:requesting-code-review → отчёт'
+        ? 'Запущено: /simplify → /superpowers:requesting-code-review → правки'
         : 'Цепочка уже выполняется',
     }
   })
 
-  // While the chain runs, /simplify is asked to end with machine-readable fixed/skipped lists.
-  on('skill.prompt', { skill: 'simplify' }, async ($, e, next) => {
-    const result = await next(e)
-
-    if ((await read($, atom({ plugin: 'polish', key: 'step', id: await $.session.id() } as const, 'idle' as Step))) !== 'simplify') {
-      return result
-    }
-
-    return { text: `${result.text}\n\n${SIMPLIFY_INSTRUCTION}` }
-  })
-
-  // While the chain runs, the review is scoped to the working tree and asked to list what it left out.
+  // While the chain runs, the review is scoped to the working tree.
   on('skill.prompt', { skill: REVIEW_COMMAND }, async ($, e, next) => {
     const result = await next(e)
 
@@ -508,7 +235,7 @@ export const register: Register = on => {
       return result
     }
 
-    return { text: [result.text, REVIEW_SCOPE_INSTRUCTION, NOT_REPORTED_INSTRUCTION].join('\n\n') }
+    return { text: [result.text, REVIEW_SCOPE_INSTRUCTION].join('\n\n') }
   })
 
   on('turn.start', async ($, e, next) => {
@@ -534,17 +261,10 @@ export const register: Register = on => {
     await update($, atom({ plugin: 'polish', key: 'runningTurnId', id: await $.session.id() } as const, ''), () => '')
 
     if (FIX_NEXT[current] !== undefined) {
-      await update($, atom({ plugin: 'polish', key: 'fixAnswer', id: await $.session.id() } as const, ''), previous => (e.answer.trim() === '' ? previous : e.answer))
       void advanceFix($)
     }
 
     if (current === 'simplify' || current === 'review') {
-      if (current === 'simplify') {
-        await update($, atom({ plugin: 'polish', key: 'simplifyAnswer', id: await $.session.id() } as const, ''), previous => (e.answer.trim() === '' ? previous : e.answer))
-      } else {
-        await update($, atom({ plugin: 'polish', key: 'reviewAnswer', id: await $.session.id() } as const, ''), previous => (e.answer.trim() === '' ? previous : e.answer))
-      }
-
       if (e.reason !== 'answer') {
         await reset($)
       } else {
@@ -556,7 +276,7 @@ export const register: Register = on => {
   })
 
   on('prompt.submit', async ($, e, next) => {
-    // Only a running skill step is cancelled by the user's message; while a report is open or fixes run it only adds a turn.
+    // Only a running skill step is cancelled by the user's message; while fixes run it only adds a turn.
     const current = await read($, atom({ plugin: 'polish', key: 'step', id: await $.session.id() } as const, 'idle' as Step))
 
     if ((current === 'simplify' || current === 'review') && USER_ORIGINS.includes(e.origin.kind)) {

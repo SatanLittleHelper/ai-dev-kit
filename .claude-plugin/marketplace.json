@@ -6,7 +6,7 @@
     {
       "name": "polish",
       "source": "./mods/polish",
-      "description": "Кнопка и команда /polish: /simplify, затем /superpowers:requesting-code-review, общий отчёт в Plannotator"
+      "description": "Кнопка и команда /polish: /simplify, затем /superpowers:requesting-code-review, находки правятся молча, без отчётов"
     },
     {
       "name": "pr-flow",
