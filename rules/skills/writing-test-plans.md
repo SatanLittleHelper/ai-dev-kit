@@ -64,10 +64,12 @@ One case, one behavior; an "and" in the name means two cases. Branch coverage fo
 The author is the main agent, drafting in native Plan Mode. The user sees only the document that came out of this loop, through `ExitPlanMode`.
 
 1. Draft the document in the Plan Mode file.
-2. Spawn a read-only reviewer subagent (`Explore`-class; cheap model unless the user chose otherwise) with the full contents of `rules/skills/test-plan-reviewer.md` as its prompt plus the inputs listed there. The subagent does not read repository rules on its own.
-3. Fix every `[major]` finding in the draft; apply `[minor]` ones when cheap. Do not argue with the reviewer inside the document.
-4. Re-run the reviewer. Stop when it ends with `VERDICT NO_MAJOR_ISSUES`, or after **3 review iterations**.
-5. If the limit is reached with major findings left, still go to `ExitPlanMode`, but add a «Не сошлись» block at the top: each remaining major finding and the author's position.
+2. **Self-check before the first review**, silently, so the reviewer is not spent on mechanics: every spec requirement has an `## R*` heading; every case has Дано / Когда / Тогда / Ловит and a layer tag; IDs are numbered continuously; no placeholders («TBD», «и т.д.», «аналогично U2»); no test code, private method names, or mock setup; one behavior per case; each case passes the `return mockResult` tautology check.
+3. Spawn a read-only reviewer subagent (`Explore`-class; cheap model unless the user chose otherwise) with the full contents of `rules/skills/test-plan-reviewer.md` as its prompt plus the inputs listed there. The subagent does not read repository rules on its own. This is round 1 (full review).
+4. Go through the findings. Fix every `[major]` one, or mark it `rejected: <reason>` when it contradicts the spec, `rules/base/testing.md`, or this file; apply `[minor]` ones only when cheap. Keep the rejection reasons out of the document: they travel only to the next round.
+5. Round 2 and later: spawn the reviewer again, additionally passing the previous findings with their `fixed` / `rejected: <reason>` marks and the diff against the previous draft. The reviewer only verifies the fixes and looks for new `major` issues in changed text.
+6. Stop when the reviewer ends with `VERDICT NO_MAJOR_ISSUES`, or after **3 review iterations**.
+7. If the limit is reached with major findings left, still go to `ExitPlanMode`, but add a «Не сошлись» block at the top: each remaining major finding, the reviewer's position and the author's position. The user is the tiebreaker.
 
 After approval, save to the target path. Stage B starts a new Plan Mode cycle with a fresh file that does not contain this document.
 
@@ -84,4 +86,7 @@ After approval, save to the target path. Stage B starts a new Plan Mode cycle wi
 | Five-field prose block per case | Four-line card: Дано / Когда / Тогда / Ловит |
 | Separate coverage matrix or infrastructure section in the document | Group cases under requirement headings; the runner check is the author's step, not a section |
 | Reviewer loop with no limit | Stop at `NO_MAJOR_ISSUES` or after 3 iterations, with a «Не сошлись» block |
+| Sending a draft to the reviewer without the self-check | Run the mechanical self-check first |
+| Silently ignoring a finding, or redoing the same fix round after round | Mark it `rejected: <reason>` and pass it to the next round |
+| Re-running the reviewer in round 2 as a full review | Pass previous findings and the diff; the reviewer only verifies fixes |
 | Appending the implementation plan to the approved test plan's Plan Mode file | One document per Plan Mode cycle; start Stage B in a fresh file |

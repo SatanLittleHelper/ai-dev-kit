@@ -47,7 +47,7 @@ The cases, their Дано / Когда / Тогда, and mock rationale are deci
 - **Test IDs:** the IDs from the test plan this task implements (`U1`, `U2`, …). Every ID of the test plan appears in exactly one task.
 - **Test first:** a "write the failing test" step with the actual test code for those IDs precedes the implementation step, with the expected failure reason, so the run proves the test fails for the right reason and not because of a typo.
 - **Layer and file:** the layer from `rules/base/test-execution-policy.md` → "TDD workflow", the spec file path, and the `describe` name.
-- **Fixtures and mocks in code:** which shared fixtures are reused and from where; the mock setup that realizes the test plan's «Моки и фикстуры».
+- **Fixtures and mocks in code:** which shared fixtures are reused and from where; the mock setup that realizes the `Моки:` lines of the test plan.
 - **Loop command:** the scoped command for the file; the full build, type-check, lint, and whole-suite pass stays a single final step.
 - **Missing infrastructure:** if the layer has none, the task starts with adding it, or the plan stops and says so (`rules/base/testing.md` → "Missing Test Infrastructure"). The test is never dropped.
 
