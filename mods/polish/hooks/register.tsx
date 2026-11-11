@@ -291,12 +291,14 @@ export const register: Register = on => {
       return next(e)
     }
 
+    const below = await next(e)
     const current = await read($, atom({ plugin: 'polish', key: 'step', id: await $.session.id() } as const, 'idle' as Step))
     const { Box, Button, Text } = $.ui.resolve(e)
 
     if (current === 'idle') {
       return (
         <Box>
+          {below}
           <Button key="polish" label="Polish" hotkey="p" onPress={() => start($)} />
         </Box>
       )
@@ -304,6 +306,7 @@ export const register: Register = on => {
 
     return (
       <Box>
+        {below}
         <Text dimColor>Polish: {STEP_LABELS[current]}… </Text>
         <Button key="cancel" label="Cancel" hotkey="c" onPress={() => cancelAll($)} />
       </Box>
