@@ -61,7 +61,7 @@ A roadmap and its steps carry no PRD. Feature-level goals, current/target state,
 
 | File | Purpose |
 |---|---|
-| `docs/<feature-slug>/YYYY-MM-DD-<feature-slug>-roadmap.md` | The roadmap itself. Each checkpoint/step is a top-level checkbox: `- [ ] <TICKET> <short name>`. Use the project's real issue-tracker prefix (e.g. `SCB-NNN`); before a ticket exists, use the literal placeholder `TBD` in its place. |
+| `docs/<feature-slug>/YYYY-MM-DD-<feature-slug>-roadmap.md` | The roadmap itself. Each checkpoint/step is a top-level checkbox: `- [ ] <TICKET> <short name>`. Use the project's real issue-tracker prefix (e.g. `SCB-NNN`); before a ticket exists, use the literal placeholder `TBD` in its place. Optional tags at the end of the line: `(est: ...)` (`## Estimates`), then `(depends: ...)`. |
 | `docs/<feature-slug>/roadmap-state.json` | Machine-readable progress state for every checkpoint — see `## State File` below. |
 | `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<step-slug>-design.md` | Step spec — the step's requirements, success criteria, and architectural decision, when it needs one (from `brainstorming`). |
 | `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<ticket>-<name>-tests.md` | Test plan for the step (from `rules/skills/writing-test-plans.md`): what each test verifies, by layer. Absent when the step has no test-worthy layer. |
@@ -84,6 +84,12 @@ Each step gets its own folder under `docs/<feature-slug>/steps/`, named by the s
       "title": "...",
       "ticket": "TBD",
       "dependsOn": [],
+      "estimate": {
+        "manual": { "min": 1, "max": 3 },
+        "agent": { "min": 0.5, "max": 1 },
+        "basis": "initial",
+        "actualDays": null
+      },
       "stepFolder": "docs/<feature-slug>/steps/<step-slug>/",
       "status": "not-started",
       "specPath": null,
@@ -94,13 +100,15 @@ Each step gets its own folder under `docs/<feature-slug>/steps/`, named by the s
 }
 ```
 
+`estimate` is `null` for a step with no estimate (older state files without the field stay valid). See `## Estimates` for its meaning.
+
 `status` is one of, in order: `not-started` → `spec-drafted` → `spec-validated` → `plan-drafted` → `implemented` → `closed`. For a step with no design doc (drafted with `writing-plans` directly, or a step that needs no architectural decision), the `spec-*` stages are skipped — status goes straight from `not-started` to `plan-drafted` with `specPath: null`.
 
 Who updates the file, and when:
 
-- `references/writing.md` creates it right after saving the roadmap — one entry per checkpoint, `status: "not-started"`, `stepFolder` filled in only for checkpoints that got a folder immediately (most stay flat until picked up in Phase 2/3).
-- `references/batch-plan-validate.md` updates it after every phase transition for a task: Phase 1 design/plan drafted → `spec-drafted` + `specPath`, or `plan-drafted` + `planPath` if `writing-plans` was chosen directly; Phase 2 approval → `spec-validated` (or stays `plan-drafted` if a plan was validated directly). Also fills `stepFolder` if it was still empty.
-- `references/executing-checkpoints.md` updates it when a step is picked up (Phase 3): after writing the test plan → `testPlanPath` (status unchanged); after writing the implementation plan → `plan-drafted` + `planPath` (`plan-drafted` means both documents are ready; `testPlanPath` stays `null` for a step with no test-worthy layer); after implementation's final verification passes → `implemented`; at close-out (checkbox ticked, plan files deleted) → `closed`, `planPath: null`, `testPlanPath: null`.
+- `references/writing.md` creates it right after saving the roadmap — one entry per checkpoint, `status: "not-started"`, `estimate` filled from each checkpoint's `(est: ...)` tag with `basis: "initial"`, `stepFolder` filled in only for checkpoints that got a folder immediately (most stay flat until picked up in Phase 2/3).
+- `references/batch-plan-validate.md` updates it after every phase transition for a task: Phase 1 design/plan drafted → `spec-drafted` + `specPath`, or `plan-drafted` + `planPath` if `writing-plans` was chosen directly; Phase 2 approval → `spec-validated` (or stays `plan-drafted` if a plan was validated directly) and a re-check of the step's estimate (`estimate.basis: "spec-validated"`). Also fills `stepFolder` if it was still empty.
+- `references/executing-checkpoints.md` updates it when a step is picked up (Phase 3): after writing the test plan → `testPlanPath` (status unchanged); after writing the implementation plan → `plan-drafted` + `planPath` (`plan-drafted` means both documents are ready; `testPlanPath` stays `null` for a step with no test-worthy layer) and a re-check of the step's estimate (`estimate.basis: "plan-drafted"`); after implementation's final verification passes → `implemented`; at close-out (checkbox ticked, plan files deleted) → `closed`, `planPath: null`, `testPlanPath: null`, `estimate.actualDays` filled.
 
 ## Dependencies
 
@@ -108,8 +116,10 @@ A checkpoint's markdown line may end with a machine-readable dependency tag: `(d
 
 ```markdown
 - [ ] 1.1b — [backend] ... (Jira: ACD-59) (depends: 1.1a)
-- [ ] A1 — [ui-kit] ... (Jira: TBD) (depends: ui-kit-e2e:B1, ui-kit-e2e:B2)
+- [ ] A1 — [ui-kit] ... (Jira: TBD) (est: 1–2д / agent: 0.5–1д) (depends: ui-kit-e2e:B1, ui-kit-e2e:B2)
 ```
+
+The optional `(est: ...)` tag (`## Estimates`) goes before `(depends: ...)`; `depends` stays the last tag.
 
 `docs/<feature-slug>/roadmap-state.json` mirrors the same information machine-readably: every step entry gets a `"dependsOn": string[]` field (array of checkpoint ids, written exactly as in the tag — `"A1"` or `"ui-kit-e2e:B1"`; empty array when there's no dependency) — `references/writing.md` populates it straight from the markdown tags when creating the state file (see `## State File` above).
 
@@ -120,6 +130,50 @@ A checkpoint is **ready to pick up** when it is unchecked (`- [ ]`) and every en
 - if the state file exists but has no step with that id, the reference is **broken**: treat the checkpoint as blocked and tell the user to fix the tag instead of guessing.
 
 Cross-roadmap references are one-directional and read-only: a checkpoint never edits the other roadmap's files. Multiple checkpoints can be ready at once — that's exactly what makes them safe to parallelize. `references/executing-checkpoints.md` uses this to decide which checkpoint(s) it can offer, instead of always assuming strict top-to-bottom order.
+
+## Estimates
+
+Every checkpoint carries a rough time estimate in two flavours, so the roadmap answers "how long will this take" per step and as a whole. Estimates are deliberately coarse: a range, never a single number.
+
+**Units and scale**
+
+- Unit is a **day** ≈ 6 hours of focused work; tenths allowed (`0.5д`). Written as a range: `1–3д`.
+- **manual** — one developer without AI, including writing tests and PR review.
+- **agent** — calendar time of the step when worked with an agent, including the human's review and rework (not the agent's raw runtime).
+- **Hard ceiling: `manual.max ≤ 3д` per step.** A step whose manual range goes past 3д is cut into several steps (each piece still leaves the app working — Core Principle in `references/writing.md`). Never round an oversized range down to fit and never leave the step uncut; propose the split and recompute the totals. This check runs when decomposing and on every estimate revision below.
+- State assumptions (who executes, how familiar the stack is) in the roadmap's `Context` so the ranges can be re-judged later.
+
+**Where it lives**
+
+- Markdown: an optional tag before `(depends: ...)` — `depends` stays the last tag on the line:
+  `- [ ] A2 — [backend] ... (Jira: TBD) (est: 1–3д / agent: 0.5–1д) (depends: A1)`.
+  Keep the Latin `est:` / `agent:` keys so the tag stays parseable; prose stays Russian.
+- `roadmap-state.json`: the step's `estimate` object (`## State File`). It is the source of truth for calculations; the markdown tag mirrors it, same as `dependsOn` mirrors `(depends: ...)`.
+  - `basis` — at which point the range was last revised: `initial` → `spec-validated` → `plan-drafted`.
+  - `actualDays` — real elapsed working days, written at close-out; stays `null` until then. Only recorded for calibration — no automatic correction factors.
+
+**Totals** — a derived `## Оценка` section in the roadmap document, recomputed whenever any range changes (state file stays per-step only):
+
+```markdown
+## Оценка
+| | Вручную | С агентом |
+|---|---|---|
+| Сумма по шагам | 14–26д | 7–13д |
+| Критический путь (depends) | 9–16д | 5–9д |
+| Осталось (незакрытые шаги) | ... | ... |
+Допущения: ...
+```
+
+- **Sum** = Σmin–Σmax over all steps. Don't combine errors statistically — plain sum of ranges, marked as rough.
+- **Critical path** = the chain of `(depends: ...)` inside this roadmap with the largest total `max`. Cross-roadmap dependencies (`<slug>:<id>`) are excluded; add a line saying so when any exist.
+- **Remaining** = the same sums over steps whose `status` is not `closed`.
+
+**Revision**
+
+- After Phase 2 approval (`references/batch-plan-validate.md`) and after the implementation plan is written (`references/executing-checkpoints.md` step 4): re-check the step's range against the now-detailed spec/plan, update `estimate` (+ `basis`) and the markdown tag, recompute `## Оценка`.
+- On a step split/merge, re-estimate the affected steps and recompute the totals.
+- At close-out record `actualDays`; ask the user (`AskUserQuestion`) if it is not obvious from branch dates — never invent it.
+- A roadmap with no estimates (older one) keeps working; offer to add them once when it is next touched, don't force it.
 
 ## Commit policy
 
