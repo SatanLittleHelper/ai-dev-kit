@@ -41,6 +41,7 @@ Read the roadmap top to bottom and collect every unchecked `- [ ] <TICKET> <name
 4. Name the new branch per the repo's own branch-naming rules if documented (check `CLAUDE.md`/`AGENTS.md`/`.claude/rules`); otherwise default to the bare `<ticket>` (no slug/description suffix) and state the chosen name in your status update so the user can redirect before it's created.
 5. Never commit directly to the base branch.
 6. Isolate the branch: run `references/sync-and-isolate.md` section C so only this roadmap's `docs/<slug>/` remains in the working tree.
+7. Go straight to step 4 and start the first planning document (the test plan, or the implementation plan if the step has no test-worthy layer) without asking for confirmation. Branch setup and isolation are not a checkpoint: the document goes through its own Plan Mode approval anyway. Report branch, ticket and isolation in the same turn as the first planning action, not as a separate "start?" question.
 
 ### 4. Agree on implementation mode
 

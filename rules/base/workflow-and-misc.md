@@ -4,9 +4,15 @@
 
 Do not declare a `let` and assign it later, including across `try/catch`. Extract the operation into a function and assign its result to a `const`. A `let` is acceptable for a genuinely loop-scoped or incremented value.
 
-## No Magic Numbers
+## Constants: Name Only What Needs a Name
 
-Name non-obvious numeric literals. Express durations, TTLs, intervals, and retry counts as named constants or arithmetic from obvious units (`60 * 60 * 1000`), in production and test code.
+Production code only: test code may use magic numbers and short literals freely.
+
+- **No name needed:** self-evident literals (`slice(0, 3)`, `?? 0`, `i + 1`, `'utf-8'`, `100`) and a short string used once whose meaning is clear in place (a short error text in a one-off `throw`, a CSS class, an object key).
+- **Name needed:** a numeric literal whose meaning is not obvious (durations, TTLs, intervals, retry counts, limits). Arithmetic from obvious units (`60 * 60 * 1000`) is fine, but give it a name too: `const TTL_MS = 60 * 60 * 1000`.
+- **Raw SQL is always a named constant.** Used by one repository — a local `const` at the top of that repository file. Used by several files, or so many queries that the repository stops being readable — `*.constants.ts`.
+- **The name is local until there is a second consumer.** A constant lives as a `const` at the top of the file that uses it. Move it to `*.constants.ts` only when a second file needs it (`rules/base/file-structure.md`). Do not create a constants file for a single use.
+- **Error texts:** with custom error classes, the message lives inside the class or its factory (`*.errors.ts`, see `rules/base/file-structure.md`). Do not create a file that holds only message strings.
 
 ## No JSDoc Comments
 
