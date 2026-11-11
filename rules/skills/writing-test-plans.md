@@ -71,7 +71,7 @@ The author is the main agent, drafting in native Plan Mode. The user sees only t
 6. Stop when the reviewer ends with `VERDICT NO_MAJOR_ISSUES`, or after **3 review iterations**.
 7. If the limit is reached with major findings left, still go to `ExitPlanMode`, but add a «Не сошлись» block at the top: each remaining major finding, the reviewer's position and the author's position. The user is the tiebreaker.
 
-After approval, save to the target path. Stage B starts a new Plan Mode cycle with a fresh file that does not contain this document.
+After approval, save to the target path. Stage B starts a new Plan Mode cycle with a fresh file that does not contain this document. Once the test plan is approved, start Stage B in the same turn: read `rules/skills/writing-plans.md` and enter a fresh Plan Mode. Do not end the report with «Начинать?» or any other request for confirmation: the approval of the test plan is the go-ahead. A late edit made at the user's decision after the last review round (for example, one added case) does not change this.
 
 ## Common Mistakes
 
