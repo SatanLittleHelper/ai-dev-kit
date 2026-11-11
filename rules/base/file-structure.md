@@ -3,7 +3,8 @@
 | Content | File |
 |---|---|
 | Any type/interface, even a single one | `*.types.ts` |
-| Constants | `*.constants.ts` |
+| Constants used by 2+ files of the module | `*.constants.ts` (one per folder, not one per class). A constant with a single consumer stays a local `const` in that file |
+| Custom error classes (2+ in the module) | `*.errors.ts`, the message lives inside the class. One error class stays in its consumer's file. No file that holds only message strings |
 | Pure builders/formatters without side effects or DI | `*.helpers.ts` |
 | Pure row/payload → domain mappers with no branching beyond `?? default` | `*.mapper.ts` |
 | Type guards | Beside the narrowed type in `*.types.ts` |
@@ -11,7 +12,7 @@
 
 Exception — Storybook stories: a story module and its support files (`*.stories.ts`, story-opening helpers such as `stories.ts` in an e2e `support/` folder) are not split by this table. Types, pure formatters, and the side-effecting function may stay together in one file; do not split them into `*.types.ts`/`*.helpers.ts`.
 
-Exception — test data: values used only by tests (seeds, fixtures, test-config timeouts) stay in the test file or its test-support file and are not moved to `*.constants.ts`. Each still gets a name; see `rules/base/testing.md` → "Assertions".
+Exception — test data: values used only by tests (seeds, fixtures, test-config timeouts) stay in the test file or its test-support file and are not moved to `*.constants.ts`. Naming is optional for one-off values; see `rules/base/testing.md` → "Assertions".
 
 Exception — API URLs: an HTTP route string (`'/api/...'`) lives only in the API service (`*.api.service.ts`) that calls it, as a literal or a local `const` of that file. Do not put it in `*.constants.ts`: the URL has one consumer, and the service is where a reader looks for it.
 
