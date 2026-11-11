@@ -37,6 +37,8 @@ Using `roadmap-state.json` status (`roadmap/SKILL.md` order: `not-started → sp
 
 ### 5. Propose, don't assume
 
+Before the question, include the remaining estimate in the status summary (the "Осталось" row of the roadmap's `## Оценка`, or the sum of `estimate` over steps not `closed`): "Осталось: X–Yд вручную / A–Bд с агентом". Skip when no step has an estimate.
+
 - **No step is doc-complete yet** → tell the user documentation is still open on N steps, then `AskUserQuestion`: keep drafting/validating designs in batch (`references/batch-plan-validate.md`) vs. take a single step straight into work (`references/executing-checkpoints.md`). The second option is always available, even on a brand-new roadmap: `references/executing-checkpoints.md` step 4 writes the missing step plan itself, and the step's design doc is optional there.
 - **Some doc-complete, some not** → report both counts, then `AskUserQuestion`: continue documentation on the remaining steps (`references/batch-plan-validate.md`) vs. start implementation on a step (`references/executing-checkpoints.md`) — a doc-complete one, or any other ready step the user prefers to take without waiting for its docs.
 - **Every remaining step is doc-complete** → for the next doc-complete step, `AskUserQuestion`: write the implementation plan only (`rules/skills/writing-plans.md`, standalone) vs. write the plan and implement it (`references/executing-checkpoints.md`, which writes the plan itself as part of its own flow — don't pre-write one before handing off, that would duplicate step 4 of that reference).

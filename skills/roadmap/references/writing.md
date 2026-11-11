@@ -25,9 +25,10 @@ Concretely this usually means: additive changes (new module, new table, dual-wri
 6. Decompose into steps, applying the Core Principle above. For each step, decide:
    - **Flat entry vs. nested step folder:** a step simple enough to state in a few lines stays a checklist item directly in the roadmap; a step carrying its own architectural decisions gets its own folder `docs/<feature-slug>/steps/<step-slug>/` holding that step's design doc (`brainstorming`) and, once worked, its own implementation plan (`roadmap/SKILL.md` naming). Don't default to nesting everything — most steps should be flat until they're actually picked up.
    - **Ticket granularity:** one ticket per checkpoint, or several tightly-coupled checkpoints grouped under one ticket — decide per step based on how independently each checkpoint is actually worth tracking; annotate the choice inline (`Jira: TBD` per checkpoint, or one `Jira: TBD` for the group) so the reader sees the grouping, not just guesses it.
+   - **Estimate:** give each checkpoint a coarse range in two flavours — `manual` (one developer, no AI) and `agent` (with an agent, including human review) — as an `(est: 1–3д / agent: 0.5–1д)` tag (`roadmap/SKILL.md` → `## Estimates`). If `manual.max` goes past 3д, the step is too big: cut it into several steps (each still leaving the app working) instead of keeping or rounding the range. State the estimating assumptions in `Context`.
    - **Dependencies:** for each checkpoint, decide which other checkpoints must be closed before it can start — ids from this same roadmap, or `<feature-slug>:<id>` for a checkpoint in a neighbouring roadmap under `docs/` — and tag it `(depends: <id>[, <slug>:<id>...])` at the end of its checklist line (`roadmap/SKILL.md` → `## Dependencies`); omit the tag when there's no dependency. Before writing a cross-roadmap id, check that `docs/<slug>/roadmap-state.json` exists and has that step. Don't mark every checkpoint as depending on the one before it "to be safe" — that defeats the point, which is showing which checkpoints can actually be worked in parallel.
 7. Present the decomposition → `ExitPlanMode` for design approval (same gate as `brainstorming`).
-8. Write the roadmap (+ any nested step folders) to disk. **Default location:** a dedicated `docs/<feature-slug>/` folder, committed to git and kept permanently — a roadmap is a durable record of a migration's history, not a throwaway planning artifact, so it does not follow the usual "delete the plan/spec after implementation" rule. A project's own conventions (including a personal `.local.md` override) win over this default when they conflict for the roadmap itself — but not for individual steps' own artifacts once a step is worked, see `roadmap/SKILL.md` → `## Storage Precedence`. Then create `docs/<feature-slug>/roadmap-state.json` per `roadmap/SKILL.md` → `## State File`: one entry per checkpoint, `status: "not-started"`, `stepFolder` filled in only for checkpoints that got a folder immediately, and `dependsOn` populated straight from each checkpoint's `(depends: ...)` tag (`roadmap/SKILL.md` → `## Dependencies`; empty array when the tag is absent).
+8. Write the roadmap (+ any nested step folders) to disk. **Default location:** a dedicated `docs/<feature-slug>/` folder, committed to git and kept permanently — a roadmap is a durable record of a migration's history, not a throwaway planning artifact, so it does not follow the usual "delete the plan/spec after implementation" rule. A project's own conventions (including a personal `.local.md` override) win over this default when they conflict for the roadmap itself — but not for individual steps' own artifacts once a step is worked, see `roadmap/SKILL.md` → `## Storage Precedence`. Then create `docs/<feature-slug>/roadmap-state.json` per `roadmap/SKILL.md` → `## State File`: one entry per checkpoint, `status: "not-started"`, `stepFolder` filled in only for checkpoints that got a folder immediately, `dependsOn` populated straight from each checkpoint's `(depends: ...)` tag (`roadmap/SKILL.md` → `## Dependencies`; empty array when the tag is absent), and `estimate` populated from each `(est: ...)` tag with `basis: "initial"`, `actualDays: null`. Fill the roadmap's `## Оценка` totals (sum, critical path, remaining) per `roadmap/SKILL.md` → `## Estimates`.
 9. Self-review pass (placeholders, internal contradictions, the Core Principle check on step ordering, ambiguous checkpoints, `Context` actually states goals and constraints) — fix inline, no separate round.
 10. Ask the user to review the written roadmap before proceeding.
 11. After approval, ask (`AskUserQuestion`, don't auto-start) how to continue. Offer, alongside "just save it for later": **running ticket-drafting and plan-drafting in parallel** — a Jira-drafting skill (e.g. `jira-writer`) producing one paste-ready draft per ticket, and `references/batch-plan-validate.md` drafting/validating each checkpoint's implementation plan — both fed from the same roadmap checklist. Note explicitly that a Jira-drafting skill typically only *drafts* text for the user to paste into Jira's UI; it does not create tickets via API, so real ticket IDs come back from the user afterward and replace the `TBD` placeholders in the roadmap doc.
@@ -46,11 +47,14 @@ End-state architecture — not per-step.
 ## Шаги                                    <- use this section for a two-level roadmap
 ### Шаг A — <name>
 Папка шага: docs/<feature-slug>/steps/<step-slug>/   <- only if step A got its own folder (design/plan)
-- [ ] A1 — ... (Jira: TBD / real ticket id)
-- [ ] A2 — ... (Jira: TBD) (depends: A1)   <- optional tag, only when A2 truly needs A1 closed first
+- [ ] A1 — ... (Jira: TBD / real ticket id) (est: 1–2д / agent: 0.5–1д)
+- [ ] A2 — ... (Jira: TBD) (est: 2–3д / agent: 1д) (depends: A1)   <- optional depends tag (always last), only when A2 truly needs A1 closed first
 
 ## Список задач                            <- use this instead of Шаги for a flat roadmap
-- [ ] <ticket-or-TBD> — [domain] Title — what changes, dependencies
+- [ ] <ticket-or-TBD> — [domain] Title — what changes (est: ...) (depends: ...)
+
+## Оценка
+Table (Сумма по шагам / Критический путь / Осталось × Вручную / С агентом) and Допущения — format and calculation rules in `roadmap/SKILL.md` → `## Estimates`.
 
 ## Сквозные риски                          <- optional, mainly useful for the two-level form
 Cross-cutting risks that span more than one step (per-step risks live in that step's own folder).
@@ -69,6 +73,7 @@ A roadmap carries no code — verification happens per-checkpoint, in that check
 | Flat item vs. nested step folder | Nest (`docs/<feature-slug>/steps/<step-slug>/`) only when the step needs its own architectural decision; its own plan gets added there once the step is picked up |
 | Ticket granularity | Per-step judgment call, annotated inline, not silently assumed |
 | Dependencies | `(depends: <id>, <slug>:<id>...)` — `<slug>:` points into a neighbouring roadmap — only when truly needed — lets `references/executing-checkpoints.md` offer parallel checkpoints instead of forcing document order |
+| Estimates | `(est: <min>–<max>д / agent: <min>–<max>д)` per step; `manual.max ≤ 3д`, otherwise cut the step; totals in `## Оценка` |
 | Save location | `docs/<feature-slug>/`, committed, kept permanently (unless project overrides) |
 | After approval | Ask before starting ticket-drafting/plan-drafting — never auto-start |
 
@@ -82,4 +87,7 @@ A roadmap carries no code — verification happens per-checkpoint, in that check
 - **Inventing Jira ticket numbers.** A ticket-drafting skill produces text to paste, not a created ticket — use `TBD` until the user reports back a real id.
 - **Deleting the roadmap folder after the migration finishes.** Unlike an ordinary plan/spec, this is meant to stay as history — don't apply the usual "clean up after implementation" reflex to it.
 - **Auto-starting ticket/plan drafting right after `ExitPlanMode` approval.** Design approval isn't "start coding" — ask how to proceed, same reasoning as after any other Plan Mode exit.
+- **A single number instead of a range.** Gives false precision; always `min–max`, in both flavours (manual and agent).
+- **Leaving a step with `manual.max > 3д` uncut.** The ceiling is a decomposition check, not a suggestion — split the step (and keep every piece shippable) rather than keep or round the range.
+- **Not recomputing `## Оценка` after changing a range or splitting a step.** The totals are derived; stale totals are worse than none.
 - **Tagging every checkpoint as depending on the previous one "to be safe."** Defeats the purpose of `(depends: ...)` — only tag a real dependency; checkpoints with no real dependency should be tag-free so `references/executing-checkpoints.md` can actually offer them in parallel.
