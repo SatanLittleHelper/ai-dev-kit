@@ -21,6 +21,7 @@ This file is always in context through `rules/RULES.md`. It routes work to detai
 | Long-running Plannotator process | Read `rules/skills/plannotator.md` |
 | NestJS code | Read `rules/nestjs/index.md`, then the relevant topic file(s) |
 | Angular code | Read `rules/angular/index.md`, then the relevant topic file(s) |
+| Write a Jira task ("напиши задачу", "сделай задачу") | Invoke `jira-writer` |
 | Roadmap work | Invoke `roadmap` |
 | Shared vs personal file | Read `rules/base/local-vs-shared.md` |
 | Artifact or temp-file location | Read `rules/base/artifacts-and-tmp.md` |
