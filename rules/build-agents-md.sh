@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Regenerates the ai-dev-kit block inside the current project's AGENTS.md from the
-# always-on rules (rules/RULES.md's @import chain).
+# always-on rules (rules/RULES.md's @import chain) plus Codex-only adaptations.
 #
 # Why this exists: Codex (and other agents reading AGENTS.md) don't reliably expand
 # `@file.md` references the way Claude Code expands `@import` in CLAUDE.md — verified
@@ -17,10 +17,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RULES_MD="$SCRIPT_DIR/RULES.md"
+CODEX_MD="$SCRIPT_DIR/codex.md"
 START_MARKER="<!-- ai-dev-kit:rules:start (auto-generated, do not edit — regenerate via .claude/ai-dev-kit/rules/build-agents-md.sh) -->"
 END_MARKER="<!-- ai-dev-kit:rules:end -->"
 
 [ -f "$RULES_MD" ] || { echo "Error: $RULES_MD not found." >&2; exit 1; }
+[ -f "$CODEX_MD" ] || { echo "Error: $CODEX_MD not found." >&2; exit 1; }
 git rev-parse --show-toplevel >/dev/null 2>&1 || { echo "Error: run this inside a git repository (project root)." >&2; exit 1; }
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
@@ -47,6 +49,9 @@ trap 'rm -f "$BLOCK_FILE"' EXIT
         ;;
     esac
   done < "$RULES_MD"
+  # Codex-only instructions: keep these out of the shared RULES.md import chain.
+  cat "$CODEX_MD"
+  echo ""
   echo "$END_MARKER"
 } > "$BLOCK_FILE"
 
