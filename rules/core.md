@@ -12,7 +12,7 @@ These compact guardrails are always in context through `rules/RULES.md`. User in
 - Before reading a known file or choosing between Bash and a dedicated tool: apply `rules/base/mcp-tool-priority.md`.
 - Before claiming work complete, fixed, or passing: run the relevant checks and read/apply `rules/skills/verification-before-completion.md`.
 
-This contract only points to the detailed files: read the one that matches the action before you act. If a routed file or skill is unavailable, skip it and don't reconstruct it from memory.
+This contract only points to the detailed files: read the one that matches the action before you act. If a routed file, skill, mod, plugin, or CLI is unavailable, name it and offer installation or repair using `rules/base/workflow-dependencies.md`. Never skip it silently, reconstruct its content from memory, or report its dependent stage as completed.
 
 ## Always-on conventions
 

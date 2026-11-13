@@ -15,7 +15,8 @@ This file is always in context through `rules/RULES.md`. It routes work to detai
 | Known file path, Bash vs MCP, or dedicated-tool choice | Read `rules/base/mcp-tool-priority.md` |
 | Claim work complete, fixed, or passing | Read `rules/skills/verification-before-completion.md` and run its required checks |
 | Test the current changes by hand ("протестируй изменения", "test my changes") | Invoke `testing-changes` |
-| Create a PR ("сделай ПР", "open a PR") | Нет действия: поток подмешивает мод `pr-flow`; следуй добавленным инструкциям |
+| Create a PR ("сделай ПР", "open a PR") | Follow instructions injected by `pr-flow`; if unavailable, read `rules/base/workflow-dependencies.md` and offer installation |
+| Required skill, mod, plugin, or CLI is unavailable | Read `rules/base/workflow-dependencies.md`; name the dependency and offer installation with the exact command |
 | Execute a written plan via subagents | Read `rules/skills/subagent-driven-development.md` |
 | Execute a written plan with checkpoints | Read `rules/skills/executing-plans.md` |
 | Long-running Plannotator process | Read `rules/skills/plannotator.md` |
@@ -26,7 +27,7 @@ This file is always in context through `rules/RULES.md`. It routes work to detai
 | Shared vs personal file | Read `rules/base/local-vs-shared.md` |
 | Artifact or temp-file location | Read `rules/base/artifacts-and-tmp.md` |
 
-If a routed skill or file is missing, skip it silently and continue; never reconstruct its content from memory.
+Never silently skip a missing routed skill or file. Follow `rules/base/workflow-dependencies.md`; do not reconstruct missing content from memory or claim the dependent stage was completed.
 
 ## Chaining
 
@@ -35,7 +36,7 @@ If a routed skill or file is missing, skip it silently and continue; never recon
 - For a NestJS/Angular plan, `writing-plans.md` handles stack detection and required stack reads; do not repeat them before drafting.
 - For inline stack implementation outside a plan, read the relevant index and topic directly.
 - TDD scope is bounded by `testing.md`'s layer table.
-- Before delegation, read the project's durable context, codebase map, role definition, and applicable rules; pass each subagent its goal, scope, interfaces, constraints, workflow, verification policy, and readiness criteria. Forbid commits in implementer prompts.
+- Before delegation, read the project's durable context, role definition, and applicable rules; pass each subagent its goal, scope, interfaces, constraints, workflow, verification policy, and readiness criteria. Forbid commits in implementer prompts.
 
 ## Project config
 

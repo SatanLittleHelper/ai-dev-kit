@@ -89,6 +89,14 @@ fi
 log "enabling mods: ${OUR_MODS[*]}"
 bash "$SUBMODULE_PATH/mods/install-mods.sh" "${OUR_MODS[@]}"
 
+# 3d. Official workflow plugins and the Plannotator binary, on each developer's machine.
+if [ ! -f "$SUBMODULE_PATH/dependencies/install.sh" ]; then
+  log "updating the submodule to obtain the workflow dependency installer"
+  git submodule update --init --remote "$SUBMODULE_PATH"
+fi
+log "installing Superpowers and Plannotator"
+bash "$SUBMODULE_PATH/dependencies/install.sh"
+
 # 4. AGENTS.md for Codex — opt-in, ask the user. Reads from /dev/tty, not stdin: this
 # script is normally run as `curl | bash`, where stdin is already the piped script itself,
 # so a plain `read` here would not reach an actual terminal.
