@@ -1,0 +1,274 @@
+{
+  "feature": "kit-usability",
+  "roadmapPath": "docs/kit-usability/2026-11-13-kit-usability-roadmap.md",
+  "updatedAt": "2026-11-13T11:17:11.444080+00:00",
+  "steps": [
+    {
+      "id": "A1",
+      "title": "Диагностика doctor",
+      "ticket": "TBD",
+      "dependsOn": [],
+      "estimate": {
+        "manual": {
+          "min": 1.0,
+          "max": 3.0
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "A2",
+      "title": "Итоговый отчёт установки",
+      "ticket": "TBD",
+      "dependsOn": [
+        "A1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 0.5,
+          "max": 1.5
+        },
+        "agent": {
+          "min": 0.25,
+          "max": 0.75
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "B1",
+      "title": "Короткий стартовый раздел README",
+      "ticket": "TBD",
+      "dependsOn": [],
+      "estimate": {
+        "manual": {
+          "min": 0.5,
+          "max": 1.0
+        },
+        "agent": {
+          "min": 0.25,
+          "max": 0.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "B2",
+      "title": "Памятка повседневных запросов",
+      "ticket": "TBD",
+      "dependsOn": [],
+      "estimate": {
+        "manual": {
+          "min": 0.5,
+          "max": 1.0
+        },
+        "agent": {
+          "min": 0.25,
+          "max": 0.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "C1",
+      "title": "Единый реестр компонентов",
+      "ticket": "TBD",
+      "dependsOn": [],
+      "estimate": {
+        "manual": {
+          "min": 1.0,
+          "max": 3.0
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "C2",
+      "title": "Единая команда управления",
+      "ticket": "TBD",
+      "dependsOn": [
+        "A1",
+        "C1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 1.0,
+          "max": 3.0
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "D1",
+      "title": "Подготовка машины коллеги после клонирования",
+      "ticket": "TBD",
+      "dependsOn": [
+        "A1",
+        "C1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 1.0,
+          "max": 2.0
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1.0
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "E1",
+      "title": "Предварительный просмотр обновления",
+      "ticket": "TBD",
+      "dependsOn": [
+        "C1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 1.0,
+          "max": 2.0
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1.0
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "E2",
+      "title": "Отчёт о результате обновления",
+      "ticket": "TBD",
+      "dependsOn": [
+        "E1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 0.5,
+          "max": 1.5
+        },
+        "agent": {
+          "min": 0.25,
+          "max": 0.75
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "E3",
+      "title": "Возврат к предыдущему состоянию кита",
+      "ticket": "TBD",
+      "dependsOn": [
+        "E2"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 1.0,
+          "max": 3.0
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "F1",
+      "title": "Понятные объяснения остановок агента",
+      "ticket": "TBD",
+      "dependsOn": [],
+      "estimate": {
+        "manual": {
+          "min": 0.5,
+          "max": 1.0
+        },
+        "agent": {
+          "min": 0.25,
+          "max": 0.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    }
+  ]
+}
