@@ -1,0 +1,12 @@
+[
+  {
+    "plugin": "superpowers",
+    "marketplace": "superpowers-marketplace",
+    "repo": "obra/superpowers-marketplace"
+  },
+  {
+    "plugin": "plannotator",
+    "marketplace": "plannotator",
+    "repo": "backnotprop/plannotator"
+  }
+]

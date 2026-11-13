@@ -37,6 +37,27 @@
 
 **Правило проекта:** новый мод нужно дописать и в `.claude-plugin/marketplace.json`, и в массив `OUR_MODS` в `setup.sh` — оба списка захардкожены. Проверки: `claude plugin validate mods/<name>`, `claude plugin validate .`, `claude plugin test mods/<name>`.
 
+### Внешние зависимости workflow
+
+`setup.sh` устанавливает официальные плагины **Superpowers** и **Plannotator** для Claude Code и CLI Plannotator. Общий реестр — `dependencies/plugins.json`; установка и обновление используют один скрипт:
+
+```bash
+bash .claude/ai-dev-kit/dependencies/install.sh
+bash .claude/ai-dev-kit/dependencies/install.sh --update
+```
+
+Нужны Node.js, Git, Claude Code CLI и `curl` при скачивании CLI. Плагины включаются в проектном `.claude/settings.json`; существующие настройки и явные отключения (`false`) сохраняются. Каждый разработчик запускает установку на своей машине. После установки или обновления плагинов нужно перезапустить Claude Code.
+
+Бинарник Plannotator устанавливается официальным установщиком `https://plannotator.ai/install.sh` с `--minimal`: интеграцию Claude обеспечивает проектный плагин. Другие агенты этим шагом не настраиваются. CLI должен быть доступен через `PATH` (обычно `~/.local/bin`); для проверки управляемой извне копии можно задать `AI_DEV_KIT_PLANNOTATOR_BIN` (это не меняет каталог официального установщика). Затенение установленного бинарника другой копией в `PATH` считается ошибкой. Режим `--update` обновляет также бинарник через тот же установщик.
+
+`update-ai-dev-kit` вызывает этот скрипт с `--update` после обновления submodule. Ошибки не подавляются: установщик возвращает ненулевой код, и обновление должно явно сообщить о незавершённом шаге.
+
+Если нужный плагин, мод (`pr-flow`, `polish`), скилл или CLI недоступен, агент называет зависимость, объясняет, какой шаг от неё зависит, и предлагает конкретную команду установки. Независимую работу можно продолжать; зависимый шаг ждёт установки либо явного решения пользователя обойтись без неё. Запись `enabledPlugins` сама по себе не доказывает, что мод загрузился.
+
+**Codex подключается отдельно.** Генерация `AGENTS.md` переносит правила, но не устанавливает плагины Claude Code в Codex. Для Superpowers используется каталог плагинов Codex; полный официальный установщик Plannotator настраивает поддерживаемые интеграции обнаруженных агентов. См. [Superpowers](https://github.com/obra/superpowers) и [Plannotator](https://github.com/backnotprop/plannotator). Моды кита `pr-flow` и `polish` требуют Claude Code.
+
+Проверка установщика без сетевых запросов и изменений пользовательских настроек: `node --test dependencies/install.test.cjs`.
+
 ### Правила (`rules/`)
 
 Не скиллы — обычные markdown-файлы, организованы иерархически по тому же принципу, что личный конвенций-набор в `chatbot-platform` (`.claude/rules/{base,angular,nest,skills}`):
@@ -88,14 +109,14 @@ On-demand файлы отдельно импортировать не нужно
 
 ### Внешние зависимости: best-practices скиллы
 
-`rules/nestjs/index.md` и `rules/angular/index.md` начинаются с «REQUIRED SUB-SKILL: invoke `nestjs-best-practices`/`angular-best-practices` первым» — это не наши скиллы, они не входят в этот репозиторий и не ставятся вместе с ним. Без них личные конвенции применяются поверх пустоты: правило говорит «сначала вызови X», а X в проекте не установлен. Ставить их в проект отдельно:
+`rules/nestjs/index.md` и `rules/angular/index.md` начинаются с «REQUIRED SUB-SKILL: invoke `nestjs-best-practices`/`angular-best-practices` первым» — внешние скиллы. `setup.sh` ставит их автоматически при обнаружении соответствующего стека; при ручном подключении их нужно установить отдельно:
 
 ```bash
 npx skills add alfredoperez/angular-best-practices --skill angular-best-practices -a claude-code
 npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices -a claude-code
 ```
 
-Без установки эти правила не откажут — по `rules/orchestrator.md` отсутствующий скилл просто пропускается молча, — но тогда `rules/angular/`/`rules/nestjs/` реально дают только личный, более узкий слой конвенций, без базового общефреймворкового пласта, который эти best-practices скиллы должны были закрыть.
+Если зависимость отсутствует, агент сообщает об этом и предлагает установку по `rules/base/workflow-dependencies.md`; без неё `rules/angular/`/`rules/nestjs/` реально дают только личный, более узкий слой конвенций, без базового общефреймворкового пласта, который эти best-practices скиллы должны были закрыть.
 
 ### Codex: `AGENTS.md` — отдельный механизм, не `@import`
 
@@ -119,7 +140,7 @@ bash .claude/ai-dev-kit/rules/build-agents-md.sh
 curl -fsSL https://raw.githubusercontent.com/SatanLittleHelper/ai-dev-kit/main/setup.sh | bash
 ```
 
-Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано выше, за один проход: ставит `skills`-CLI, если его ещё нет, добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, **спрашивает, нужна ли поддержка Codex** (и если да — генерирует `AGENTS.md`), устанавливает все наши скиллы (`skills/roadmap`, `skills/scaffolding-nestjs-app`, `skills/update-ai-dev-kit`), включает наши моды (`mods/polish`, `mods/pr-flow`) в `.claude/settings.json` проекта, а также — если в `package.json` проекта уже есть `@angular/core`/`@nestjs/core` — соответствующий best-practices скилл из раздела выше. Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
+Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано выше, за один проход: ставит `skills`-CLI, если его ещё нет, добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, **спрашивает, нужна ли поддержка Codex** (и если да — генерирует `AGENTS.md`), устанавливает все наши скиллы (`skills/roadmap`, `skills/scaffolding-nestjs-app`, `skills/update-ai-dev-kit`), включает наши моды (`mods/polish`, `mods/pr-flow`) в `.claude/settings.json` проекта, устанавливает официальные Superpowers и Plannotator с CLI, а также — если в `package.json` проекта уже есть `@angular/core`/`@nestjs/core` — соответствующий best-practices скилл из раздела выше. Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
 
 Вопрос про Codex читается из `/dev/tty`, не из stdin (stdin в `curl | bash` занят самим скриптом) — в среде без терминала (CI и т.п.) шаг просто пропускается с подсказкой, как вызвать генератор вручную позже.
 
@@ -131,7 +152,7 @@ curl -fsSL https://raw.githubusercontent.com/SatanLittleHelper/ai-dev-kit/main/s
 npx skills add SatanLittleHelper/ai-dev-kit --skill roadmap -a claude-code
 ```
 
-Обновление — скилл `update-ai-dev-kit` («обнови скиллы» / «обнови правила» / «обнови кит»): обновляет правила, скиллы и моды и доустанавливает новые скиллы и моды из репозитория. Голый `npx skills update` обновляет только уже установленные скиллы и новых не добавляет. Пин версий — в `skills-lock.json` проекта.
+Обновление — скилл `update-ai-dev-kit` («обнови скиллы» / «обнови правила» / «обнови кит»): обновляет правила, скиллы, моды и внешние workflow-зависимости и доустанавливает недостающие компоненты из репозитория. Голый `npx skills update` обновляет только уже установленные скиллы и новых не добавляет. Пин версий — в `skills-lock.json` проекта.
 
 **Правила.** `npx skills` их не обрабатывает — это не скиллы, а обычные файлы. Подключаются через git submodule + один `@import` в CLAUDE.md проекта:
 

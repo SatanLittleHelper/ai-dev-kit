@@ -7,15 +7,16 @@ description: Use when the user wants to bring this project's ai-dev-kit up to da
 
 ## Overview
 
-This developer's kit is published from one repo (`SatanLittleHelper/ai-dev-kit`) and reaches a project three ways:
+This developer's kit is published from one repo (`SatanLittleHelper/ai-dev-kit`) and reaches a project four ways:
 
 - **rules** — git submodule `.claude/ai-dev-kit`, wired into `CLAUDE.md` via `@import`;
 - **skills** — installed with `npx skills add`, pinned in `skills-lock.json`;
-- **mods** — Claude Code plugins from the `ai-dev-kit` marketplace, enabled in `.claude/settings.json`.
+- **mods** — Claude Code plugins from the `ai-dev-kit` marketplace, enabled in `.claude/settings.json`;
+- **workflow dependencies** — official Superpowers and Plannotator plugins plus the Plannotator CLI, declared in `dependencies/plugins.json` and managed by `dependencies/install.sh`.
 
-A source-repo change reaches none of them by itself. And `npx skills update` only refreshes skills that are already installed — a skill published after the project was set up is never added. This skill brings all three up to date and installs what is new. The composition of the kit is read from the freshly updated submodule (`skills/*`, `.claude-plugin/marketplace.json`), never from `setup.sh`'s hardcoded lists, which can lag behind.
+A source-repo change reaches none of them by itself. And `npx skills update` only refreshes skills that are already installed — a skill published after the project was set up is never added. This skill brings all four up to date and installs what is new. The composition of the kit is read from the freshly updated submodule (`skills/*`, `.claude-plugin/marketplace.json`, `dependencies/plugins.json`), never from `setup.sh`'s hardcoded lists, which can lag behind.
 
-Any trigger («обнови скиллы», «обнови правила», «обнови кит») runs the whole sequence: the three parts come from one repo and are meant to stay in step.
+Any trigger («обнови скиллы», «обнови правила», «обнови кит») runs the whole sequence: this also authorizes refreshing the declared external workflow dependencies.
 
 ## Steps
 
@@ -51,9 +52,14 @@ Run from the project root. A part whose prerequisite is missing is skipped, and 
      claude plugin update <mod>@ai-dev-kit
      ```
    - An updated mod takes effect only after the Claude Code session restarts — say so in the report.
-6. **Report.** Run `git status --short` and `git diff --stat`. Report what was refreshed and, as a separate list, what was newly added (skills, mods). Nothing changed → say so plainly and skip the commit question.
-7. **Ask before committing.** Per `rules/base/git-and-commits.md`, `git commit` runs only on explicit user request. Present the diff (typically the submodule pointer, `skills-lock.json`, synced skill files, `.claude/settings.json`, `AGENTS.md`) and ask. If the user agrees, follow `rules/base/git-and-commits.md` for message shape and its pre-commit branch check.
-8. **Failure case.** If any command errors (network, registry, uninitialised submodule), show its actual output to the user; don't swallow it or retry silently.
+6. **External workflow dependencies** (needs the updated submodule and Claude Code CLI):
+   ```
+   bash .claude/ai-dev-kit/dependencies/install.sh --update
+   ```
+   Installs missing official Superpowers/Plannotator plugins, refreshes marketplaces and plugins, and installs/updates the Plannotator binary with the official minimal installer. Preserves explicitly disabled plugins and existing project settings. This deliberately manages only dependencies declared in `dependencies/plugins.json`: an exception to the restriction on unrelated skill sources, not permission to update arbitrary plugins. If the installer or Claude CLI is missing, report it and offer installation/repair per `rules/base/workflow-dependencies.md`. In Codex this only sets up Claude Code dependencies, not Codex integrations; use host-specific instructions in that rule when needed.
+7. **Report.** Run `git status --short` and `git diff --stat`. Report what was refreshed and, as a separate list, what was newly added (skills, mods, workflow dependencies). Include CLI/plugin updates even when they produce no Git diff; say that Claude Code must restart to load plugins. Nothing changed → say so plainly and skip the commit question.
+8. **Ask before committing.** Per `rules/base/git-and-commits.md`, `git commit` runs only on explicit user request. Present the diff (typically the submodule pointer, `skills-lock.json`, synced skill files, `.claude/settings.json`, `AGENTS.md`) and ask. If the user agrees, follow `rules/base/git-and-commits.md` for message shape and its pre-commit branch check.
+9. **Failure case.** If any command errors (network, registry, uninitialised submodule), show its actual output to the user; don't swallow it or retry silently.
 
 ## Common Mistakes
 
@@ -63,7 +69,7 @@ Run from the project root. A part whose prerequisite is missing is skipped, and 
 | Taking the skill list from `setup.sh`'s `OUR_SKILLS` | That list is hardcoded and can lag; read `.claude/ai-dev-kit/skills/` after updating the submodule |
 | Finding new skills before updating the submodule | Update the submodule first, otherwise brand-new skills aren't in `skills/` yet |
 | Running plain `npx skills update` with no flags | Use `-p -y` — project scope, no interactive prompt |
-| Installing or removing skills from other sources | Only touch skills whose `source` is `SatanLittleHelper/ai-dev-kit` |
+| Installing or removing arbitrary third-party skills | Only touch kit-owned skills; manage declared workflow plugins separately via `dependencies/install.sh` |
 | Regenerating `AGENTS.md` when the project never opted into Codex | Only if the `ai-dev-kit:rules:start` marker is already present |
 | Leaving `AGENTS.md` as `build-agents-md.sh` wrote it in a Prettier project | The script drops formatting (table alignment); run `npx prettier --write AGENTS.md` so the diff is not noise |
 | Committing the changes automatically | Ask first, per `rules/base/git-and-commits.md` |

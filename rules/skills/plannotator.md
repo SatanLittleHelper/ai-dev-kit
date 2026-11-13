@@ -2,7 +2,7 @@
 
 ## Overview
 
-**REQUIRED SUB-SKILL:** Invoke the relevant `plannotator`/`plannotator-*` skill for the actual review UI mechanics — this repository doesn't ship those, they live separately. This file is a required layer on top: how to treat the long-running process while it's in flight, and what not to do around commits during a review.
+**REQUIRED SUB-SKILL:** Invoke the relevant `plannotator`/`plannotator-*` skill for the actual review UI mechanics. The kit installs the official Claude Code plugin and CLI through `dependencies/install.sh`; it does not vendor their content. If unavailable, follow `rules/base/workflow-dependencies.md` and offer installation. This file is a required layer on top: how to treat the long-running process while it's in flight, and what not to do around commits during a review.
 
 ## Rules
 
