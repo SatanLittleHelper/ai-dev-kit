@@ -126,6 +126,8 @@ npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices -a cla
 
 Поэтому для Codex — не копия `@import`-строк, а **генерируемый плоский блок**: `rules/build-agents-md.sh` инлайнит реальное содержимое всей always-on цепочки в маркированный блок внутри `AGENTS.md` проекта (`<!-- ai-dev-kit:rules:start -->` … `<!-- ai-dev-kit:rules:end -->`), не трогая остальное содержимое файла. Идемпотентно — повторный запуск просто заменяет блок.
 
+После общих правил генератор добавляет адаптации из `rules/codex.md`. Они задают для Codex согласование спецификаций и планов в Plannotator с историей версий и диффом между правками, без обязательного переключения native Plan Mode. Этот файл не входит в импорты `rules/RULES.md` для Claude Code.
+
 ```bash
 bash .claude/ai-dev-kit/rules/build-agents-md.sh
 ```
