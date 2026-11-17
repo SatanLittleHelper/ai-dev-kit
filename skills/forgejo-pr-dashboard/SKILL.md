@@ -67,6 +67,10 @@ Answer in Russian. One markdown table per group, one row per PR, in the order of
 - `truncated: true` → add «Прочитано 50 открытых PR — это предел одного запроса; остальные смотрите по номеру».
 - Do not add recommendations or next steps the user did not ask for. To work on review comments of an own PR, the user invokes the `forgejo-pr-feedback` skill.
 
+## Follow-up: PR number
+
+If the user answers the dashboard with a PR number («297», «#297», «покажи 297»), invoke the `forgejo-pr-feedback` skill for that PR (pass the number) — do not answer from the dashboard rows and do not call the CLI yourself.
+
 ## Errors
 
 A non-zero exit code means the CLI printed a Russian message to stderr. Show it as is and stop. Do not retry, do not switch to `curl`, `gh` or any other tool.
