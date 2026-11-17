@@ -1,28 +1,28 @@
 # Brainstorming Conventions
 
-**Required sub-skill:** invoke `superpowers:brainstorming`; it owns the design process. This file adds repository-specific activation, Plan Mode, approval, and artifact rules.
+**Required sub-skill:** invoke `superpowers:brainstorming`; it owns the design process. This file adds repository-specific activation, approval, and artifact rules. Approval runs through Plannotator without native Plan Mode: `rules/skills/document-approval.md`.
 
 ## Trigger and flow
 
-Use this for ideas, new behavior, architecture, or any request equivalent to «давай подумаем» / “let's think about this”. Enter native Plan Mode first. Explore project context, ask one question at a time, compare 2–3 approaches, present the design, and get approval before implementation.
+Use this for ideas, new behavior, architecture, or any request equivalent to «давай подумаем» / “let's think about this”. Explore project context, ask one question at a time, compare 2–3 approaches, present the design, and get approval before implementation.
 
-After design approval, hand off to `rules/skills/writing-test-plans.md` when the change touches test-worthy layers, otherwise to `rules/skills/writing-plans.md`; do not invoke `superpowers:writing-plans` directly. The hand-off is automatic: right after the spec is saved, start the next stage (new Plan Mode file) in the same turn, without asking «продолжить?» or offering the next step as an option. Do not implement before the design is agreed when the task requires an architectural choice.
+After design approval, hand off to `rules/skills/writing-test-plans.md` when the change touches test-worthy layers, otherwise to `rules/skills/writing-plans.md`; do not invoke `superpowers:writing-plans` directly. The hand-off is automatic: right after the spec is saved, start the next stage (new draft file) in the same turn, without asking «продолжить?» or offering the next step as an option. Do not implement before the design is agreed when the task requires an architectural choice.
 
-## Plan Mode and artifacts
+## Approval and artifacts
 
-- Every Plan Mode turn ends with `ExitPlanMode` or `AskUserQuestion`; do not ask plain-text questions while it is active.
-- Each document has its own approval cycle. Do not append a new draft to an already-approved Plan Mode file.
+- Draft the design spec in `tmp/drafts/<topic>-design.md` and approve it per `rules/skills/document-approval.md`. Clarifying questions during design go through `AskUserQuestion` or plain text; Plan Mode is not used.
+- Each document has its own approval cycle. Do not append a new draft to an already-approved draft file.
 - Save the design spec only after approval, at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`.
 - If a plan follows, delete the temporary design spec unless the user asks to keep it.
 - If the user explicitly requests visual annotation, save the current design and use the annotation UI; otherwise use text.
-- **Write the design spec in Russian** — see `rules/base/workflow-and-misc.md` → "Documentation Language". Applies even inside the Plan Mode draft, not only the saved file; only code blocks/identifiers stay as-is.
+- **Write the design spec in Russian** — see `rules/base/workflow-and-misc.md` → "Documentation Language". Applies even inside the draft, not only the saved file; only code blocks/identifiers stay as-is.
 
 ## Common Mistakes
 
 | Mistake | Fix |
 |---|---|
 | Implementing before design approval | Finish brainstorming and approval first |
-| Skipping Plan Mode | Enter it before invoking the sub-skill |
-| Saving the spec early | Keep the draft in chat/Plan Mode until approval |
-| Combining approval cycles | Use one Plan Mode document per artifact |
+| Calling `EnterPlanMode` | Not used: approve via `rules/skills/document-approval.md` |
+| Saving the spec early | Keep the draft in `tmp/drafts/` until `approved` |
+| Combining approval cycles | Use one draft file per artifact |
 | Writing the spec in English (or the request's language) | Write it in Russian — the document itself, not just trigger phrases |

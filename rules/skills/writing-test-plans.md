@@ -11,7 +11,7 @@ There is no `superpowers:*` skill for Stage A; this file owns the process. The e
 
 Runs after the design is approved and before `rules/skills/writing-plans.md`. It starts automatically once the design is approved and saved; and once the test plan is approved and saved, Stage B starts automatically the same way. Do not ask for confirmation between stages. Read `rules/base/testing.md` and `rules/base/test-execution-policy.md` first; the layer table in `testing.md` decides scope.
 
-**Skip Stage A entirely** when the change has no test-worthy layer: Markdown-only edits, components, thin repositories/API clients, pure mappers. Where a test cannot be written, planning one is pointless. Skip without a Plan Mode cycle and record one line in the implementation plan: «План тестов не требуется: <причина>».
+**Skip Stage A entirely** when the change has no test-worthy layer: Markdown-only edits, components, thin repositories/API clients, pure mappers. Where a test cannot be written, planning one is pointless. Skip without an approval cycle and record one line in the implementation plan: «План тестов не требуется: <причина>».
 
 "Every function has a test" applies only inside the layer table: every unit in scope is covered, and every exclusion is named with its reason. Do not widen the table from a generic TDD checklist.
 
@@ -61,17 +61,17 @@ One case, one behavior; an "and" in the name means two cases. Branch coverage fo
 
 ## Review loop (before the user sees it)
 
-The author is the main agent, drafting in native Plan Mode. The user sees only the document that came out of this loop, through `ExitPlanMode`.
+The author is the main agent, drafting in `tmp/drafts/<feature>-test-plan.md`. The user sees only the document that came out of this loop, through Plannotator approval (`rules/skills/document-approval.md`, no native Plan Mode).
 
-1. Draft the document in the Plan Mode file.
+1. Draft the document in the draft file.
 2. **Self-check before the first review**, silently, so the reviewer is not spent on mechanics: every spec requirement has an `## R*` heading; every case has Дано / Когда / Тогда / Ловит and a layer tag; IDs are numbered continuously; no placeholders («TBD», «и т.д.», «аналогично U2»); no test code, private method names, or mock setup; one behavior per case; each case passes the `return mockResult` tautology check.
 3. Spawn a read-only reviewer subagent (`Explore`-class; cheap model unless the user chose otherwise) with the full contents of `rules/skills/test-plan-reviewer.md` as its prompt plus the inputs listed there. The subagent does not read repository rules on its own. This is round 1 (full review).
 4. Go through the findings. Fix every `[major]` one, or mark it `rejected: <reason>` when it contradicts the spec, `rules/base/testing.md`, or this file; apply `[minor]` ones only when cheap. Keep the rejection reasons out of the document: they travel only to the next round.
 5. Round 2 and later: spawn the reviewer again, additionally passing the previous findings with their `fixed` / `rejected: <reason>` marks and the diff against the previous draft. The reviewer only verifies the fixes and looks for new `major` issues in changed text.
 6. Stop when the reviewer ends with `VERDICT NO_MAJOR_ISSUES`, or after **3 review iterations**.
-7. If the limit is reached with major findings left, still go to `ExitPlanMode`, but add a «Не сошлись» block at the top: each remaining major finding, the reviewer's position and the author's position. The user is the tiebreaker.
+7. If the limit is reached with major findings left, still open it for approval, but add a «Не сошлись» block at the top: each remaining major finding, the reviewer's position and the author's position. The user is the tiebreaker.
 
-After approval, save to the target path. Stage B starts a new Plan Mode cycle with a fresh file that does not contain this document. Once the test plan is approved, start Stage B in the same turn: read `rules/skills/writing-plans.md` and enter a fresh Plan Mode. Do not end the report with «Начинать?» or any other request for confirmation: the approval of the test plan is the go-ahead. A late edit made at the user's decision after the last review round (for example, one added case) does not change this.
+After approval, save to the target path. Stage B starts a new approval cycle with a fresh draft file that does not contain this document. Once the test plan is approved, start Stage B in the same turn: read `rules/skills/writing-plans.md` and start a fresh draft file. Do not end the report with «Начинать?» or any other request for confirmation: the approval of the test plan is the go-ahead. A late edit made at the user's decision after the last review round (for example, one added case) does not change this.
 
 ## Common Mistakes
 
@@ -89,4 +89,4 @@ After approval, save to the target path. Stage B starts a new Plan Mode cycle wi
 | Sending a draft to the reviewer without the self-check | Run the mechanical self-check first |
 | Silently ignoring a finding, or redoing the same fix round after round | Mark it `rejected: <reason>` and pass it to the next round |
 | Re-running the reviewer in round 2 as a full review | Pass previous findings and the diff; the reviewer only verifies fixes |
-| Appending the implementation plan to the approved test plan's Plan Mode file | One document per Plan Mode cycle; start Stage B in a fresh file |
+| Appending the implementation plan to the approved test plan's draft file | One document per approval cycle; start Stage B in a fresh draft file |

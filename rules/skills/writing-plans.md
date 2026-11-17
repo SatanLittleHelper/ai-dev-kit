@@ -11,13 +11,13 @@
 | Both | Both pairs |
 | Neither | No stack rule |
 
-Detect stacks from the requested plan, not the repository's overall technology list. Read relevant rules before presenting tasks. If a referenced local rule is unavailable, continue with the best-practices skill and do not treat it as a blocker. Enter native Plan Mode before writing; after preparing the plan, use the standard `ExitPlanMode` review and save only after approval.
+Detect stacks from the requested plan, not the repository's overall technology list. Read relevant rules before presenting tasks. If a referenced local rule is unavailable, continue with the best-practices skill and do not treat it as a blocker. Draft the plan in `tmp/drafts/<feature>-plan.md`, approve it per `rules/skills/document-approval.md` (no native Plan Mode), and save only after `approved`.
 
 ## Precondition: approved test plan (Stage B)
 
 This file is Stage B of two-stage planning; Stage A is `rules/skills/writing-test-plans.md`. For any task with a test-worthy layer, an approved test plan must exist before drafting. If it does not, go back to Stage A first. If the change has no test-worthy layer (Markdown-only, excluded layers), Stage A is skipped; write one line in the plan: «План тестов не требуется: <причина>».
 
-Start Stage B in a fresh Plan Mode file that does not contain the test plan: each document has its own approval cycle.
+Start Stage B in a fresh draft file that does not contain the test plan: each document has its own approval cycle.
 
 ## Required plan
 
@@ -71,6 +71,6 @@ A plan for Markdown-only changes has no test steps: it lists each edit as before
 | Tests as one line at the end of a task | Test-first step with test IDs, test code, layer, file, loop command, and expected failure reason |
 | Drafting the implementation plan before the test plan is approved | Run Stage A first (`rules/skills/writing-test-plans.md`), unless it is skipped for lack of test-worthy layers |
 | A test in the plan that has no ID in the test plan, or a test-plan ID in no task | Go back to Stage A, or place the ID in exactly one task |
-| Appending this plan to the approved test plan's Plan Mode file | Fresh Plan Mode file per document |
+| Appending this plan to the approved test plan's draft file | Fresh draft file per document |
 | A plan task for a layer with no test infrastructure that just omits the test | Start the task with adding the infrastructure, or stop and report it |
 | Test or grep-check steps in a plan that only edits Markdown | List the edits as before/after; no test steps |

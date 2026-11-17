@@ -10,7 +10,7 @@
 
 | Скилл | Что делает |
 |---|---|
-| `skills/jira-writer` | Готовит русскоязычные черновики Jira-задач в Jira Wiki Markup (название, описание, критерии приёмки) для ручной вставки; черновик согласуется через Plan Mode |
+| `skills/jira-writer` | Готовит русскоязычные черновики Jira-задач в Jira Wiki Markup (название, описание, критерии приёмки) для ручной вставки; черновик согласуется через Plannotator без Plan Mode |
 | `skills/roadmap` | Всё, что касается роадмапов — создание, продолжение, взятие чекпоинта, пакетная валидация шагов (см. `skills/roadmap/SKILL.md` и `skills/roadmap/references/`) |
 | `skills/scaffolding-nestjs-app` | Скаффолдинг нового NestJS-приложения по личным конвенциям |
 | `skills/testing-changes` | Ручное тестирование изменений ветки: анализ изменений и документов задачи, тест-план (пишется и сохраняется без согласования), запуск всех приложений проекта, тесты (`curl`, Playwright, веб-версия Max), остановка запущенного и отчёт через Plannotator; проектные настройки читаются из блока `testing` в `.claude/dev-conventions.json` |
@@ -71,13 +71,14 @@ rules/
 
 | Файл | Группа | Что внутри |
 |---|---|---|
-| `brainstorming.md` | on-demand | Обёртка над `superpowers:brainstorming`: Plan Mode wiring, триггер-фразы, куда сохранять дизайн-документ |
+| `brainstorming.md` | on-demand | Обёртка над `superpowers:brainstorming`: согласование через Plannotator без Plan Mode, триггер-фразы, куда сохранять дизайн-документ |
 | `writing-test-plans.md` | on-demand | Этап A двухэтапного планирования: план тестов (что и зачем проверяет каждый тест, поведением и без кода; порядок unit → integration → e2e), цикл ревью с субагентом-ревьюером до показа пользователю; пропускается, если нет тестируемых слоёв |
 | `test-plan-reviewer.md` | on-demand | Промпт read-only субагента-ревьюера плана тестов: короткий чеклист (покрытие требований, слои, ветки, tautology, реализация вместо поведения, anti-patterns) и вердикт `NO_MAJOR_ISSUES` / `MAJOR_ISSUES`; механику автор проверяет сам до запуска; со 2-го раунда ревьюер получает прошлые находки (`fixed` / `rejected: <причина>`) и дифф и только проверяет правки; цикл — до вердикта или максимум 3 итерации |
 | `writing-plans.md` | on-demand | Этап B: обёртка над `superpowers:writing-plans`: детект стека → какие `rules/angular\|nestjs` подгрузить перед написанием плана; код тестов и реализация привязаны к тест-ID из плана тестов |
 | `verification-before-completion.md` | on-demand | Требования к отчёту о проверке работы перед тем, как считать задачу выполненной |
 | `executing-plans.md` | on-demand | Дисциплина исполнения уже написанного плана |
 | `subagent-driven-development.md` | on-demand | Как делегировать задачи плана субагентам |
+| `document-approval.md` | on-demand | Согласование документов (спека, план тестов, план, роадмап, черновик задачи) через Plannotator без native Plan Mode: черновик в `tmp/drafts/`, `plannotator annotate --gate --json` с историей версий, сохранение только после `approved` |
 | `plannotator.md` | on-demand | Как вести себя вокруг долгоживущего процесса ревью в Plannotator |
 
 **`rules/angular/`** и **`rules/nestjs/`** — on-demand, по одному файлу на тему (`di.md`, `component.md`, `repository.md`, `dto.md` и т.д.). Каждая директория начинается с `index.md` — краткая карта («какой файл про что»), не заменяет чтение конкретного файла и **не** является `@import`-агрегатором (см. ниже).
