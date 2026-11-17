@@ -100,8 +100,11 @@ chat message and not by `AskUserQuestion`.
 
 1. **Write the plan file** at the stable path `.claude/pr-split/<slug>-plan.md` (absolute path;
    untracked like the state file, never committed). Content: a summary table of the chain
-   (`| # | Branch | Base | Logic files | Asset files |`); then, per block, the file list split
-   into business logic and assets/docs with the reason these files belong together; an explicit
+   (`| # | Branch | Base | Logic files | Asset files |`); then, per block, the reason these files
+   belong together and the file list as a markdown table, one row per file
+   (`| # | File | Kind | Note |`, where Kind is `logic` or `asset`, and Note is a short
+   per-file hint such as the coupling that pins it to this block — empty if none), logic rows
+   first, never a bulleted or comma-separated list; an explicit
    "cap exceeded" note naming the coupling for any block over 15 logic files; and the reason for
    the block order.
 2. **Open it** through the `plannotator-annotate` skill — the `plannotator` tool if available,
