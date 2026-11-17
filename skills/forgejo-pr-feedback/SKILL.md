@@ -3,14 +3,15 @@ name: forgejo-pr-feedback
 description: >-
   Use when the user wants to deal with review comments on their own Forgejo/Gitea pull request —
   «разбери замечания по PR 42», «что мне написали в ревью», «ответь на замечания», "address review comments",
-  "triage feedback on my PR". Reads the unanswered comments, gives an assessment of each (valid, todo, invalid,
-  question, out of scope), proposes a fix and a reply for every comment, gets the plan approved in Plannotator,
-  then applies the approved fixes and posts the replies. Never commits or pushes by itself.
+  "triage feedback on my PR"; also «разбери CI», «почему упал CI на PR», "fix failed checks". Reads the unanswered
+  comments and the failed CI checks, gives an assessment of each (valid, todo, invalid, question, out of scope),
+  proposes a fix (and a reply for every comment), gets the plan approved in Plannotator, then applies the approved
+  fixes and posts the replies. Never commits or pushes by itself.
 ---
 
 # Forgejo PR Feedback
 
-Turns review comments on the user's own PR into an approved plan, then executes it: code fixes in the working tree and replies in the PR. Nothing is changed or posted before the plan is approved in Plannotator.
+Turns review comments and CI failures on the user's own PR into an approved plan, then executes it: code fixes in the working tree and replies in the PR (CI failures get fixes only, no replies). Nothing is changed or posted before the plan is approved in Plannotator.
 
 ## Preconditions
 
@@ -45,9 +46,9 @@ node <base>/scripts/cli/main.mts pr reply <N> --file <replies.json> [--confirm]
 
 ## 2. Read the comments
 
-Run `pr ci <N>` too: it prints `{ "state", "failed" }` for the head commit. `state: failure` → tell the user in the answer which checks failed (`failed`), whatever the comments say; this skill does not fix CI, the user decides separately. `pending` → mention that CI is still running.
+Run `pr ci <N>` too: it prints `{ "state", "failed" }` for the head commit, `failed` is the list of failed check names. `state: failure` → each failed check becomes a CI item of the plan (see step 3). `pending` → mention that CI is still running. `success` / `none` → no CI items.
 
-`pr feedback <N>` returns an array of items. Empty → answer «Замечаний нет» (plus the CI failure, if any) and stop. An item has:
+`pr feedback <N>` returns an array of items. Empty and no failed checks → answer «Замечаний нет» and stop. Empty but CI failed → continue with the CI items only. An item has:
 
 | Field | Meaning |
 |---|---|
@@ -78,6 +79,22 @@ Rules:
 - Do not invent facts about the code: every assessment cites what you read (file and what is there).
 - A proposed fix is concrete: the exact change (a short diff or the new code), not «fix it».
 
+### CI items
+
+The CLI gives only the names of failed checks, not their logs. Find out the cause yourself, do not guess:
+
+1. Find what the check runs: the CI config in the repo (`.forgejo/workflows/`, `.gitea/workflows/`, `.github/workflows/` and similar) → the command of the failed job.
+2. Run that command locally in the working tree (lint, tests, build; only if it is safe and has no side effects — no deploy, no publish). Read the real output. A command that cannot be run locally (needs secrets, special runner) → say so, and base the assessment only on what you can verify in the code; ask the user for the log if it is not enough.
+3. Give the item one class:
+
+| Class | Meaning | Action |
+|---|---|---|
+| `valid` | the failure is caused by this PR | a concrete fix |
+| `flaky` | passes locally, looks like an infra/timing failure | «перезапустить CI», no code change |
+| `out-of-scope` | fails the same way without this PR's changes (e.g. on the base branch) | why, no code change in this PR |
+
+A CI item has no reply to post.
+
 ## 4. Plan and approval
 
 Write the plan to `tmp/drafts/forgejo-pr-feedback-<N>.md` (absolute path, in Russian). One section per item, in the order of `pr feedback`:
@@ -90,6 +107,15 @@ Write the plan to `tmp/drafts/forgejo-pr-feedback-<N>.md` (absolute path, in Rus
 **Ответ:** <the reply text that will be posted>
 ```
 
+CI items go after the comments, one section each, without a reply:
+
+```
+## CI · <check name>
+**Причина:** <what the output says, with the command that was run>
+**Оценка:** <class> — <reason>
+**Правка:** <concrete change, or «не требуется»>
+```
+
 Open it for approval with the `plannotator-annotate` skill (tool `plannotator` if available, otherwise `plannotator annotate <absolute path> --gate --json` in the background). Wait for the final decision; an empty output or a polling timeout is not a result.
 
 - `annotated` → apply the annotations to the same file (same path) and open it again. An annotation «Looks good» on an item means: do it as proposed.
@@ -98,7 +124,7 @@ Open it for approval with the `plannotator-annotate` skill (tool `plannotator` i
 
 ## 5. Apply the approved fixes
 
-Make the changes of items with `valid` (and the `todo` items the user asked to do) in the working tree. Do not touch anything outside the approved plan. Show a short summary of the changes. **Do not commit or push**: ask the user separately and follow the project's own rules for commits.
+Make the changes of items with `valid` (comments and CI items; and the `todo` items the user asked to do) in the working tree. Do not touch anything outside the approved plan. Show a short summary of the changes. **Do not commit or push**: ask the user separately and follow the project's own rules for commits.
 
 ## 6. Post the replies
 
