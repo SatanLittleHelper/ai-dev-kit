@@ -105,3 +105,10 @@ test('U43: общие комментарии и тело ревью учитыв
   ]
   assert.deepEqual(intakeItems(own({ threads: [myWord], general, reviews })).map(item => item.id), ['issue/g2', 'review/rv2'])
 })
+
+test('U44: сводка ревью-бота «Готово к мержу: 🟢 Да» не считается замечанием, «Нет» — считается', () => {
+  const clean = comment({ id: 'b1', author: 'ai-review-bot', body: '## Сводка\n**Готово к мержу:** 🟢 Да\nЗамечаний не найдено' })
+  const dirty = comment({ id: 'b2', author: 'ai-review-bot', body: '## Сводка\n**Готово к мержу:** 🔴 Нет\nНайдено 2 замечания' })
+  assert.deepEqual(intakeItems(own({ general: [clean] })).map(item => item.id), [])
+  assert.deepEqual(intakeItems(own({ general: [clean, dirty] })).map(item => item.id), ['issue/b2'])
+})
