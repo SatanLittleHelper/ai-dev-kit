@@ -16,6 +16,20 @@ MARKETPLACE="ai-dev-kit"
 [ "$#" -gt 0 ] || { echo "Usage: install-mods.sh <mod>..." >&2; exit 1; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Every argument must be exactly one mod name from the kit's marketplace.json. Checked before any
+# write: "polish pr-flow" passed as one argument used to land in settings.json as a bogus plugin key.
+MARKETPLACE_JSON="$SCRIPT_DIR/../.claude-plugin/marketplace.json"
+if [ -f "$MARKETPLACE_JSON" ]; then
+  KNOWN_MODS="$(node -e 'for (const p of JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).plugins) console.log(p.name)' "$MARKETPLACE_JSON")"
+  for MOD in "$@"; do
+    if ! printf '%s\n' "$KNOWN_MODS" | grep -Fxq -- "$MOD"; then
+      echo "Error: unknown mod '$MOD' (pass each mod name as a separate argument). Known mods: $(printf '%s' "$KNOWN_MODS" | tr '\n' ' ')" >&2
+      exit 1
+    fi
+  done
+fi
+
 git rev-parse --show-toplevel >/dev/null 2>&1 || { echo "Error: run this inside a git repository (project root)." >&2; exit 1; }
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 
