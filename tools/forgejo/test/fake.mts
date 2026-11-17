@@ -1,9 +1,10 @@
-import type { Comment, ForgeProvider, PullRequest, Reply, Review, ReviewDraft, Thread } from '../src/types.mts'
+import type { CiStatus, Comment, ForgeProvider, PullRequest, Reply, Review, ReviewDraft, Thread } from '../src/types.mts'
 
 export interface FakeData {
   me: string
   pulls: PullRequest[]
   files?: Record<number, string[]>
+  ci?: Record<string, CiStatus>
   reviews?: Record<number, Review[]>
   threads?: Record<number, { threads: Thread[]; general: Comment[] }>
   publishReviewError?: Error
@@ -29,6 +30,7 @@ export function fakeProvider(data: FakeData): FakeProvider {
       return found
     },
     listPullFiles: async number => data.files?.[number] ?? [],
+    getCiStatus: async sha => data.ci?.[sha] ?? { state: 'none', failed: [] },
     listReviews: async number => data.reviews?.[number] ?? [],
     listThreads: async number => data.threads?.[number] ?? { threads: [], general: [] },
     publishReview: async (number, draft) => {

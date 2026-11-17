@@ -112,3 +112,18 @@ test('U44: сводка ревью-бота «Готово к мержу: 🟢 �
   assert.deepEqual(intakeItems(own({ general: [clean] })).map(item => item.id), [])
   assert.deepEqual(intakeItems(own({ general: [clean, dirty] })).map(item => item.id), ['issue/b2'])
 })
+
+test('U60: свой PR без замечаний и конфликтов, но с упавшим CI — «упал CI»; замечания и конфликт приоритетнее', () => {
+  const ci = { state: 'failure' as const, failed: ['[CI] build / check (pull_request)'] }
+  const own = { pull: pull({ author: 'me' }), ci }
+  assert.deepEqual(verdict(own), ['ci-failed', 'упал CI'])
+  assert.equal(verdict({ ...own, threads: [thread({ comments: [comment()] })] })[0], 'feedback')
+  assert.equal(verdict({ ...own, pull: pull({ author: 'me', conflicted: true }) })[0], 'conflict')
+  assert.deepEqual(verdict({ pull: pull({ author: 'me' }), ci: { state: 'pending', failed: [] } }), ['none-own', 'ждём ревью'])
+})
+
+test('U61: упавший CI блокирует «готов к слиянию», но не меняет сценарий чужого PR', () => {
+  const ci = { state: 'failure' as const, failed: ['x'] }
+  assert.deepEqual(verdict({ pull: pull({ author: 'me' }), reviews: [review({ author: 'dave' })], ci }), ['ci-failed', 'упал CI'])
+  assert.equal(verdict({ reviews: [review()], threads: [thread({ comments: [mine()], resolved: true })], ci })[1], 'ждём автора')
+})

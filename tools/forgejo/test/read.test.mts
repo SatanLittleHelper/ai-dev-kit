@@ -6,7 +6,7 @@ test('U13: getPull отдаёт PR в доменной модели', async () =
   const { instance } = provider({ [`GET ${API}/pulls/42`]: ok(fixture('pull.json')) })
   assert.deepEqual(await instance.getPull(42), {
     number: 42, title: 'Добавить экспорт', body: 'Экспорт в CSV', author: 'Bob', headRef: 'feature/export', headSha: 'aaa111', baseRef: 'main',
-    state: 'open', merged: false, url: 'https://git.example.org/team/app/pulls/42', conflicted: false,
+    state: 'open', merged: false, url: 'https://git.example.org/team/app/pulls/42', conflicted: false, updatedAt: '2026-10-02T08:30:00Z',
   })
 })
 

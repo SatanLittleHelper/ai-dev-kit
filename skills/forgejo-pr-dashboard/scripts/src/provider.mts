@@ -1,8 +1,8 @@
 import { createClient, PAGE_LIMIT } from './client.mts'
 import {
-  EVENTS, REVIEW_STATES, login, parseThreadKey, toGeneralComment, toPull, toReview, toThreads,
+  EVENTS, REVIEW_STATES, login, parseThreadKey, toCiStatus, toGeneralComment, toPull, toReview, toThreads,
 } from './mappers.mts'
-import type { RawIssueComment, RawPull, RawReview, RawReviewComment } from './mappers.mts'
+import type { RawCombinedStatus, RawIssueComment, RawPull, RawReview, RawReviewComment } from './mappers.mts'
 import { PublishUnknownError } from './types.mts'
 import type { ForgeProvider, ProviderDeps, Review } from './types.mts'
 
@@ -35,6 +35,7 @@ export function createForgejo(deps: ProviderDeps): ForgeProvider {
     listPulls: async state => ((await call('GET', `${repoPath}/pulls?state=${state}&page=1&limit=${PAGE_LIMIT}`)) as RawPull[]).map(toPull),
     getPull: async number => toPull((await call('GET', `${repoPath}/pulls/${number}`)) as RawPull),
     listPullFiles: async number => (await paged<{ filename: string }>(`${repoPath}/pulls/${number}/files`)).map(file => file.filename),
+    getCiStatus: async sha => toCiStatus((await call('GET', `${repoPath}/commits/${sha}/status`)) as RawCombinedStatus),
     listReviews: async number => (await rawReviews(number)).map(toReview).filter((review): review is Review => review !== null),
     listThreads: async number => {
       const reviews = (await rawReviews(number)).filter(review => REVIEW_STATES[review.state])

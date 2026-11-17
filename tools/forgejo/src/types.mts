@@ -10,6 +10,12 @@ export interface PullRequest {
   merged: boolean
   url: string
   conflicted: boolean
+  updatedAt: string
+}
+
+export interface CiStatus {
+  state: 'success' | 'failure' | 'pending' | 'none'
+  failed: string[]
 }
 
 export interface Comment {
@@ -93,6 +99,7 @@ export interface ForgeProvider {
   listPulls(state: 'open' | 'closed'): Promise<PullRequest[]>
   getPull(number: number): Promise<PullRequest>
   listPullFiles(number: number): Promise<string[]>
+  getCiStatus(sha: string): Promise<CiStatus>
   listReviews(number: number): Promise<Review[]>
   listThreads(number: number): Promise<{ threads: Thread[]; general: Comment[] }>
   publishReview(number: number, draft: ReviewDraft): Promise<{ url: string }>
