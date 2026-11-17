@@ -1,8 +1,9 @@
 # Block Cycle
 
-The repeatable loop for one block, from proposal to PR. Repeats until every file from the
-original diff is accounted for (`unassignedFiles` in `.claude/pr-split/<slug>-state.json` is
-empty — schema and invariant defined in `splitting-pr/SKILL.md`).
+Two phases. **Planning** (Steps 1–3, once): the whole diff is partitioned into an ordered chain of
+blocks and the user approves that whole plan at once. **Block loop** (Steps 4–7, per block):
+commit, review, PR, next branch — repeats until every block has a PR. State lives in
+`.claude/pr-split/<slug>-state.json` (schema and invariant defined in `splitting-pr/SKILL.md`).
 
 **REQUIRED BACKGROUND:** `splitting-pr/SKILL.md` — storage location, file classification,
 grouping priority (coupling over the 15-file cap), branching/PR strategy, state file schema.
@@ -68,58 +69,68 @@ from the classified counts, `originalFiles` set to this full file list (logic + 
 frozen — never re-derived afterward), `blocks: []`, and `unassignedFiles` also set to the full
 list initially.
 
-## Step 1: Analyze
+## Step 1: Plan the whole split
 
-Propose the next block from `unassignedFiles`: which files, why grouped together (imports,
-shared symbols, same feature area), and the resulting business-logic file count vs. the 15-file
-cap. If the only coupling-safe grouping exceeds 15 business-logic files, say so explicitly and
-explain why the group can't be split further (name the specific coupling — e.g. "file A imports
-a type only defined in file B"). There is no build check here to fall back on — this judgment
-call, and the user's confirmation of it in Step 2, is the only gate before the project's own
-pre-push hook eventually weighs in at Step 6.
+Partition **all** of `unassignedFiles` into an ordered chain of blocks 1..K — the complete plan,
+not just the next block. For each block: which files, why they are grouped (imports, shared
+symbols, feature area), and the business-logic file count vs. the 15-file cap. Order matters:
+the chain is stacked, so a block may only depend on files in itself or in earlier blocks — never
+reference something a later block introduces. If the only coupling-safe grouping exceeds 15
+business-logic files, say so explicitly and name the specific coupling (e.g. "file A imports a
+type only defined in file B"). There is no build check to fall back on — this judgment, and the
+user's approval of it in Step 2, is the only gate before the project's own pre-push hook weighs
+in at Step 6.
 
-Immediately after proposing it — before asking for approval — persist the proposal to
-`state.json` as a new entry in `blocks` with `status: "planned"`, and write that entry's `branch`
-and `baseBranch` now too (both are already derivable at proposal time, no need to wait for
-approval):
+Branch names are deterministic, so they are fixed now even though the branches don't exist yet:
+block 1's `branch` is `sourceBranch` and its `baseBranch` is the state file's top-level
+`baseBranch`; block N+1's `branch` is `<sourceBranch>-<N+1>` and its `baseBranch` is block N's
+`branch`.
 
-- `branch` is the block's own branch name: for block 1, `sourceBranch`; for block N+1, whatever
-  branch Step 7 of the previous block already created and switched to — i.e. `git branch
-  --show-current` at the moment this step runs (the branch already exists by this point; Step 7
-  of the previous block created it and switched to it before looping back here).
-- `baseBranch` is: for block 1, the state file's top-level `baseBranch`; for block N+1, the
-  previous block's `branch` value.
+Immediately after drafting the plan — before asking for approval — persist it to `state.json`:
+every block as an entry in `blocks` with `status: "planned"`, `branch` and `baseBranch` set
+(replace any previously drafted `"planned"` entries wholesale). All files stay in
+`unassignedFiles` at this point (per `SKILL.md`'s nothing-lost invariant exception for
+`"planned"` blocks). Update `updatedAt`. This is what makes an unapproved plan resumable if the
+session ends — see `references/resuming.md`'s `"planned"` row.
 
-Its files stay in `unassignedFiles` at this point (per `SKILL.md`'s nothing-lost invariant
-exception for `"planned"` blocks) — only the proposal, `branch`, and `baseBranch` are recorded.
-Update `updatedAt`. This is what makes an in-progress proposal resumable if the session ends
-before the user approves it, with the branch already known — see `references/resuming.md`'s
-`"planned"` row.
+## Step 2: Approve the plan (Plannotator)
 
-## Step 2: Approve plan
+The whole plan is approved at once by annotating one plan file in Plannotator — not by a
+chat message and not by `AskUserQuestion`.
 
-Show the proposal in chat (the file list plus the reasoning), then ask for approval via
-`AskUserQuestion` (per `SKILL.md` → Approval Gates) with options along the lines of "Approve this
-block" / "Change the grouping" — not a free-text prompt waited on in chat. Do not proceed on an
-assumed "looks fine". This step makes no file write of its own — a crash between Step 1 and
-Step 2 simply leaves the `"planned"` block in place for `resuming.md` to re-show.
+1. **Write the plan file** at the stable path `.claude/pr-split/<slug>-plan.md` (absolute path;
+   untracked like the state file, never committed). Content: a summary table of the chain
+   (`| # | Branch | Base | Logic files | Asset files |`); then, per block, the file list split
+   into business logic and assets/docs with the reason these files belong together; an explicit
+   "cap exceeded" note naming the coupling for any block over 15 logic files; and the reason for
+   the block order.
+2. **Open it** through the `plannotator-annotate` skill — the `plannotator` tool if available,
+   otherwise the CLI with version history, run via `Bash` with `run_in_background: true`:
+   ```bash
+   env PLANNOTATOR_ANNOTATE_HISTORY=1 plannotator annotate <absolute-path> --gate --json
+   ```
+3. **Wait for the final decision** (an empty output or a poll timeout is not a result — keep
+   waiting; don't end the turn while the Plannotator process is running):
+   - `approved` → delete the plan file, go to Step 3. Notes attached to an approval are
+     recommendations to take into account, not a request for a new review.
+   - `annotated` → treat the annotations as the requested changes (move files between blocks,
+     merge/split/reorder blocks), go back to Step 1 and re-draft the whole plan, rewriting the
+     `"planned"` entries in `state.json`. Update the **same plan file at the same path** and
+     open it again — Plannotator's version history then shows the diff. Repeat until `approved`.
+   - `dismissed` → no approval: leave the blocks `"planned"`, change nothing else, tell the user
+     the split is paused and stop.
 
-If the answer is "change the grouping" (move files between this block and `unassignedFiles`,
-regroup differently, etc.), that is not an edit made here — treat it as going back to Step 1 to
-re-propose, using whatever the user specified. The fresh Analyze pass re-writes the same
-`"planned"` block entry (same `index`, still `status: "planned"`, `branch`/`baseBranch` unchanged
-since the branch itself hasn't moved) with the updated file list, and Step 2 repeats against the
-revised proposal.
+Do not proceed on an assumed "looks fine". This step makes no `state.json` write of its own — a
+crash here simply leaves the `"planned"` blocks (and the plan file) in place for `resuming.md`.
 
 ## Step 3: Record
 
-On approval, update the block's existing entry (created in Step 1 as `"planned"`, `branch` and
-`baseBranch` already set there): set `status: "approved"` and remove its files from
-`unassignedFiles`. That's the whole step — `branch`/`baseBranch` were already written in Step 1
-and don't change here.
+On approval, in a single write: set every block's `status` to `"approved"` and empty
+`unassignedFiles` (all files now belong to approved blocks). Update `updatedAt`. Re-run the
+nothing-lost invariant check from `SKILL.md` before continuing — if it fails, stop and surface
+the mismatch rather than proceeding into Step 4.
 
-Update `updatedAt`. Re-run the nothing-lost invariant check from `SKILL.md` before continuing —
-if it fails, stop and surface the mismatch rather than proceeding into Step 4.
+From here the block loop (Steps 4–7) runs for each block in order, starting with block 1.
 
 ## Step 4: Commit
 
@@ -213,8 +224,8 @@ automated signal that something about this block is broken. If that happens:
 
 - The commit already exists locally — don't try to auto-revert or reset it. Show the hook's
   actual output to the user and let them decide how to fix forward (amend the commit, add a
-  follow-up fix, or reconsider the grouping for a *future* block if the hook flagged something
-  that spans beyond this one).
+  follow-up fix, or re-plan the not-yet-committed blocks — Step 7, "Changing the plan mid-split" — if the hook
+  flagged something that spans beyond this one).
 - Do not mark `status: "pr-created"` or set `prUrl` until the push actually succeeds.
 
 Once the push (and PR, if applicable) succeeds: record the URL, `state.json` `status:
@@ -222,7 +233,7 @@ Once the push (and PR, if applicable) succeeds: record the URL, `state.json` `st
 
 ## Step 7: Next branch
 
-If `unassignedFiles` is now empty, the split is done — print the final summary from
+If this was the last block (every block in `blocks` is now `pr-created`), the split is done — print the final summary from
 `state.json` (per `SKILL.md` → Completion), then delete `.claude/pr-split/<slug>-state.json`,
 and stop (no Step 7 branch needed). Otherwise:
 
@@ -230,11 +241,19 @@ and stop (no Step 7 branch needed). Otherwise:
 git checkout -b <sourceBranch>-<N+1>
 ```
 
-branched from the current (block N) branch tip, which already carries block N's commit. The
-remaining diff (everything still in `unassignedFiles`) is still present as uncommitted changes
-in this new branch's working tree, since `git checkout -b` from a branch tip doesn't touch
-uncommitted/untracked changes. Loop back to Step 1 — Step 1 of the new block will record this
-branch as its own `branch` (via `git branch --show-current`) as soon as it's proposed.
+branched from the current (block N) branch tip, which already carries block N's commit — the name
+and base match the `branch`/`baseBranch` already recorded for block N+1 in the approved plan. The
+remaining diff (every file of blocks N+1..K) is still present as uncommitted changes in this new
+branch's working tree, since `git checkout -b` from a branch tip doesn't touch uncommitted/
+untracked changes. Loop back to Step 4 for block N+1 — no new plan or approval is needed;
+the plan was approved as a whole in Step 2.
+
+**Changing the plan mid-split.** If a pre-push rejection (Step 6) or something found while
+committing shows that the remaining blocks are cut wrong, re-plan only the blocks that have no
+commit yet: set them back to `"planned"` (the one deliberate exception to "status never skips
+backward"), return their files to `unassignedFiles`, and run Steps 1–3 again for just that
+remainder — same plan file path, covering only the unstarted blocks. Blocks that already have a
+commit or PR are never re-planned.
 
 ## Common Mistakes
 
@@ -248,8 +267,11 @@ branch as its own `branch` (via `git branch --show-current`) as soon as it's pro
 | Treating a pre-push hook rejection at Step 6 as something to silently retry or bypass (`--no-verify`) | Show the hook's output to the user and let them decide how to fix forward |
 | Setting a failed block's `status` to some ad hoc value when a push is rejected | The commit still exists and stays `"committed"` — a rejected push isn't a build failure with a defined rollback, it's a stop-and-ask |
 | Writing the baseline file list to a `/tmp` file | Baseline lives in `state.json`'s `originalFiles` field, never an external temp file |
-| Leaving `branch`/`baseBranch` unset on a block | Step 1 sets both at proposal time — block 1 from `sourceBranch`/top-level `baseBranch`, block N+1 from the current branch/previous block's `branch` — Step 3 only flips `status` and clears `unassignedFiles` |
+| Leaving `branch`/`baseBranch` unset on a block | Step 1 sets both for every block at plan time — block 1 from `sourceBranch`/top-level `baseBranch`, block N+1 as `<sourceBranch>-<N+1>` based on block N's `branch` |
 | Skipping `git reset` after Step 0's `git cherry-pick -n` | Without it every file is left staged, so Step 4's bare `git commit` would commit the entire remaining diff instead of just the block |
-| Leaving `.claude/pr-split/<slug>-state.json` on disk once `unassignedFiles` is empty | Delete it as the last action of Step 7 — see `SKILL.md` → Completion |
-| Waiting for a free-text chat reply to approve grouping/commit/PR | Use `AskUserQuestion` with concrete options at every approval gate — see `SKILL.md` → Approval Gates |
+| Leaving `.claude/pr-split/<slug>-state.json` on disk once every block is `pr-created` | Delete it as the last action of Step 7 — see `SKILL.md` → Completion |
+| Approving the plan via chat or `AskUserQuestion`, or approving blocks one by one | The whole chain is approved at once via the Plannotator-annotated plan file (Step 2); `AskUserQuestion` is only for the commit message, PR and review-continue gates |
+| New plan file path on every iteration | Same path (`<slug>-plan.md`), otherwise Plannotator has no version diff |
+| Planning blocks out of dependency order | Each block may only depend on itself and earlier blocks — reorder in Step 1 |
+| Waiting for a free-text chat reply to approve commit/PR | Use `AskUserQuestion` with concrete options at those gates — see `SKILL.md` → Approval Gates |
 | Editing `state.json` via a shell one-liner (`jq`, `python -c`, ...) | Read/Edit it as plain text, like any other file — see `SKILL.md` → Editing the State File |

@@ -25,10 +25,11 @@ rather than treating it as either a fresh split or an in-progress one.
 ### 2. Report before acting
 
 Never silently resume. Tell the user, plainly:
-- Which block is in progress (the last entry in `blocks` whose `status` isn't `pr-created`, or
-  "no block in progress" if the last one is `pr-created` but `unassignedFiles` isn't empty yet).
-- That block's current `status`.
-- How many files remain in `unassignedFiles`.
+- Whether the plan is approved: `blocks` empty (nothing planned yet), blocks `planned` (plan
+  drafted, awaiting approval), or `approved` onward.
+- Which block is in progress (the first entry in `blocks` whose `status` isn't `pr-created`) and
+  its current `status`; how many blocks have a PR out of the total.
+- How many files remain in `unassignedFiles` (non-zero only while the plan is unapproved).
 
 ### 3. Resume at the right step
 
@@ -36,12 +37,12 @@ Map the in-progress block's `status` to where `references/block-cycle.md` picks 
 
 | `status` | Resume at |
 |---|---|
-| No block in progress (all `pr-created`, `unassignedFiles` non-empty) | Step 1 (Analyze), for a new block |
-| `planned` | Step 2 (Approve plan) — re-show the existing proposal rather than re-deriving it; `branch`/`baseBranch` are already recorded from Step 1 |
-| `approved` | Step 4 (Commit) — nothing to isolate first; `git add` the block's files and commit as usual |
+| `blocks` empty | Step 1 (Plan the whole split) |
+| Blocks `planned` | Step 2 (Approve the plan) — re-open the existing `.claude/pr-split/<slug>-plan.md` in Plannotator rather than re-deriving it (regenerate the file from the `planned` entries in `state.json` if it's missing); `branch`/`baseBranch` are already recorded from Step 1 |
+| `approved` | Step 4 (Commit) for the first unfinished block — `git add` the block's files and commit as usual; if it isn't block 1, first make sure its branch exists and is checked out (`git checkout -b` from the previous block's branch if not) |
 | `committed` | Step 5 (Plannotator review) |
 | `review-passed` | Step 6 (PR) |
-| `pr-created`, `unassignedFiles` empty | Not actually resumable — Step 7 deletes `state.json` once every block reaches this point (see `SKILL.md` → Completion), so finding this shape at all means that cleanup didn't run; tell the user the split already looks complete and confirm before deleting the file yourself |
+| Every block `pr-created` | Not actually resumable — Step 7 deletes `state.json` once every block reaches this point (see `SKILL.md` → Completion), so finding this shape at all means that cleanup didn't run; tell the user the split already looks complete and confirm before deleting the file yourself |
 
 Never jump straight to committing or creating a PR without re-confirming context with the user
 first — Step 2 above already surfaces the state, but if anything looks stale (e.g. the working
@@ -53,6 +54,6 @@ than forcing the mapped step.
 | Mistake | Fix |
 |---|---|
 | Assuming the most recent `.claude/pr-split/*-state.json` belongs to the current branch | Match on `sourceBranch`/`blocks[].branch` against `git branch --show-current`, don't just pick the newest file |
-| Re-deriving a new block proposal when one is already `status: "planned"` | Re-show the existing proposal from `state.json` instead of discarding it |
+| Re-deriving the plan when blocks are already `status: "planned"` | Re-open the existing plan in Plannotator instead of discarding it |
 | Silently resuming without telling the user what was found | Step 2 is mandatory — always report before acting |
-| Treating a `status: "pr-created"` block with non-empty `unassignedFiles` as "done" | The split isn't finished until `unassignedFiles` is empty — resume at Step 1 for the next block |
+| Treating a `status: "pr-created"` block as "done" while later blocks remain | The split isn't finished until every block is `pr-created` — resume the next unfinished block at its mapped step |
