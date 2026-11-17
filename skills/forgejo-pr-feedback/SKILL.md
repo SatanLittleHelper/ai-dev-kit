@@ -1,17 +1,22 @@
 ---
 name: forgejo-pr-feedback
 description: >-
-  Use when the user wants to deal with review comments on their own Forgejo/Gitea pull request —
+  Use when the user wants to deal with review comments on their own Forgejo/Gitea pull request, or to look at
+  someone else's PR by number (read-only overview) —
   «разбери замечания по PR 42», «что мне написали в ревью», «ответь на замечания», "address review comments",
-  "triage feedback on my PR"; also «разбери CI», «почему упал CI на PR», "fix failed checks". Reads the unanswered
+  "triage feedback on my PR"; also a bare PR number («297», «#297») right after the `forgejo-pr-dashboard` table;
+  also «разбери CI», «почему упал CI на PR», "fix failed checks". Reads the unanswered
   comments and the failed CI checks, gives an assessment of each (valid, todo, invalid, question, out of scope),
   proposes a fix (and a reply for every comment), gets the plan approved in Plannotator, then applies the approved
-  fixes and posts the replies. Never commits or pushes by itself.
+  fixes and posts the replies. For someone else's PR only shows an overview (description, status, CI, files, reviews,
+  discussion) and changes nothing. Never commits or pushes by itself.
 ---
 
 # Forgejo PR Feedback
 
 Turns review comments and CI failures on the user's own PR into an approved plan, then executes it: code fixes in the working tree and replies in the PR (CI failures get fixes only, no replies). Nothing is changed or posted before the plan is approved in Plannotator.
+
+For someone else's PR there is nothing to fix or reply to: the skill only shows an overview of it (see «Someone else's PR») and changes nothing.
 
 ## Preconditions
 
@@ -30,6 +35,8 @@ node <base>/scripts/cli/main.mts whoami
 node <base>/scripts/cli/main.mts pr get <N>
 node <base>/scripts/cli/main.mts pr feedback <N>
 node <base>/scripts/cli/main.mts pr ci <N>
+node <base>/scripts/cli/main.mts pr files <N>
+node <base>/scripts/cli/main.mts pr reviews <N>
 node <base>/scripts/cli/main.mts pr threads <N>
 node <base>/scripts/cli/main.mts pr reply <N> --file <replies.json> [--confirm]
 ```
@@ -39,7 +46,7 @@ node <base>/scripts/cli/main.mts pr reply <N> --file <replies.json> [--confirm]
 ## 1. Pick the PR and check it is the user's own
 
 1. Take the PR number from the user. No number → ask once.
-2. `pr get <N>` and `whoami`. `author` of the PR must equal `login` (case-insensitive). Otherwise answer «PR <N> принадлежит <author>, разбор замечаний — только для своих PR» and stop.
+2. `pr get <N>` and `whoami`. `author` of the PR must equal `login` (case-insensitive). Otherwise the PR is someone else's: go to «Someone else's PR» below and stop there; steps 3–6 apply to own PRs only.
 3. The current git branch must equal `headRef` of the PR, because the fixes are applied in this working tree. If it does not, run `git status --short`:
    - Working tree is clean → switch yourself (`git fetch origin <headRef>` first if the branch is not local, then `git checkout <headRef>`). Then check `git branch --show-current` equals `headRef`; if the switch failed, show the git error and go to the blocked case below.
    - Working tree has uncommitted changes (a diff), or the switch is blocked for another reason (the branch is checked out in another worktree, checkout error) → do not switch in place. Ask the user with AskUserQuestion whether to create a git worktree for `headRef` (e.g. `git worktree add ../<repo>-pr-<N> <headRef>`). Created → do all the following steps in the worktree directory. Declined → stop.
@@ -133,6 +140,19 @@ Make the changes of items with `valid` (comments and CI items; and the `todo` it
 3. Confirmed → run the same command with `--confirm`.
 4. Exit code 3 means the post may or may not have gone through: do **not** retry. Run `pr threads <N>`, check which replies are already there and report it to the user.
 5. Delete the files in `tmp/drafts/` created by this skill.
+
+## Someone else's PR
+
+Read-only. Run `pr ci <N>`, `pr files <N>`, `pr reviews <N>`, `pr threads <N>` (the `pr get` result is already there). Answer in Russian, skipping empty sections:
+
+1. Header: `[#<N> <title>](<url>)` · `<author>` · `<headRef> → <baseRef>`.
+2. State: `открыт` / `влит` (`merged`) / `закрыт`; ` · конфликт` when `conflicted`; CI ✅ `success`, ❌ `failure` (+ names from `failed`), ⏳ `pending`, — `none`.
+3. Description: `body` as given; empty → «Описания нет».
+4. Files: count and the list (over 20 → first 20 and «и ещё N»).
+5. Reviews: `<author> — <approved ✅ | changes 🔴 | comment 💬 | pending ⏳>` and a short quote of `body`; skip dismissed.
+6. Discussion: unresolved threads (`<path>:<line> — <author>: <first line of the last comment>`), the number of resolved ones, then general comments.
+
+No plan, no Plannotator, no fixes, no replies, no recommendations.
 
 ## Errors
 
