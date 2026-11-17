@@ -26,7 +26,7 @@ This skill is the single trigger for everything roadmap-related. It owns storage
 | Generic "let's continue the roadmap" — unclear whether that means more documentation or starting implementation | `references/resuming-work.md` |
 | User names a specific checkpoint/task and asks to take/start it | `references/executing-checkpoints.md` |
 | Batch-drafting and validating several steps' specs/plans (from this roadmap, or an explicit list of tasks) | `references/batch-plan-validate.md` |
-| Fresh default branch, open-PR state overlay, hiding other roadmaps in the branch (shared by all of the above) | `references/sync-and-isolate.md` |
+| Fresh default branch, open-PR state overlay (incl. stackable checkpoints), hiding other roadmaps in the branch (shared by all of the above) | `references/sync-and-isolate.md` |
 
 **Before any of the above** (except writing a brand-new roadmap), run `references/sync-and-isolate.md` sections A and B: fetch, check what changed in the default branch (whether you work from it or from a roadmap-related branch) and read roadmap data accordingly, then overlay the state of roadmap work already in open PRs. Section C of the same file (strip other roadmaps from the working tree) runs once a checkpoint is picked and its branch created.
 
@@ -128,6 +128,8 @@ A checkpoint is **ready to pick up** when it is unchecked (`- [ ]`) and every en
 - if `docs/<slug>/` no longer exists, it is **satisfied** — a fully checked-off roadmap is deleted (see "When a roadmap is fully checked off"), so absence means it finished;
 - if the folder exists but has no state file, fall back to the dependency's checkbox in that roadmap's markdown (`- [x]` = satisfied);
 - if the state file exists but has no step with that id, the reference is **broken**: treat the checkpoint as blocked and tell the user to fix the tag instead of guessing.
+
+A blocked checkpoint is **stackable** when every unsatisfied dependency is `closed` in the branch of one open PR (or a chain of PRs); it can then be started from that PR's head branch (`references/sync-and-isolate.md` section B item 5, `references/executing-checkpoints.md` step 3). This doesn't make it ready: on main the dependency stays unsatisfied until the PR merges.
 
 Cross-roadmap references are one-directional and read-only: a checkpoint never edits the other roadmap's files. Multiple checkpoints can be ready at once — that's exactly what makes them safe to parallelize. `references/executing-checkpoints.md` uses this to decide which checkpoint(s) it can offer, instead of always assuming strict top-to-bottom order.
 

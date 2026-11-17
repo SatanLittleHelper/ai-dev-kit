@@ -10,7 +10,7 @@ Use this reference for a generic "продолжим роадмап"-style reque
 
 ### 0. Fresh main and PR sync
 
-Run `references/sync-and-isolate.md` sections A and B first. All state below is read from the fresh default branch plus the in-flight PR overlay; steps in flight in an open PR are not offered as next work.
+Run `references/sync-and-isolate.md` sections A and B first. All state below is read from the fresh default branch plus the in-flight PR overlay; steps in flight in an open PR are not offered as next work, except blocked steps stackable on an open PR's branch (section B item 5), which are listed as «стек на PR #N».
 
 ### 1. Find the roadmap
 

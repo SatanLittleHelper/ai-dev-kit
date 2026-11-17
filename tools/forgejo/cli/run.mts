@@ -13,6 +13,7 @@ const BOOLEAN_FLAGS: readonly string[] = ['confirm']
 const USAGE = `Использование:
   whoami
   pr list [--state open|closed]
+  pr files <N>
   pr get <N> | pr reviews <N> | pr threads <N> | pr feedback <N>
   pr dashboard
   pr review <N> --file draft.json [--confirm]
@@ -87,7 +88,7 @@ async function execute(argv: string[], io: Io): Promise<void> {
   const confirm = args.flags.confirm === true
 
   const isWhoami = group === 'whoami'
-  const known = ['list', 'get', 'reviews', 'threads', 'feedback', 'dashboard', 'review', 'reply']
+  const known = ['list', 'get', 'files', 'reviews', 'threads', 'feedback', 'dashboard', 'review', 'reply']
   if (!isWhoami && !(group === 'pr' && known.includes(command))) throw usageError('неизвестная команда')
   const number = ['list', 'dashboard'].includes(command) || isWhoami ? 0 : numberArg(target)
   const draft = command === 'review' ? parseDraft(fileArg(args, io)) : undefined
@@ -99,6 +100,7 @@ async function execute(argv: string[], io: Io): Promise<void> {
   if (isWhoami) return print(io, { login: await provider.currentUser() })
   if (command === 'list') return print(io, await provider.listPulls(args.flags.state === 'closed' ? 'closed' : 'open'))
   if (command === 'get') return print(io, { ...(await provider.getPull(number)), pullRef: provider.pullRef(number) })
+  if (command === 'files') return print(io, await provider.listPullFiles(number))
   if (command === 'reviews') return print(io, await provider.listReviews(number))
   if (command === 'threads') return print(io, await provider.listThreads(number))
   if (command === 'feedback') return print(io, intakeItems(await loadPr(provider, number)))

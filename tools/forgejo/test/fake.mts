@@ -3,6 +3,7 @@ import type { Comment, ForgeProvider, PullRequest, Reply, Review, ReviewDraft, T
 export interface FakeData {
   me: string
   pulls: PullRequest[]
+  files?: Record<number, string[]>
   reviews?: Record<number, Review[]>
   threads?: Record<number, { threads: Thread[]; general: Comment[] }>
   publishReviewError?: Error
@@ -27,6 +28,7 @@ export function fakeProvider(data: FakeData): FakeProvider {
       if (!found) throw new Error(`PR ${number} не найден`)
       return found
     },
+    listPullFiles: async number => data.files?.[number] ?? [],
     listReviews: async number => data.reviews?.[number] ?? [],
     listThreads: async number => data.threads?.[number] ?? { threads: [], general: [] },
     publishReview: async (number, draft) => {

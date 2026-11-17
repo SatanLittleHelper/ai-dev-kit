@@ -34,6 +34,7 @@ export function createForgejo(deps: ProviderDeps): ForgeProvider {
     currentUser,
     listPulls: async state => ((await call('GET', `${repoPath}/pulls?state=${state}&page=1&limit=${PAGE_LIMIT}`)) as RawPull[]).map(toPull),
     getPull: async number => toPull((await call('GET', `${repoPath}/pulls/${number}`)) as RawPull),
+    listPullFiles: async number => (await paged<{ filename: string }>(`${repoPath}/pulls/${number}/files`)).map(file => file.filename),
     listReviews: async number => (await rawReviews(number)).map(toReview).filter((review): review is Review => review !== null),
     listThreads: async number => {
       const reviews = (await rawReviews(number)).filter(review => REVIEW_STATES[review.state])
