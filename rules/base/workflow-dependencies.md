@@ -15,6 +15,8 @@ Run from the consuming project's root:
 |---|---|
 | Superpowers, Plannotator plugin/skills or CLI | `bash .claude/ai-dev-kit/dependencies/install.sh` |
 | `pr-flow`, `polish`, or another kit mod | `bash .claude/ai-dev-kit/mods/install-mods.sh <mod-name>` — use the actual name from the kit's marketplace |
+| Codex CLI (`codex`) — needed by `doc-review` and `codex-implement` | `npm install -g @openai/codex`, then `codex login`; for the `local` profile also replace its `YOUR-…` placeholders in `.claude/dev-conventions.json` and export `LOCAL_LLM_API_KEY` in your shell (never in a project file) |
+| `doc-review` or another kit-owned skill (`codex-implement`, …) — also a missing default profile in `.claude/dev-conventions.json` | skill: below; profile: `bash .claude/ai-dev-kit/defaults/install-dev-conventions.sh` |
 | A kit-owned skill | `npx skills add SatanLittleHelper/ai-dev-kit --skill <skill-name> -a claude-code --yes` |
 | Angular best practices | `npx skills add alfredoperez/angular-best-practices --skill angular-best-practices -a claude-code --yes` |
 | NestJS best practices | `npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices -a claude-code --yes` |
