@@ -12,7 +12,7 @@ These rules define what to test and how to assert. The execution order is in `ru
 | Markdown files (rules, skills, docs, plans, roadmaps) | **No** — no tests and no grep-style checks; verify by reading the diff |
 | Repositories/DAOs with query logic (filters, `include`/joins, raw SQL, transactions, conditional writes, branches) | **Yes, integration** — a test against a real database, never a mocked client; required for full TDD |
 | Thin repositories (plain create/read/update/delete wrappers with no logic of their own) | **No** — cover through the calling service |
-| Application pages and user flows | **Yes, e2e** — a fast e2e with a mocked API for page behavior; a full-stack e2e only for cross-system scenarios |
+| Application pages and user flows | **Yes, e2e** — a fast e2e with a mocked API for page behavior; a full-stack e2e only for cross-system scenarios; a page that has a mockup also gets a visual e2e (see "Visual e2e against mockups") |
 | Thin outbound API clients | **No** — test how the caller uses the result |
 | Pure row/payload → domain mappers (only field assignment/`?? default`) | **No** |
 
@@ -44,6 +44,16 @@ Do not silently fall back to a weaker layer: covering a repository only through 
 - Cast mocks/fixtures as `unknown as Type`, never `as any`.
 - Playwright: to check that a disabled element ignores a click, use `locator.dispatchEvent('click')`, never `click({ force: true })` (`playwright/no-force-option`). `force` bypasses actionability checks; `dispatchEvent` sends the event directly and still proves the element does not react.
 
+## Visual e2e against mockups
+
+A page or state that has a mockup gets a screenshot test next to its behavior e2e: the mockup is the reference image, the page rendered with a mocked API is compared against it.
+
+- The reference image is committed in the roadmap step's `reference/` folder, not generated from the page. A test that records its own baseline proves nothing.
+- File `*.visual.fast.spec.ts` next to the page's fast spec; one test per mockup state.
+- Viewport equals the mockup size divided by `deviceScaleFactor`; the clock, time zone and fonts are fixed, animations are disabled.
+- The tolerance for known differences (site header, kit-specific disabled colors) is a named constant with a comment listing the differences. Do not raise it silently: if the page cannot fit, ask the user.
+- Updating a reference is a deliberate change of the mockup, never a way to make a red test green.
+
 ## Common Mistakes
 
 | Mistake | Fix |
@@ -57,3 +67,4 @@ Do not silently fall back to a weaker layer: covering a repository only through 
 | `mockObject as any` | Use `mockObject as unknown as Type` |
 | Playwright `click({ force: true })` on a disabled element | Use `dispatchEvent('click')` |
 | Seed/fixture values extracted to a `*.constants.ts` file | Keep them as local named constants in the test or test-support file |
+| Page with a mockup covered only by text assertions | Add a visual e2e against the mockup image |

@@ -19,7 +19,7 @@ Runs after the design is approved and before `rules/skills/writing-plans.md`. It
 
 1. **Unit** — every in-scope unit from the layer table: services with branching, guards, validators, fallback and error-handling branches, frontend stores/services/helpers.
 2. **Integration** — only where a layer requires it (repositories with query logic against a real database).
-3. **E2E** — fast e2e with a mocked API for pages; backend e2e for HTTP contract and authorization; full-stack only for cross-system scenarios; Storybook e2e for a UI-kit library.
+3. **E2E** — fast e2e with a mocked API for pages; backend e2e for HTTP contract and authorization; full-stack only for cross-system scenarios; Storybook e2e for a UI-kit library. When a page or state has a mockup, add a case tagged `[e2e, скриншот]` for each mockup state (reference image, viewport, tolerance); see `rules/base/testing.md` → "Visual e2e against mockups".
 
 ## Before drafting: check the runners
 
