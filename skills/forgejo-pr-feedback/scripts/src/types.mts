@@ -92,6 +92,7 @@ export interface ForgeProvider {
   currentUser(): Promise<string>
   listPulls(state: 'open' | 'closed'): Promise<PullRequest[]>
   getPull(number: number): Promise<PullRequest>
+  listPullFiles(number: number): Promise<string[]>
   listReviews(number: number): Promise<Review[]>
   listThreads(number: number): Promise<{ threads: Thread[]; general: Comment[] }>
   publishReview(number: number, draft: ReviewDraft): Promise<{ url: string }>

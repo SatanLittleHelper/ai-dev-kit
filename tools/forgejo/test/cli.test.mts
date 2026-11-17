@@ -148,3 +148,9 @@ test('U60: токен не принимается флагом', async () => {
   assert.match(h.err.join('\n'), /неизвестный флаг --token/)
   assert.equal(h.created.count, 0)
 })
+
+test('U63: pr files печатает список файлов PR', async () => {
+  const h = harness({ files: { 42: ['docs/a/roadmap-state.json'] } })
+  assert.equal(await h.exec('pr', 'files', '42'), 0)
+  assert.deepEqual(JSON.parse(h.out.join('\n')), ['docs/a/roadmap-state.json'])
+})

@@ -74,3 +74,10 @@ test('U20: listThreads не запрашивает комментарии рев
 
 void list
 void REVIEWS_KEY
+
+test('U19: listPullFiles отдаёт пути файлов PR и проходит все страницы', async () => {
+  const { instance } = provider({
+    [`GET ${API}/pulls/42/files?page=1&limit=50`]: ok(JSON.stringify([{ filename: 'docs/a/roadmap-state.json' }, { filename: 'src/x.ts' }]), { 'x-total-count': '2' }),
+  })
+  assert.deepEqual(await instance.listPullFiles(42), ['docs/a/roadmap-state.json', 'src/x.ts'])
+})

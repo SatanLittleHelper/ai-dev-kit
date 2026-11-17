@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const SCRIPT = new URL('../sync-skills.sh', import.meta.url).pathname
-const SKILLS = ['forgejo-pr-dashboard', 'forgejo-pr-feedback']
+const SKILLS = ['forgejo-pr-dashboard', 'forgejo-pr-feedback', 'roadmap']
 
 function sandbox() {
   const root = mkdtempSync(join(tmpdir(), 'forgejo-sync-'))

@@ -5,7 +5,7 @@ set -euo pipefail
 
 SRC="${FORGEJO_SYNC_SRC:-$(cd "$(dirname "$0")" && pwd)}"
 SKILLS_ROOT="${FORGEJO_SYNC_SKILLS:-$SRC/../../skills}"
-SKILLS=(forgejo-pr-dashboard forgejo-pr-feedback)
+SKILLS=(forgejo-pr-dashboard forgejo-pr-feedback roadmap)
 MODE="${1:-sync}"
 status=0
 
