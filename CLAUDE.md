@@ -9,6 +9,7 @@ Personal dev-conventions repo (`ai-dev-kit`), consumed by other projects three d
 - `skills/` — actual Claude Code skills (`SKILL.md` + `references/`), installed into a consuming project with `npx skills add SatanLittleHelper/ai-dev-kit --skill <name>`.
 - `rules/` — plain markdown, NOT skills, wired into a consuming project by adding it as a git submodule and importing one file from the project's own `CLAUDE.md`.
 - `mods/` — Claude Code plugins with UI and hooks (TypeScript), listed in `.claude-plugin/marketplace.json`; `setup.sh` enables them in a consuming project's `.claude/settings.json` via `mods/install-mods.sh`.
+- `tools/` — TypeScript tools with a CLI that skills call (no dependencies; Node 24 runs the `.mts` files directly). Currently `tools/forgejo/`: Forgejo/Gitea API and CLI for the `forgejo-pr-dashboard` and `forgejo-pr-feedback` skills. Skills install by folder, so each carries its own copy of the CLI in `scripts/`.
 
 There is no application build or lint step here — the repo is markdown content, bash scripts (`setup.sh`, `rules/build-agents-md.sh`, `mods/install-mods.sh`) and the mods in `mods/`. A mod's tests run with `claude plugin test mods/<name>`; validate with `claude plugin validate mods/<name>` and `claude plugin validate .` (marketplace).
 
@@ -39,7 +40,14 @@ npx skills add SatanLittleHelper/ai-dev-kit --skill <name> -a claude-code
 npx skills update
 ```
 
+Run the tests of the Forgejo tools, or re-copy the CLI into its skills after changing `tools/forgejo/src` or `tools/forgejo/cli`:
+```bash
+node --test 'tools/forgejo/test/*.test.mts'
+bash tools/forgejo/sync-skills.sh
+```
+
 ## Project rules
 
 - When adding a new skill under `skills/`, add its name to the `OUR_SKILLS` array in `setup.sh` too — that list is hardcoded, not derived from the folder's contents, so a forgotten entry silently excludes the new skill from `setup.sh` installs.
 - When adding a new mod under `mods/`, add it to `.claude-plugin/marketplace.json` (entry `name` equal to the mod's `plugin.json` name) and to the `OUR_MODS` array in `setup.sh` — both lists are hardcoded, a forgotten entry silently excludes the mod.
+- `tools/forgejo/` is the source of truth for the CLI copied into `skills/forgejo-pr-dashboard/scripts/` and `skills/forgejo-pr-feedback/scripts/`. After changing `src/` or `cli/`, run `bash tools/forgejo/sync-skills.sh` and keep the copies in the change: consumers get only the skill folder, and `sync.test.mts` fails on any drift.
