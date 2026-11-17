@@ -41,14 +41,16 @@ classification conventions as shared background, so don't re-derive them per ref
 
 ## Approval Gates
 
-Every point in `references/block-cycle.md` where the user must approve, reject, or edit
-something (the block's file grouping, the commit message, the PR title/body, the Plannotator
-review outcome) is asked via `AskUserQuestion` with concrete options (e.g. "Approve" /
-"Change grouping", "Approve" / "Edit message") — never by posting text in chat and waiting for a
-free-form reply. This lets the user approve with a click instead of typing anything back. The
-one exception is genuine data entry with no fixed option set — e.g. pasting a manually-created
-PR's URL when neither Forgejo nor `gh` is available (`references/block-cycle.md` Step 6) — which stays a normal
-chat prompt, since there's nothing to choose between.
+- **The whole split plan** (all blocks at once, `references/block-cycle.md` Step 2) is approved
+  in **Plannotator**: the plan is written to `.claude/pr-split/<slug>-plan.md` and opened with
+  `plannotator-annotate` (`--gate`); `approved` / `annotated` / `dismissed` decides what happens
+  next. Not asked in chat and not via `AskUserQuestion`.
+- **Every other gate** (the commit message, the PR title/body, continuing after the Plannotator
+  code review) is asked via `AskUserQuestion` with concrete options (e.g. "Approve" / "Edit
+  message") — never by posting text in chat and waiting for a free-form reply. This lets the user
+  approve with a click instead of typing anything back. The one exception is genuine data entry
+  with no fixed option set — e.g. pasting a manually-created PR's URL when neither Forgejo nor
+  `gh` is available (`references/block-cycle.md` Step 6) — which stays a normal chat prompt.
 
 ## File Classification
 
@@ -67,7 +69,7 @@ Grouping into blocks is this skill's own judgment from reading the diff (imports
 domain proximity) — not a rigid static algorithm. **Keeping coupled files together always
 outranks the 15-file cap:** if a tightly-coupled group of files can't be split without leaving
 one half referencing something the other half hasn't introduced yet, the cap is exceeded for
-that one block. When that happens, flag it explicitly in the block proposal shown to the user and
+that one block. When that happens, flag it explicitly in the plan shown to the user and
 get their confirmation on that specific point before moving on. There is no local build/lint/test
 run to empirically confirm this — the project's own pre-push hook is the real check, at
 `git push` time (`references/block-cycle.md` Step 6); a rejected push is the signal to regroup.
@@ -92,7 +94,7 @@ run to empirically confirm this — the project's own pre-push hook is the real 
 ## Completion
 
 The split is complete once every block in `blocks` has reached `status: "pr-created"` and
-`unassignedFiles` is empty. At that point, delete `.claude/pr-split/<slug>-state.json` as the
+`unassignedFiles` is empty (the latter holds from plan approval onward). At that point, delete `.claude/pr-split/<slug>-state.json` as the
 last action of the workflow — the split's job was tracking progress while it was in flight, and
 once every block has a PR, `state.json` has nothing left to track.
 
@@ -149,18 +151,21 @@ is a direct, visible text edit — there is no need for a JSON-processing tool i
   Strategy below.
 - `status` progresses in this order and never skips backward: `planned` → `approved` →
   `committed` → `review-passed` → `pr-created`. There is no automated `closed` status — see
-  Completion above. A block is written as `"planned"` at proposal time (`block-cycle.md` Step 1,
-  before user approval) and flips to `"approved"` once the user approves it (Step 3) — see the
-  invariant exception below for what that means for a `"planned"` block's files.
-- `unassignedFiles` lists every file from the original diff not yet claimed by a block. A
-  `"planned"` block's proposed files are still listed here — see below.
+  Completion above. All blocks are written as `"planned"` at once when the whole plan is drafted
+  (`block-cycle.md` Step 1, before user approval) and flip to `"approved"` together once the user
+  approves the plan (Step 3). The one allowed backward move: blocks with no commit yet may be set
+  back to `"planned"` when the remaining plan is re-done (`block-cycle.md` Step 7). See the
+  invariant exception below for what `"planned"` means for a block's files.
+- `unassignedFiles` lists every file from the original diff not yet claimed by an approved
+  block. `"planned"` blocks' proposed files are still listed here — see below; after plan approval
+  the list is empty.
 - **Nothing-lost invariant**, checked mechanically at every write to this file (never just
   visually): the union of every block's `files.logic` + `files.assets` **for blocks whose
   `status` is `"approved"` or later**, plus `unassignedFiles`, must equal exactly
   `originalFiles` (no file missing, no file duplicated across blocks). **Exception:** a block
   with `status: "planned"` is excluded from that union — its proposed files are only counted via
-  `unassignedFiles` until approval flips it to `"approved"` (at which point `block-cycle.md`
-  Step 3 removes those files from `unassignedFiles` in the same write, keeping the invariant
+  `unassignedFiles` until plan approval flips it to `"approved"` (at which point `block-cycle.md`
+  Step 3 empties `unassignedFiles` in the same write, keeping the invariant
   holding at every step). `originalFiles` is captured once, at split start, with a single rename/
   space-safe command (`git status --porcelain=v1 -z`, null-delimited, parsed accordingly — not
   `awk '{print $2}'`, which mangles renames and paths with spaces) and never re-derived from the
