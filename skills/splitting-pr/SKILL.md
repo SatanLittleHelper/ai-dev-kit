@@ -45,9 +45,13 @@ classification conventions as shared background, so don't re-derive them per ref
   in **Plannotator**: the plan is written to `.claude/pr-split/<slug>-plan.md` and opened with
   `plannotator-annotate` (`--gate`); `approved` / `annotated` / `dismissed` decides what happens
   next. Not asked in chat and not via `AskUserQuestion`.
-- **Every other gate** (the commit message, the PR title/body, continuing after the Plannotator
-  code review) is asked via `AskUserQuestion` with concrete options (e.g. "Approve" / "Edit
-  message") — never by posting text in chat and waiting for a free-form reply. This lets the user
+  The plan includes each block's **commit message**, so commit messages are approved here once,
+  not per block at commit time.
+- **The PR title** is the block's approved `commitMessage`, and **the PR body** is written by the
+  PR flow (`pr-flow`); neither has its own approval gate.
+- **Every other gate** (continuing after the Plannotator
+  code review) is asked via `AskUserQuestion` with concrete options (e.g. "Continue to PR" /
+  "Request more changes") — never by posting text in chat and waiting for a free-form reply. This lets the user
   approve with a click instead of typing anything back. The one exception is genuine data entry
   with no fixed option set — e.g. pasting a manually-created PR's URL when neither Forgejo nor
   `gh` is available (`references/block-cycle.md` Step 6) — which stays a normal chat prompt.
@@ -135,6 +139,7 @@ is a direct, visible text edit — there is no need for a JSON-processing tool i
       "baseBranch": "main",
       "files": { "logic": ["src/a.ts"], "assets": ["README.md"] },
       "status": "approved",
+      "commitMessage": "Added a",
       "commitSha": null,
       "prUrl": null,
       "prTitle": null
@@ -156,6 +161,8 @@ is a direct, visible text edit — there is no need for a JSON-processing tool i
   approves the plan (Step 3). The one allowed backward move: blocks with no commit yet may be set
   back to `"planned"` when the remaining plan is re-done (`block-cycle.md` Step 7). See the
   invariant exception below for what `"planned"` means for a block's files.
+- `commitMessage` is drafted with the plan and approved together with it (Plannotator); Step 4
+  commits with it verbatim and uses it as the PR title.
 - `unassignedFiles` lists every file from the original diff not yet claimed by an approved
   block. `"planned"` blocks' proposed files are still listed here — see below; after plan approval
   the list is empty.

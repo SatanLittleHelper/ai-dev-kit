@@ -81,14 +81,19 @@ type only defined in file B"). There is no build check to fall back on — this 
 user's approval of it in Step 2, is the only gate before the project's own pre-push hook weighs
 in at Step 6.
 
+For each block also draft its **commit message** now (per this repo's
+`rules/base/git-and-commits.md`: past tense, one line, language matching the conversation, ticket
+prefix from `.claude/dev-conventions.json` if the project tracks one). Commit messages are
+approved together with the plan in Step 2, not per block at commit time.
+
 Branch names are deterministic, so they are fixed now even though the branches don't exist yet:
 block 1's `branch` is `sourceBranch` and its `baseBranch` is the state file's top-level
 `baseBranch`; block N+1's `branch` is `<sourceBranch>-<N+1>` and its `baseBranch` is block N's
 `branch`.
 
 Immediately after drafting the plan — before asking for approval — persist it to `state.json`:
-every block as an entry in `blocks` with `status: "planned"`, `branch` and `baseBranch` set
-(replace any previously drafted `"planned"` entries wholesale). All files stay in
+every block as an entry in `blocks` with `status: "planned"`, `branch`, `baseBranch` and
+`commitMessage` set (replace any previously drafted `"planned"` entries wholesale). All files stay in
 `unassignedFiles` at this point (per `SKILL.md`'s nothing-lost invariant exception for
 `"planned"` blocks). Update `updatedAt`. This is what makes an unapproved plan resumable if the
 session ends — see `references/resuming.md`'s `"planned"` row.
@@ -100,8 +105,8 @@ chat message and not by `AskUserQuestion`.
 
 1. **Write the plan file** at the stable path `.claude/pr-split/<slug>-plan.md` (absolute path;
    untracked like the state file, never committed). Content: a summary table of the chain
-   (`| # | Branch | Base | Logic files | Asset files |`); then, per block, the reason these files
-   belong together and the file list as a markdown table, one row per file
+   (`| # | Branch | Base | Commit message | Logic files | Asset files |`); then, per block, the reason these files
+   belong together, its commit message (a line like ``Commit: `<message>` ``), and the file list as a markdown table, one row per file
    (`| # | File | Kind | Note |`, where Kind is `logic` or `asset`, and Note is a short
    per-file hint such as the coupling that pins it to this block — empty if none), logic rows
    first, never a bulleted or comma-separated list; an explicit
@@ -117,7 +122,7 @@ chat message and not by `AskUserQuestion`.
    - `approved` → delete the plan file, go to Step 3. Notes attached to an approval are
      recommendations to take into account, not a request for a new review.
    - `annotated` → treat the annotations as the requested changes (move files between blocks,
-     merge/split/reorder blocks), go back to Step 1 and re-draft the whole plan, rewriting the
+     merge/split/reorder blocks, reword commit messages), go back to Step 1 and re-draft the whole plan, rewriting the
      `"planned"` entries in `state.json`. Update the **same plan file at the same path** and
      open it again — Plannotator's version history then shows the diff. Repeat until `approved`.
    - `dismissed` → no approval: leave the blocks `"planned"`, change nothing else, tell the user
@@ -128,7 +133,8 @@ crash here simply leaves the `"planned"` blocks (and the plan file) in place for
 
 ## Step 3: Record
 
-On approval, in a single write: set every block's `status` to `"approved"` and empty
+On approval, in a single write: set every block's `status` to `"approved"` (each block's
+`commitMessage` is now the approved one) and empty
 `unassignedFiles` (all files now belong to approved blocks). Update `updatedAt`. Re-run the
 nothing-lost invariant check from `SKILL.md` before continuing — if it fails, stop and surface
 the mismatch rather than proceeding into Step 4.
@@ -143,14 +149,13 @@ Stage only this block's files and commit them — nothing else in the working tr
 git add <block file 1> <block file 2> ...
 ```
 
-Draft the commit message (per this repo's `rules/base/git-and-commits.md`: past tense, one line,
-language matching the conversation, ticket prefix from `.claude/dev-conventions.json` if the
-project tracks one), show it in chat, then ask for approval via `AskUserQuestion` ("Approve this
-message" / "Edit it") rather than waiting for free text. If the user picks "edit", take their
-replacement text as the approved message — don't re-ask with the same draft. Only after approval:
+The commit message was already approved together with the plan (Step 2) and is stored as the
+block's `commitMessage` in `state.json` — use it verbatim, don't draft a new one and don't ask the
+user to approve it again. Only if the user explicitly asks to change it at this point, take their
+text, update `commitMessage` in `state.json`, and use that.
 
 ```bash
-git commit -m "<approved message>"
+git commit -m "<block's commitMessage>"
 ```
 
 Because Step 0's baseline established a clean staged/unstaged split (nothing pre-staged beyond
@@ -174,9 +179,9 @@ block's commit. `--diff-type last-commit` scopes the review to exactly the commi
 Step 4.
 
 If Plannotator's result carries feedback/annotations, apply the requested changes in the same
-conversation (as an amendment to this block's commit — `git commit --amend`, not a separate commit, so
-`last-commit` keeps covering the whole block — per the user's own commit-approval discipline,
-same as Step 4; update `commitSha` afterward) and re-run the review. If the result is already an LGTM-style
+conversation (as an amendment to this block's commit — `git commit --amend --no-edit`, not a separate commit, so
+`last-commit` keeps covering the whole block; the approved message stays unless the user asks to
+change it; update `commitSha` afterward) and re-run the review. If the result is already an LGTM-style
 approval with nothing to address, confirm moving on via `AskUserQuestion` ("Continue to PR" /
 "Request more changes") rather than assuming silence means yes. Once confirmed, set `state.json`
 `status: "review-passed"`.
@@ -194,9 +199,13 @@ Pick the PR-creation route (first match wins):
    ```
 3. **Manual** — neither applies.
 
-For routes 1 and 2: draft the PR title/body from the block's commit message and reasoning, show
-it in chat, and ask for approval via `AskUserQuestion` ("Approve this PR" / "Edit title/body") —
-same discipline as the commit message. Only after approval, push, then create the PR:
+For routes 1 and 2: the PR title is the block's `commitMessage` verbatim (already approved with the plan — never
+invent a different one). The PR body is written by the PR flow (`pr-flow` mod, see
+`rules/orchestrator.md` → "Create a PR"; its instructions are injected on "сделай ПР"; if the mod
+is unavailable, read `rules/base/workflow-dependencies.md`): severity headline plus «Зачем» /
+«Что сделано» sections, written to a scratchpad file as a separate step before the create command,
+and checked by the mod's hook. **No approval gate for the title or body** — the PR is created
+right away, and the link is shown afterwards. Push, then create the PR:
 
 ```bash
 git push -u origin <block branch>
@@ -210,11 +219,11 @@ git push -u origin <block branch>
     -H "Authorization: token $FORGEJO_TOKEN" -H "Content-Type: application/json" \
     -d @<scratchpad>/pr-<N>.json
   ```
-  with `{"base": "<block's baseBranch>", "head": "<block branch>", "title": "...", "body": "..."}`.
+  with `{"base": "<block's baseBranch>", "head": "<block branch>", "title": "<commitMessage>", "body": "..."}`.
   A non-2xx response → show the response message to the user and stop; don't record `prUrl`.
 - **GitHub:**
   ```bash
-  gh pr create --base <block's baseBranch> --head <block branch> --title "<title>" --body "<body>"
+  gh pr create --base <block's baseBranch> --head <block branch> --title "<commitMessage>" --body "<body>"
   ```
 - **Manual:** push the branch, tell the user the PR must be created manually on their platform
   with the correct base (`<block's baseBranch>`), and ask them to paste back the created PR's
@@ -232,7 +241,7 @@ automated signal that something about this block is broken. If that happens:
 - Do not mark `status: "pr-created"` or set `prUrl` until the push actually succeeds.
 
 Once the push (and PR, if applicable) succeeds: record the URL, `state.json` `status:
-"pr-created"`, `prUrl` and `prTitle` set (the approved PR title).
+"pr-created"`, `prUrl` and `prTitle` set (the block's `commitMessage`).
 
 ## Step 7: Next branch
 
@@ -273,8 +282,9 @@ commit or PR are never re-planned.
 | Leaving `branch`/`baseBranch` unset on a block | Step 1 sets both for every block at plan time — block 1 from `sourceBranch`/top-level `baseBranch`, block N+1 as `<sourceBranch>-<N+1>` based on block N's `branch` |
 | Skipping `git reset` after Step 0's `git cherry-pick -n` | Without it every file is left staged, so Step 4's bare `git commit` would commit the entire remaining diff instead of just the block |
 | Leaving `.claude/pr-split/<slug>-state.json` on disk once every block is `pr-created` | Delete it as the last action of Step 7 — see `SKILL.md` → Completion |
-| Approving the plan via chat or `AskUserQuestion`, or approving blocks one by one | The whole chain is approved at once via the Plannotator-annotated plan file (Step 2); `AskUserQuestion` is only for the commit message, PR and review-continue gates |
+| Approving the plan via chat or `AskUserQuestion`, or approving blocks one by one | The whole chain is approved at once via the Plannotator-annotated plan file (Step 2); `AskUserQuestion` is only for the review-continue gate |
+| Asking for commit-message approval at each block's commit step | Commit messages are drafted in Step 1 and approved with the plan in Step 2; Step 4 uses the stored `commitMessage` as is |
 | New plan file path on every iteration | Same path (`<slug>-plan.md`), otherwise Plannotator has no version diff |
 | Planning blocks out of dependency order | Each block may only depend on itself and earlier blocks — reorder in Step 1 |
-| Waiting for a free-text chat reply to approve commit/PR | Use `AskUserQuestion` with concrete options at those gates — see `SKILL.md` → Approval Gates |
+| Waiting for a free-text chat reply to approve continuing after review | Use `AskUserQuestion` with concrete options at the review-continue gate — see `SKILL.md` → Approval Gates |
 | Editing `state.json` via a shell one-liner (`jq`, `python -c`, ...) | Read/Edit it as plain text, like any other file — see `SKILL.md` → Editing the State File |
