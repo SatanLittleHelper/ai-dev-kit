@@ -20,6 +20,9 @@ export const MIGRATION_PATH = /(^|\/)(migrations?|db\/migrate)\//i
 
 // Документация, тесты, стили и обновление дев-кита (указатель сабмодуля, skills-lock.json): правка по таким путям не поднимает уровень по имени пути.
 const LIGHT_PATH = /(\.mdx?$|(^|\/)docs\/|\.(spec|test)\.[cm]?[jt]sx?$|\.(s?css|less)$|^\.claude\/ai-dev-kit$|(^|\/)skills-lock\.json$)/
+// Побочные файлы обновления кита: имеют смысл лёгкими только вместе с указателем сабмодуля `.claude/ai-dev-kit` в том же диффе.
+const DEV_KIT_POINTER = /^\.claude\/ai-dev-kit$/
+const DEV_KIT_SYNC_PATH = /^(\.claude\/|\.agents\/|AGENTS\.md$|skills-lock\.json$)/
 const CRITICAL_PATH = /(^|[/_.-])(payments?|billing|crypto|secrets?)([/_.-]|$)/i
 const DESTRUCTIVE_SQL = /^\+.*\b(DROP\s+(TABLE|COLUMN)|TRUNCATE)\b/im
 const SERIOUS_PATHS: readonly (readonly [RegExp, string])[] = [
@@ -53,7 +56,9 @@ export function classify({ files, migrationDiff, packageDiff }: DiffInput): Seve
     return { level: 'Лёгкие', reason: 'нет изменений' }
   }
 
-  const live = files.filter(file => !LIGHT_PATH.test(file.path))
+  const isKitUpdate = files.some(file => DEV_KIT_POINTER.test(file.path))
+  const isLight = (file: ChangedFile) => LIGHT_PATH.test(file.path) || (isKitUpdate && DEV_KIT_SYNC_PATH.test(file.path))
+  const live = files.filter(file => !isLight(file))
 
   if (DESTRUCTIVE_SQL.test(migrationDiff)) {
     return { level: 'Критичные', reason: 'деструктивная миграция (DROP или TRUNCATE)' }
@@ -85,7 +90,7 @@ export function classify({ files, migrationDiff, packageDiff }: DiffInput): Seve
     return { level: 'Серьёзные', reason: `major-обновление зависимости ${bumped}` }
   }
 
-  if (files.every(file => LIGHT_PATH.test(file.path) || file.status === 'R100')) {
+  if (files.every(file => isLight(file) || file.status === 'R100')) {
     return { level: 'Лёгкие', reason: 'документация, тесты, стили или переименования' }
   }
 

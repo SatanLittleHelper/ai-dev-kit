@@ -21,6 +21,14 @@ test('обновление дев-кита (сабмодуль, skills-lock.json
   expect(run([M('.claude/ai-dev-kit/rules/a.ts')]).level).toBe('Средние')
 })
 
+test('обновление дев-кита с побочными файлами (скиллы, settings, dev-conventions, удаления) даёт Лёгкие', async () => {
+  const kit = [M('.claude/ai-dev-kit'), M('.claude/settings.json'), M('.claude/dev-conventions.json'), M('.claude/skills/a/scripts/cli.mjs')]
+  expect(run(kit).level).toBe('Лёгкие')
+  expect(run([...kit, { status: 'D', path: '.claude/skills/old/SKILL.md' }]).level).toBe('Лёгкие')
+  expect(run([M('.claude/settings.json')]).level).toBe('Средние')
+  expect(run([...kit, M('src/a.ts')]).level).toBe('Средние')
+})
+
 test('обычная правка исходников даёт Средние', async () => {
   expect(run([M('src/a.ts')]).level).toBe('Средние')
   expect(run([M('src/authors/list.ts')]).level).toBe('Средние')
