@@ -160,14 +160,11 @@ function saveState(stateDir, state) {
   writeFileSync(join(stateDir.dir, "state.json"), `${JSON.stringify(state, null, 2)}\n`);
 }
 
-function initState({ planInfo, slug, mode, runCwd, worktreePath, worktreeBranch, maxCheckpoints, effort, model, baseSha, profile, modelProvider, codexProfile, overrides }) {
+function initState({ planInfo, slug, runCwd, maxCheckpoints, effort, model, baseSha, profile, modelProvider, codexProfile, overrides }) {
   return {
     plan_path: planInfo.rel,
     plan_slug: slug,
-    mode,
     run_cwd: runCwd,
-    worktree_path: worktreePath,
-    worktree_branch: worktreeBranch,
     base_sha: baseSha,
     session_id: null,
     checkpoint: 0,
@@ -217,16 +214,10 @@ function currentHeadSha(cwd) {
 }
 
 // ---------- prompts ----------
-function buildInitialPrompt(planRel, mode) {
-  const worktreeAddendum = mode === "worktree"
-    ? `
-
-You are running inside a git worktree. Everywhere your instructions or the project's own rules say "project root," treat that as *this* worktree's root, not any other checkout you might infer from paths in the plan or from prior knowledge of this repository. If this repository documents worktree conventions in a rules file (for example \`.claude/rules/base/worktrees.md\` or a similarly named file), read it and follow it for anything relevant to your own work in this session — in particular, don't assume paths outside this worktree are readable or relevant, and don't try to copy/reference files from a different checkout path.`
-    : "";
-
+function buildInitialPrompt(planRel) {
   return `You are implementing an already-approved implementation plan. Read it in full before doing anything else: \`${planRel}\`.
 
-Before writing any code, find and read this repository's project instructions: \`CLAUDE.md\`, \`AGENTS.md\`, and any \`.claude/rules/**\` directory (or nearest equivalents if this repository uses different names or locations — check the repository root and any subdirectory the plan's changed files live under). Treat these as binding constraints on how you implement the plan, not just background reading.${worktreeAddendum}
+Before writing any code, find and read this repository's project instructions: \`CLAUDE.md\`, \`AGENTS.md\`, and any \`.claude/rules/**\` directory (or nearest equivalents if this repository uses different names or locations — check the repository root and any subdirectory the plan's changed files live under). Treat these as binding constraints on how you implement the plan, not just background reading.
 
 This session has the \`superpowers:subagent-driven-development\` and \`superpowers:executing-plans\` skills available. Decide which fits this plan: if the plan's tasks are mostly independent and can be parallelized across subagents, use \`superpowers:subagent-driven-development\`; if the tasks are sequential or tightly coupled, use \`superpowers:executing-plans\`. Announce which you chose and why, then follow that skill's process for the entirety of the plan, including any test-writing tasks — do not skip them or defer them to someone else, there is no one else in this session.
 
@@ -546,23 +537,6 @@ async function cmdStart(args) {
   const planInfo = resolvePlanPath(planPathArg);
   const stateDir = stateDirFor(planInfo);
 
-  const mode = flags.mode;
-  if (mode !== "current" && mode !== "worktree") {
-    die(`--mode is required and must be one of: current, worktree; got ${flags.mode ?? "(missing)"}`);
-  }
-  if (mode === "worktree" && !flags["worktree-dir"]) {
-    die(`--worktree-dir is required when --mode=worktree`);
-  }
-  if (mode === "worktree") {
-    const wtDir = resolve(flags["worktree-dir"]);
-    if (!existsSync(wtDir) || !statSync(wtDir).isDirectory()) {
-      die(`--worktree-dir does not exist or is not a directory: ${flags["worktree-dir"]}`);
-    }
-    if (resolve(planInfo.cwd) !== wtDir) {
-      die(`--worktree-dir (${wtDir}) must match the current working directory (${planInfo.cwd}) — invoke this sidecar with cwd already set to the worktree root`);
-    }
-  }
-
   const releaseLock = acquireLock(stateDir);
   try {
     let state = loadState(stateDir);
@@ -585,10 +559,7 @@ async function cmdStart(args) {
     state = initState({
       planInfo,
       slug: stateDir.slug,
-      mode,
       runCwd: planInfo.cwd,
-      worktreePath: mode === "worktree" ? planInfo.cwd : null,
-      worktreeBranch: mode === "worktree" ? (flags["worktree-branch"] ?? null) : null,
       maxCheckpoints: requestedMax ?? DEFAULT_MAX_CHECKPOINTS,
       effort: resolved.effort,
       model: resolved.model,
@@ -601,7 +572,7 @@ async function cmdStart(args) {
     state.timeout_min = resolved.timeoutMin;
     saveState(stateDir, state);
 
-    const prompt = buildInitialPrompt(planInfo.rel, mode);
+    const prompt = buildInitialPrompt(planInfo.rel);
     const out = await runOneCheckpoint({ stateDir, state, prompt, timeoutMs });
     process.stdout.write(JSON.stringify(out) + "\n");
   } finally {
@@ -690,10 +661,6 @@ function buildFinalSummary(state, stateDir) {
   lines.push(`# codex-implement summary — ${state.plan_path}`);
   lines.push("");
   lines.push(`- **Status:** ${state.status}`);
-  lines.push(`- **Mode:** ${state.mode}`);
-  if (state.mode === "worktree") {
-    lines.push(`- **Worktree:** ${state.worktree_path}${state.worktree_branch ? ` (branch \`${state.worktree_branch}\`)` : ""}`);
-  }
   lines.push(`- **Checkpoints run:** ${state.checkpoint} / ${state.max_checkpoints}`);
   lines.push(`- **Session id:** \`${state.session_id ?? "(none captured)"}\``);
   lines.push(`- **Base SHA:** \`${state.base_sha ?? "(not a git repo)"}\``);
@@ -749,7 +716,7 @@ function die(msg) {
 function usageText() {
   return `Usage:
   codex-implement status  <plan-path>
-  codex-implement start   <plan-path> --mode=current|worktree [--worktree-dir=<path>] [--worktree-branch=<name>] [--max-checkpoints=N] [--timeout=<minutes>] [--profile=<name>] [--effort=medium] [--model=<name>]
+  codex-implement start   <plan-path> [--max-checkpoints=N] [--timeout=<minutes>] [--profile=<name>] [--effort=medium] [--model=<name>]
   codex-implement resume  <plan-path> [--result-file=<path>] [--timeout=<minutes>]
   codex-implement finish  <plan-path> --reason=complete|blocked|checkpoint-cap|aborted
   codex-implement reset   <plan-path>
@@ -757,7 +724,6 @@ function usageText() {
 Handoff: when start/resume prints handoff=true, Codex needs commands run that its sandbox cannot (installs, tests, Docker). Run them, write the report to a file inside the working directory, then "resume --result-file=<path>" (required in that state; also used to send failed verification back after done=true).
 Profiles: --profile > .claude/dev-conventions.json "codex.implement.profile" > "codex.profile" > "codex" (stock Codex). Other profiles (e.g. the kit-default "local", your own OpenAI-compatible model server; it ships with YOUR-… placeholders that must be replaced first) are defined in codex.profiles. The model of any profile, "codex" included, can be overridden via codex.profiles.<name>.model, codex.implement.model or --model. Profile is fixed at 'start' and stored in state, so 'resume' keeps it.
 Defaults: --max-checkpoints=${DEFAULT_MAX_CHECKPOINTS} (hard cap ${HARD_MAX_CHECKPOINTS}), --timeout=${DEFAULT_TIMEOUT_MIN} minutes (hard cap ${HARD_TIMEOUT_MIN}).
---mode=worktree requires the sidecar to already be running with cwd set to the worktree root (matching --worktree-dir).
 State: writes to ./.codex-implement/<plan-slug>/ in the current working directory.
 Git: this sidecar never touches git except read-only 'rev-parse HEAD' to record a base SHA. No commit, ever — neither the sidecar nor the Codex prompts it builds permit one.`;
 }
