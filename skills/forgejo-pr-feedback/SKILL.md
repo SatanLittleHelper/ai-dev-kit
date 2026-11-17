@@ -28,6 +28,7 @@ Check these once, before the first CLI call. If one fails, tell the user in Russ
 node <base>/scripts/cli/main.mts whoami
 node <base>/scripts/cli/main.mts pr get <N>
 node <base>/scripts/cli/main.mts pr feedback <N>
+node <base>/scripts/cli/main.mts pr ci <N>
 node <base>/scripts/cli/main.mts pr threads <N>
 node <base>/scripts/cli/main.mts pr reply <N> --file <replies.json> [--confirm]
 ```
@@ -44,7 +45,9 @@ node <base>/scripts/cli/main.mts pr reply <N> --file <replies.json> [--confirm]
 
 ## 2. Read the comments
 
-`pr feedback <N>` returns an array of items. Empty → answer «Замечаний нет» and stop. An item has:
+Run `pr ci <N>` too: it prints `{ "state", "failed" }` for the head commit. `state: failure` → tell the user in the answer which checks failed (`failed`), whatever the comments say; this skill does not fix CI, the user decides separately. `pending` → mention that CI is still running.
+
+`pr feedback <N>` returns an array of items. Empty → answer «Замечаний нет» (plus the CI failure, if any) and stop. An item has:
 
 | Field | Meaning |
 |---|---|

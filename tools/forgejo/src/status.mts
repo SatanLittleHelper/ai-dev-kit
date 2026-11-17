@@ -1,12 +1,12 @@
-import type { Comment, ForgeProvider, PullRequest, Review, Thread } from './types.mts'
+import type { CiStatus, Comment, ForgeProvider, PullRequest, Review, Thread } from './types.mts'
 
 export const PULL_LIMIT = 50
 const PULL_CONCURRENCY = 4
 
-export type Scenario = 'closed' | 'conflict' | 'feedback' | 'none-own' | 'review' | 'recheck' | 'wait-author'
-export type Status = 'влит' | 'закрыт' | 'конфликт' | 'есть замечания' | 'на проверке' | 'перепроверка' | 'готов к слиянию' | 'ждём автора' | 'ждём ревью'
+export type Scenario = 'closed' | 'conflict' | 'ci-failed' | 'feedback' | 'none-own' | 'review' | 'recheck' | 'wait-author'
+export type Status = 'влит' | 'закрыт' | 'конфликт' | 'упал CI' | 'есть замечания' | 'на проверке' | 'перепроверка' | 'готов к слиянию' | 'ждём автора' | 'ждём ревью'
 
-export const ACTIONABLE: readonly Scenario[] = ['feedback', 'conflict', 'review', 'recheck']
+export const ACTIONABLE: readonly Scenario[] = ['feedback', 'conflict', 'ci-failed', 'review', 'recheck']
 
 export interface PrData {
   pull: PullRequest
@@ -14,6 +14,7 @@ export interface PrData {
   reviews: Review[]
   threads: Thread[]
   general: Comment[]
+  ci: CiStatus
 }
 
 export interface IntakeItem {
@@ -40,6 +41,24 @@ export interface ListRow {
   scenario: Scenario
   status: Status
   conflicted: boolean
+  ci: CiStatus['state']
+  failedChecks: string[]
+  url: string
+  activity: string
+}
+
+const MINUTE_MS = 60_000
+const HOUR_MS = 60 * MINUTE_MS
+const DAY_MS = 24 * HOUR_MS
+
+// Короткий возраст последней активности: «5 мин», «3 ч», «2 дн»; без даты — пустая строка.
+export function activityOf(updatedAt: string, now: number): string {
+  const at = Date.parse(updatedAt)
+  if (Number.isNaN(at)) return ''
+  const age = Math.max(0, now - at)
+  if (age < HOUR_MS) return `${Math.floor(age / MINUTE_MS)} мин`
+  if (age < DAY_MS) return `${Math.floor(age / HOUR_MS)} ч`
+  return `${Math.floor(age / DAY_MS)} дн`
 }
 
 // Сводка ревью-бота с вердиктом «Готово к мержу: 🟢 Да» — не замечание, даже если пришла позже моей активности.
@@ -63,7 +82,8 @@ export function live(data: PrData): { reviews: Review[]; threads: Thread[] } {
 
 export async function loadPr(provider: ForgeProvider, number: number, pull?: PullRequest): Promise<PrData> {
   const [loaded, me, reviews, discussion] = await Promise.all([pull ?? provider.getPull(number), provider.currentUser(), provider.listReviews(number), provider.listThreads(number)])
-  return { pull: loaded, me, reviews, threads: discussion.threads, general: discussion.general }
+  const ci = loaded.state === 'open' ? await provider.getCiStatus(loaded.headSha) : { state: 'none' as const, failed: [] }
+  return { pull: loaded, me, reviews, threads: discussion.threads, general: discussion.general, ci }
 }
 
 export function intakeItems(data: PrData): IntakeItem[] {
@@ -105,7 +125,11 @@ function latestMine(reviews: Review[], me: string): Review | undefined {
 
 export function scenarioOf(data: PrData): Scenario {
   if (data.pull.state === 'closed') return 'closed'
-  if (same(data.pull.author, data.me)) return intakeItems(data).length > 0 ? 'feedback' : data.pull.conflicted ? 'conflict' : 'none-own'
+  if (same(data.pull.author, data.me)) {
+    if (intakeItems(data).length > 0) return 'feedback'
+    if (data.pull.conflicted) return 'conflict'
+    return data.ci.state === 'failure' ? 'ci-failed' : 'none-own'
+  }
 
   const { reviews, threads } = live(data)
   const last = latestMine(reviews, data.me)
@@ -121,27 +145,28 @@ function readyToMerge(data: PrData): boolean {
   const latest = new Map<string, Review>()
   for (const review of [...reviews].sort((a, b) => Date.parse(a.submittedAt) - Date.parse(b.submittedAt))) latest.set(review.author.toLowerCase(), review)
   const active = [...latest.values()].filter(review => !review.dismissed)
-  return active.some(review => review.state === 'approved') && !active.some(review => review.state === 'changes') && threads.every(thread => thread.resolved)
+  return data.ci.state !== 'failure' && active.some(review => review.state === 'approved') && !active.some(review => review.state === 'changes') && threads.every(thread => thread.resolved)
 }
 
 export function statusOf(data: PrData, scenario: Scenario): Status {
   if (scenario === 'closed') return data.pull.merged ? 'влит' : 'закрыт'
   if (scenario === 'feedback') return 'есть замечания'
   if (scenario === 'conflict') return 'конфликт'
+  if (scenario === 'ci-failed') return 'упал CI'
   if (scenario === 'review') return 'на проверке'
   if (scenario === 'recheck') return 'перепроверка'
   if (readyToMerge(data)) return 'готов к слиянию'
   return scenario === 'wait-author' ? 'ждём автора' : 'ждём ревью'
 }
 
-export async function pullRows(provider: ForgeProvider): Promise<{ rows: ListRow[]; truncated: boolean }> {
+export async function pullRows(provider: ForgeProvider, now: number = Date.now()): Promise<{ rows: ListRow[]; truncated: boolean }> {
   const pulls = await provider.listPulls('open')
   const rows: ListRow[] = []
   for (let at = 0; at < pulls.length; at += PULL_CONCURRENCY) {
     const batch = await Promise.all(pulls.slice(at, at + PULL_CONCURRENCY).map(async pull => {
       const data = await loadPr(provider, pull.number, pull)
       const scenario = scenarioOf(data)
-      return { number: pull.number, title: pull.title, author: pull.author, isOwn: same(pull.author, data.me), headRef: pull.headRef, scenario, status: statusOf(data, scenario), conflicted: pull.conflicted }
+      return { number: pull.number, title: pull.title, author: pull.author, isOwn: same(pull.author, data.me), headRef: pull.headRef, scenario, status: statusOf(data, scenario), conflicted: pull.conflicted, ci: data.ci.state, failedChecks: data.ci.failed, url: pull.url, activity: activityOf(pull.updatedAt, now) }
     }))
     rows.push(...batch)
   }

@@ -4,7 +4,7 @@ description: >-
   Use when the user asks which pull requests of the current project are open and what each one waits for —
   «покажи PR», «какие PR открыты», «что ждёт моего ревью», «статусы PR», «что ждёт автора», "list open PRs",
   "what is waiting for my review". Read-only dashboard for Forgejo/Gitea: every open PR with a status relative
-  to the user (needs my review, needs re-review, review comments on my PR, conflict, waiting for the author,
+  to the user (needs my review, needs re-review, review comments on my PR, conflict, failed CI, waiting for the author,
   ready to merge). Does not change anything.
 ---
 
@@ -34,23 +34,36 @@ Output is JSON on stdout:
 { "due": [Row], "waiting": [Row], "truncated": false }
 ```
 
-A `Row` has `number`, `title`, `author`, `isOwn`, `headRef`, `scenario`, `status`, `conflicted`. The CLI already sorts the rows: PRs that need the user's action first, own PRs above others, then by number.
+A `Row` has `number`, `title`, `author`, `isOwn`, `headRef`, `scenario`, `status`, `conflicted`, `ci` (`success` | `failure` | `pending` | `none`), `failedChecks` (names of the failed CI checks), `url` (link to the PR), `activity` (age of the last activity: «5 мин», «3 ч», «2 дн», or empty). The CLI already sorts the rows: PRs that need the user's action first, own PRs above others, then by number.
 
 ## Output
 
-Answer in Russian, two groups, one line per PR:
+Answer in Russian. One markdown table per group, one row per PR, in the order of the CLI:
 
 ```
-Требует вашего действия:
-#42 на проверке · bob — Добавить экспорт
-#45 есть замечания (мой) · вы — Исправить импорт
+Требует вашего действия (3)
 
-Ждёт других:
-#40 ждём автора · alice — Рефакторинг
+| PR | Статус | CI | Автор | Заголовок | Активность |
+|---|---|---|---|---|---|
+| [#297](https://forgejo.example/o/r/pulls/297) | 🔴 упал CI (мой) | ❌ | вы | Пересоздал страницу | 2 ч |
+| [#295](https://forgejo.example/o/r/pulls/295) | 💬 есть замечания (мой) | ✅ | вы | Исправил импорт | 1 дн |
+| [#290](https://forgejo.example/o/r/pulls/290) | 👀 на проверке | ⏳ | bob | Экспорт | 5 мин |
+
+Упавшие проверки: #297 — [CI] build and test / check (pull_request)
+
+Ждёт других (1)
+
+| PR | Статус | CI | Автор | Заголовок | Активность |
+|---|---|---|---|---|---|
+| [#288](https://forgejo.example/o/r/pulls/288) | ⏳ ждём автора | ✅ | alice | Рефакторинг | 3 дн |
 ```
 
-- Line format: `#<number> <status>` + ` (мой)` when `isOwn` + ` · конфликт` when `conflicted` + ` · <author> — <title>`. Use `status` exactly as given.
-- Group headings come from `due` and `waiting`. Omit an empty group. Both empty → «Открытых PR нет.»
+- The PR cell is a link: `[#<number>](<url>)`.
+- Status cell: icon + `status` exactly as given + ` (мой)` when `isOwn` + ` · конфликт` when `conflicted`. Icons: `упал CI` 🔴, `есть замечания` 💬, `конфликт` ⚠️, `на проверке` 👀, `перепроверка` 🔁, `готов к слиянию` ✅, `ждём автора` ⏳, `ждём ревью` ⏳, `влит` 🟣, `закрыт` ⚫.
+- CI cell by `ci`: `success` ✅, `failure` ❌, `pending` ⏳, `none` —.
+- Author cell: `вы` when `isOwn`, otherwise `author`. Activity cell: `activity` as given; empty → —.
+- Under a table, if some of its rows have `ci: failure` and non-empty `failedChecks`, one line «Упавшие проверки: #<number> — <failedChecks через запятую>»; several PRs go in one line separated by «; ». No such rows → no line.
+- Group headings come from `due` («Требует вашего действия») and `waiting` («Ждёт других») with the row count in brackets. Omit an empty group. Both empty → «Открытых PR нет.»
 - `truncated: true` → add «Прочитано 50 открытых PR — это предел одного запроса; остальные смотрите по номеру».
 - Do not add recommendations or next steps the user did not ask for. To work on review comments of an own PR, the user invokes the `forgejo-pr-feedback` skill.
 
