@@ -20,7 +20,7 @@ FOR CLAUDE CODE ONLY. Hand a finished, approved implementation plan to Codex and
 - **`<plan-path>`** (required): path to the plan's markdown file, produced by `writing-plans` and already approved by the user. If missing, **stop immediately** and ask for it — never guess or default to "newest plan file in cwd."
 - **`--current`**: Codex writes directly in the current working directory / current branch.
 - **`--worktree`**: this skill creates a fresh git worktree first (via `EnterWorktree`) and Codex writes only inside it. Exactly one of `--current` / `--worktree` is required for a fresh run — if neither is given, **stop and ask the user which they want**; this is a real, consequential choice (a whole worktree setup vs. direct writes to the branch you're already on), not something to default silently.
-- **`--profile=<name>`** (optional): which model backend runs the implementation — `codex` (stock Codex, the default), `local` (the kit-default profile for your own OpenAI-compatible model server) or any other name from `codex.profiles`. Overrides the project config and skips the profile question; see "Profiles" below. Without it, a project that defines several profiles gets a question (Step 0).
+- **`--profile=<name>`** (optional): which model backend runs the implementation — `codex` (stock Codex, the default), `local` (the kit-default profile for your own OpenAI-compatible model server) or any other name from `codex.profiles`. Overrides the project config; see "Profiles" below. Without it, the profile comes from `.claude/dev-conventions.json` (`codex.implement.profile` → `codex.profile` → `codex`); the user is never asked.
 - **`--status`**: print sidecar state for this plan and stop — no Codex call.
 - **`--reset`**: archive prior state for this plan and start fresh on the next `--current`/`--worktree` invocation. Does not touch any worktree from a prior run.
 
@@ -52,7 +52,7 @@ Profile name, highest first: `--profile` → `codex.implement.profile` → `code
 
 Profiles:
 - `codex` (built-in, default) — stock Codex, model `gpt-6.1-sol`, effort `medium`. With no config at all, behaviour is identical to before profiles existed. Its model and effort are configurable like any other profile's.
-- `local` (kit default) — your own OpenAI-compatible model server: three parameters, `model`, `provider.baseUrl` and the token. It is not built into the sidecar: `setup.sh` and the `update-ai-dev-kit` skill add it to `.claude/dev-conventions.json` together with an explicit `codex` entry (missing keys only, never overwriting yours). The kit cannot know your server, so it ships placeholders (`model: YOUR-MODEL`, `baseUrl: https://YOUR-HOST/v1`); replace them in the project config. The token is **never** written to a file: `provider.envKey` (default `LOCAL_LLM_API_KEY`) only names the env var, which each developer exports in their own shell. While `YOUR-…` placeholders remain the profile counts as unconfigured: it is not offered in the profile question and `start` stops with a message saying what to replace. Any other backend is a further entry in `codex.profiles`.
+- `local` (kit default) — your own OpenAI-compatible model server: three parameters, `model`, `provider.baseUrl` and the token. It is not built into the sidecar: `setup.sh` and the `update-ai-dev-kit` skill add it to `.claude/dev-conventions.json` together with an explicit `codex` entry (missing keys only, never overwriting yours). The kit cannot know your server, so it ships placeholders (`model: YOUR-MODEL`, `baseUrl: https://YOUR-HOST/v1`); replace them in the project config. The token is **never** written to a file: `provider.envKey` (default `LOCAL_LLM_API_KEY`) only names the env var, which each developer exports in their own shell. While `YOUR-…` placeholders remain the profile counts as unconfigured: `start` stops with a message saying what to replace. Any other backend is a further entry in `codex.profiles`.
 - A profile other than `codex` needs a model (its own, from `codex.<role>.model`, or `--model`) unless a `codexProfile` defines it; otherwise `start` fails with a clear message.
 
 Project config (`<repo>/.claude/dev-conventions.json`, key `codex`; the same file the repo uses for `ticketPrefix`):
@@ -100,7 +100,7 @@ curl -sS "$BASE_URL/responses" \
 
 A JSON body with `"object":"response"` and the model's text means the endpoint exists. A 404/405 or an error about an unknown route means the server has no Responses API: put a translating proxy (for example LiteLLM) in front of it. Passing the check is necessary, not sufficient — Codex also needs streaming events and tool calls in the Responses format — so finish with a tiny plan on this profile before trusting it with a real one.
 
-- With several profiles available and no `--profile`, the skill asks which one to use (Step 0, sub-step 3); `codex.implement.profile` is only the pre-selected recommendation then. Non-interactive use should pass `--profile` explicitly.
+- Without `--profile` the profile is taken from the project config, with no question to the user (same as the workflow-driven `doc-review` runs). To use another backend for one run, pass `--profile`; to change the default, edit `codex.implement.profile`.
 - Mention the active profile (and model) when launching and in the final report.
 
 ## Execution contract
@@ -109,13 +109,7 @@ A JSON body with `"object":"response"` and the model's text means the endpoint e
 
 1. **Do not run an ad-hoc precondition command to check `codex`'s install/auth status** (e.g. `codex exec --help`, redirected/piped variants, anything with `echo "exit:$?"`) — an invented one-off compound command doesn't match the fixed Bash allowlist and re-triggers a permission prompt every single run. Rely exclusively on the first sidecar call's own error surfacing (Step 2, sub-step 6): if `start`/`resume` fails with an auth error, its stderr carries a `codex login` hint — surface that to the user and stop. Skip to sub-steps 2–3, then Step 1. This still happens **before** creating a worktree in `--worktree` mode (the sidecar call itself is Step 2, which is always after Step 1's worktree setup) — if auth turns out to be broken, the worktree from Step 1 is harmless orphaned state the user can clean up with `ExitWorktree`, not a reason to add a pre-check back in.
 2. Resolve `<plan-path>` from the current directory and confirm it exists and is readable. Fail fast here, before any worktree machinery, if it doesn't.
-3. **Choose the profile — fresh runs only** (no `.codex-implement/<slug>/state.json` yet; a resumed run keeps the profile stored in its state, never ask again):
-   - `--profile` was passed → use it, no question.
-   - Otherwise read `.claude/dev-conventions.json` → `codex.profiles` and build the list of candidates: the built-in `codex` plus every profile name defined there.
-   - Exactly one candidate (typically just `codex`) → no question, no `--profile` needed.
-   - Two or more candidates → ask the user with `AskUserQuestion`, one option per profile. Option label: the profile name; description: its model and backend in one line (e.g. `my-model via llm.example.com`, `gpt-6.1-sol, stock Codex`; never print `envKey` values or secrets). Leave out profiles whose `model` or `provider.baseUrl` still contains a `YOUR-` placeholder: they are not configured yet. Put the config's `codex.implement.profile` first with "(Recommended)" (or `codex` if the config sets none). The answer is final for this run.
-   - Pass the chosen name to `start` explicitly as `--profile=<name>`, so the sidecar does not re-decide from config.
-   - Ask this before creating a worktree, so an abandoned run leaves nothing behind.
+3. **Profile — no question.** The profile comes from `.claude/dev-conventions.json` (`--profile` → `codex.implement.profile` → `codex.profile` → `codex`) and is resolved by the sidecar at `start`; do not ask the user and do not pass `--profile` unless the user gave one. A resumed run keeps the profile stored in its state. If the resolved profile is unconfigured (`YOUR-…` placeholders) or lacks a model, `start` fails with a message saying what to fix: relay it to the user and stop.
 
 ### Step 1 — Resolve mode and working directory
 
