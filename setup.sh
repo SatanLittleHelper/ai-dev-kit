@@ -10,7 +10,7 @@ set -euo pipefail
 REPO="SatanLittleHelper/ai-dev-kit"
 SUBMODULE_PATH=".claude/ai-dev-kit"
 IMPORT_LINE="@${SUBMODULE_PATH}/rules/RULES.md"
-OUR_SKILLS=(roadmap scaffolding-nestjs-app update-ai-dev-kit splitting-pr testing-changes jira-writer forgejo-pr-dashboard forgejo-pr-feedback)
+OUR_SKILLS=(roadmap scaffolding-nestjs-app update-ai-dev-kit splitting-pr testing-changes jira-writer codex-implement doc-review forgejo-pr-dashboard forgejo-pr-feedback)
 # Mods from mods/ (listed in .claude-plugin/marketplace.json) enabled in the project's settings.json.
 OUR_MODS=(polish pr-flow)
 
@@ -96,6 +96,18 @@ if [ ! -f "$SUBMODULE_PATH/dependencies/install.sh" ]; then
 fi
 log "installing Superpowers and Plannotator"
 bash "$SUBMODULE_PATH/dependencies/install.sh"
+
+# 3e. Default Codex backend profiles (`codex` and `local`) in .claude/dev-conventions.json.
+# Adds only keys that are missing and never overwrites the project's own values. No secrets are
+# written: the local profile only names the env var LOCAL_LLM_API_KEY, which each developer
+# exports in their own shell.
+if [ ! -f "$SUBMODULE_PATH/defaults/install-dev-conventions.sh" ]; then
+  log "updating the submodule to obtain the default dev-conventions"
+  git submodule update --init --remote "$SUBMODULE_PATH"
+fi
+[ -f "$SUBMODULE_PATH/defaults/install-dev-conventions.sh" ] || die "defaults/install-dev-conventions.sh not found in $SUBMODULE_PATH even after updating it — check the submodule's remote."
+log "adding default Codex profiles to .claude/dev-conventions.json"
+bash "$SUBMODULE_PATH/defaults/install-dev-conventions.sh"
 
 # 4. AGENTS.md for Codex — opt-in, ask the user. Reads from /dev/tty, not stdin: this
 # script is normally run as `curl | bash`, where stdin is already the piped script itself,

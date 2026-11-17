@@ -19,7 +19,7 @@ Runs after the design is approved and before `rules/skills/writing-plans.md`. It
 
 1. **Unit** — every in-scope unit from the layer table: services with branching, guards, validators, fallback and error-handling branches, frontend stores/services/helpers.
 2. **Integration** — only where a layer requires it (repositories with query logic against a real database).
-3. **E2E** — fast e2e with a mocked API for pages; backend e2e for HTTP contract and authorization; full-stack only for cross-system scenarios; Storybook e2e for a UI-kit library.
+3. **E2E** — fast e2e with a mocked API for pages; backend e2e for HTTP contract and authorization; full-stack only for cross-system scenarios; Storybook e2e for a UI-kit library. When a page or state has a mockup, add a case tagged `[e2e, скриншот]` for each mockup state (reference image, viewport, tolerance); see `rules/base/testing.md` → "Visual e2e against mockups".
 
 ## Before drafting: check the runners
 
@@ -61,15 +61,21 @@ One case, one behavior; an "and" in the name means two cases. Branch coverage fo
 
 ## Review loop (before the user sees it)
 
-The author is the main agent, drafting in `tmp/drafts/<feature>-test-plan.md`. The user sees only the document that came out of this loop, through Plannotator approval (`rules/skills/document-approval.md`, no native Plan Mode).
+The author is the main agent, drafting in `tmp/drafts/<feature>-test-plan.md`. The user sees only the document that came out of this loop, through Plannotator approval (`rules/skills/document-approval.md`, no native Plan Mode). The reviewer is Codex through the `doc-review` skill, not a Claude subagent: an independent model, the six-point test-plan check lives in the skill (`--type=test-plan`).
 
 1. Draft the document in the draft file.
 2. **Self-check before the first review**, silently, so the reviewer is not spent on mechanics: every spec requirement has an `## R*` heading; every case has Дано / Когда / Тогда / Ловит and a layer tag; IDs are numbered continuously; no placeholders («TBD», «и т.д.», «аналогично U2»); no test code, private method names, or mock setup; one behavior per case; each case passes the `return mockResult` tautology check.
-3. Spawn a read-only reviewer subagent (`Explore`-class; cheap model unless the user chose otherwise) with the full contents of `rules/skills/test-plan-reviewer.md` as its prompt plus the inputs listed there. The subagent does not read repository rules on its own. This is round 1 (full review).
-4. Go through the findings. Fix every `[major]` one, or mark it `rejected: <reason>` when it contradicts the spec, `rules/base/testing.md`, or this file; apply `[minor]` ones only when cheap. Keep the rejection reasons out of the document: they travel only to the next round.
-5. Round 2 and later: spawn the reviewer again, additionally passing the previous findings with their `fixed` / `rejected: <reason>` marks and the diff against the previous draft. The reviewer only verifies the fixes and looks for new `major` issues in changed text.
-6. Stop when the reviewer ends with `VERDICT NO_MAJOR_ISSUES`, or after **3 review iterations**.
-7. If the limit is reached with major findings left, still open it for approval, but add a «Не сошлись» block at the top: each remaining major finding, the reviewer's position and the author's position. The user is the tiebreaker.
+3. Invoke the `doc-review` skill on the draft, **at most 3 iterations**:
+   ```
+   /doc-review tmp/drafts/<feature>-test-plan.md --type=test-plan --max=3 --profile=<P> --focus="<inputs>"
+   ```
+   - `<P>` is the profile that runs the review: `codex.review.profile`, else `codex.profile`, else `codex`, read from `.claude/dev-conventions.json` (see `rules/orchestrator.md` → Project config). Pass it explicitly and **do not ask the user** which profile to use; the profile question is for manual `/doc-review` runs.
+   - `<inputs>` names what Codex must read first: the approved design spec (path), `rules/base/testing.md` and `rules/base/test-execution-policy.md` (paths as they exist in this project, usually under `.claude/ai-dev-kit/`), and `testing-anti-patterns.md` from the `superpowers:test-driven-development` skill directory.
+   - Codex only reads. The `doc-review` loop applies the fixes itself: fix every critical/high finding, or reject it with a reason when it contradicts the spec, `rules/base/testing.md` or this file; minor findings only when cheap. Rejection reasons stay out of the document: `doc-review` records them in the iteration note and passes them to the next round, where Codex only verifies the fixes and may raise new major findings on changed text only.
+   - The draft lives in the untracked `tmp/`: skip `doc-review`'s optional git steps (no pre-flight or post-loop commit).
+4. The loop ends at `VERDICT: NO_MAJOR_ISSUES` or after 3 iterations (`--max=3`).
+5. If the limit is reached with major findings left, still open it for approval, but add a «Не сошлись» block at the top: each remaining major finding, the reviewer's position and the author's position. The user is the tiebreaker.
+6. If `doc-review` or the `codex` CLI is unavailable, follow `rules/base/workflow-dependencies.md`: name the dependency, offer installation, keep this step pending. Do not silently fall back to a Claude subagent or skip the review.
 
 After approval, save to the target path. Stage B starts a new approval cycle with a fresh draft file that does not contain this document. Once the test plan is approved, start Stage B in the same turn: read `rules/skills/writing-plans.md` and start a fresh draft file. Do not end the report with «Начинать?» or any other request for confirmation: the approval of the test plan is the go-ahead. A late edit made at the user's decision after the last review round (for example, one added case) does not change this.
 
@@ -85,8 +91,10 @@ After approval, save to the target path. Stage B starts a new approval cycle wit
 | Showing the user a draft before the review loop | Run the loop first; the user sees the result |
 | Five-field prose block per case | Four-line card: Дано / Когда / Тогда / Ловит |
 | Separate coverage matrix or infrastructure section in the document | Group cases under requirement headings; the runner check is the author's step, not a section |
-| Reviewer loop with no limit | Stop at `NO_MAJOR_ISSUES` or after 3 iterations, with a «Не сошлись» block |
+| Reviewer loop with no limit | `--max=3`: stop at `NO_MAJOR_ISSUES` or after 3 iterations, with a «Не сошлись» block |
 | Sending a draft to the reviewer without the self-check | Run the mechanical self-check first |
 | Silently ignoring a finding, or redoing the same fix round after round | Mark it `rejected: <reason>` and pass it to the next round |
-| Re-running the reviewer in round 2 as a full review | Pass previous findings and the diff; the reviewer only verifies fixes |
+| Reviewing the test plan with a Claude subagent | Review it through `doc-review --type=test-plan` (Codex) |
+| Asking the user which profile to review with | Pass `--profile` from `.claude/dev-conventions.json` (default `codex`); the question is for manual runs |
+| Rejecting a finding without a reason in the iteration note | The note is what Codex sees next round; write `rejected <ID>: <reason>` |
 | Appending the implementation plan to the approved test plan's draft file | One document per approval cycle; start Stage B in a fresh draft file |
