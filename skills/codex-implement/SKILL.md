@@ -1,28 +1,26 @@
 ---
 name: codex-implement
-description: "Delegates implementation of an already-approved plan (from writing-plans) to a single long-running Codex session that writes code directly (workspace-write sandbox). Codex chooses and drives its own superpowers:subagent-driven-development or superpowers:executing-plans to work the plan end to end, including tests. Never touches git — Codex may not commit, and the skill never offers to. Runs either in the current working directory or in a fresh git worktree the skill creates; in worktree mode, Claude itself runs the target repo's documented new-worktree setup checklist (copying `.env`, `node_modules`, regenerating generated clients, etc.) before Codex starts. Codex runs in a sandbox that cannot install dependencies, use Docker or reliably run tests, so it hands those steps back to Claude via an IMPLEMENTATION_HANDOFF sentinel; Claude executes them (install, confirm tests are red, confirm green), reports the results into the same Codex session and resumes it — this keeps the plan's TDD order intact. Only when everything is green does Claude run the final review, finish and clean up all service artifacts. Invoke as `/codex-implement <plan-path> --current|--worktree`."
+description: "Delegates implementation of an already-approved plan (from writing-plans) to a single long-running Codex session that writes code directly (workspace-write sandbox). Codex chooses and drives its own superpowers:subagent-driven-development or superpowers:executing-plans to work the plan end to end, including tests. Never touches git — Codex may not commit, and the skill never offers to. Always runs in the current working directory / current branch — there is no worktree mode and no mode choice. Codex runs in a sandbox that cannot install dependencies, use Docker or reliably run tests, so it hands those steps back to Claude via an IMPLEMENTATION_HANDOFF sentinel; Claude executes them (install, confirm tests are red, confirm green), reports the results into the same Codex session and resumes it — this keeps the plan's TDD order intact. Only when everything is green does Claude run the final review, finish and clean up all service artifacts. Invoke as `/codex-implement <plan-path>`."
 ---
 
 # Codex Implement
 
-FOR CLAUDE CODE ONLY. Hand a finished, approved implementation plan to Codex and let it write the code, instead of a Claude subagent or Claude itself doing it. A sidecar CLI owns the Codex process lifecycle and checkpoint/resume state; this skill resolves the mode, optionally creates a worktree, launches the sidecar in the background, branches on the outcome, and — only on a clean completion — runs the one and only verification + review pass. The sidecar never runs git commands that mutate state, and neither does this skill: unlike `doc-review`, there is no optional post-run commit prompt here, under any circumstance.
+FOR CLAUDE CODE ONLY. Hand a finished, approved implementation plan to Codex and let it write the code, instead of a Claude subagent or Claude itself doing it. A sidecar CLI owns the Codex process lifecycle and checkpoint/resume state; this skill launches the sidecar in the background, branches on the outcome, and — only on a clean completion — runs the one and only verification + review pass. The sidecar never runs git commands that mutate state, and neither does this skill: unlike `doc-review`, there is no optional post-run commit prompt here, under any circumstance.
 
 ## Invocation
 
 ```
-/codex-implement <plan-path> --current
-/codex-implement <plan-path> --worktree
-/codex-implement <plan-path> --current --profile=local
+/codex-implement <plan-path>
+/codex-implement <plan-path> --profile=local
 /codex-implement <plan-path> --status
 /codex-implement <plan-path> --reset
 ```
 
 - **`<plan-path>`** (required): path to the plan's markdown file, produced by `writing-plans` and already approved by the user. If missing, **stop immediately** and ask for it — never guess or default to "newest plan file in cwd."
-- **`--current`**: Codex writes directly in the current working directory / current branch.
-- **`--worktree`**: this skill creates a fresh git worktree first (via `EnterWorktree`) and Codex writes only inside it. Exactly one of `--current` / `--worktree` is required for a fresh run — if neither is given, **stop and ask the user which they want**; this is a real, consequential choice (a whole worktree setup vs. direct writes to the branch you're already on), not something to default silently.
+- Codex always writes directly in the current working directory / current branch. There is no worktree mode and no flag to pick one; never ask the user where to run.
 - **`--profile=<name>`** (optional): which model backend runs the implementation — `codex` (stock Codex, the default), `local` (the kit-default profile for your own OpenAI-compatible model server) or any other name from `codex.profiles`. Overrides the project config; see "Profiles" below. Without it, the profile comes from `.claude/dev-conventions.json` (`codex.implement.profile` → `codex.profile` → `codex`); the user is never asked.
 - **`--status`**: print sidecar state for this plan and stop — no Codex call.
-- **`--reset`**: archive prior state for this plan and start fresh on the next `--current`/`--worktree` invocation. Does not touch any worktree from a prior run.
+- **`--reset`**: archive prior state for this plan and start fresh on the next invocation.
 
 ## Sidecar CLI
 
@@ -30,7 +28,7 @@ The sidecar lives at `${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs` — inv
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs" status  <plan-path>
-node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs" start   <plan-path> --mode=current|worktree [--worktree-dir=<path>] [--worktree-branch=<name>] [--max-checkpoints=N] [--timeout=<minutes>] [--profile=<name>] [--effort=medium] [--model=<name>]
+node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs" start   <plan-path> [--max-checkpoints=N] [--timeout=<minutes>] [--profile=<name>] [--effort=medium] [--model=<name>]
 node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs" resume  <plan-path> [--result-file=<path>] [--timeout=<minutes>]
 node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs" finish  <plan-path> --reason=complete|blocked|checkpoint-cap|aborted
 node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs" reset   <plan-path>
@@ -42,7 +40,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs" reset   <plan-path>
 
 `--result-file=<path>` (a file inside the working directory, ideally in `state_dir`) is how Claude gives Codex the outcome of a handoff, or sends failed verification back after `done: true`. It is **required** by `resume` when the last checkpoint ended in a handoff, and rejected after a plain timeout. The sidecar embeds the file's content (last 40 000 characters) in the resume prompt.
 
-All state lands in `.codex-implement/<plan-slug>/` **in the working directory the sidecar was invoked from** (the worktree root, in `--worktree` mode). The sidecar never touches `.gitignore` — it doesn't add an entry for this directory. On a clean `finish --reason=complete`, the sidecar deletes the whole `.codex-implement/<slug>/` directory itself (see Step 3); on `blocked`/`checkpoint-cap`/`aborted` it's left on disk for inspection.
+All state lands in `.codex-implement/<plan-slug>/` **in the working directory the sidecar was invoked from** (normally the repository root). The sidecar never touches `.gitignore` — it doesn't add an entry for this directory. On a clean `finish --reason=complete`, the sidecar deletes the whole `.codex-implement/<slug>/` directory itself (see Step 3); on `blocked`/`checkpoint-cap`/`aborted` it's left on disk for inspection.
 
 ## Profiles
 
@@ -86,7 +84,7 @@ Project config (`<repo>/.claude/dev-conventions.json`, key `codex`; the same fil
   - `codexProfile` — a `[profiles.<name>]` entry in `~/.codex/config.toml`, for setups that already live in Codex's own config.
 - `implement` / `review` — per-role section: which profile that skill uses by default, plus optional `model` / `effort` / `timeoutMin` tuning that applies when that default profile is the one in use (so a `--profile` override never inherits, say, a gpt model name into a run on your own model).
 - The profile is resolved once, at `start`, and stored in `state.json`; `resume` reuses it, so editing the config mid-run does not switch the model of a live session. To change it, `reset` and start over.
-- In `--worktree` mode the config is read from the worktree root — it arrives with the branch if `.claude/dev-conventions.json` is tracked. If it is gitignored, copy it in Step 1 together with `.env`. The API key env var must be exported in the shell that launches the sidecar.
+- The config is read from the working directory. The API key env var must be exported in the shell that launches the sidecar.
 - A non-Codex model follows the long handoff/sentinel protocol noticeably worse and may lack reliable tool calling; start with a small plan. Make sure the server's context window fits the project rules plus the plan.
 ### Checking your server
 
@@ -107,32 +105,19 @@ A JSON body with `"object":"response"` and the model's text means the endpoint e
 
 ### Step 0 — Preconditions
 
-1. **Do not run an ad-hoc precondition command to check `codex`'s install/auth status** (e.g. `codex exec --help`, redirected/piped variants, anything with `echo "exit:$?"`) — an invented one-off compound command doesn't match the fixed Bash allowlist and re-triggers a permission prompt every single run. Rely exclusively on the first sidecar call's own error surfacing (Step 2, sub-step 6): if `start`/`resume` fails with an auth error, its stderr carries a `codex login` hint — surface that to the user and stop. Skip to sub-steps 2–3, then Step 1. This still happens **before** creating a worktree in `--worktree` mode (the sidecar call itself is Step 2, which is always after Step 1's worktree setup) — if auth turns out to be broken, the worktree from Step 1 is harmless orphaned state the user can clean up with `ExitWorktree`, not a reason to add a pre-check back in.
-2. Resolve `<plan-path>` from the current directory and confirm it exists and is readable. Fail fast here, before any worktree machinery, if it doesn't.
+1. **Do not run an ad-hoc precondition command to check `codex`'s install/auth status** (e.g. `codex exec --help`, redirected/piped variants, anything with `echo "exit:$?"`) — an invented one-off compound command doesn't match the fixed Bash allowlist and re-triggers a permission prompt every single run. Rely exclusively on the first sidecar call's own error surfacing (Step 2, sub-step 6): if `start`/`resume` fails with an auth error, its stderr carries a `codex login` hint — surface that to the user and stop. Skip to sub-steps 2–3, then Step 1.
+2. Resolve `<plan-path>` from the current directory and confirm it exists and is readable. Fail fast here if it doesn't.
 3. **Profile — no question.** The profile comes from `.claude/dev-conventions.json` (`--profile` → `codex.implement.profile` → `codex.profile` → `codex`) and is resolved by the sidecar at `start`; do not ask the user and do not pass `--profile` unless the user gave one. A resumed run keeps the profile stored in its state. If the resolved profile is unconfigured (`YOUR-…` placeholders) or lacks a model, `start` fails with a message saying what to fix: relay it to the user and stop.
 
-### Step 1 — Resolve mode and working directory
+### Step 1 — Working directory
 
-**`--current` mode:** working directory is simply the current one. Skip to Step 2 with `run_cwd = process.cwd()` and `plan-path` unchanged.
-
-**`--worktree` mode:**
-
-1. Call `EnterWorktree` to create a fresh worktree (let the harness pick the path/branch, or derive a name from the plan's slug if the tool supports it).
-2. Copy the plan file itself into the worktree root directly (`cp <original-plan-abs-path> <worktree-root>/`) — do this yourself, don't delegate it to Codex. The plan may be uncommitted in the main checkout, so it won't exist yet on the worktree's branch otherwise, and Codex's very first instruction needs a valid in-worktree path to point at.
-3. **Claude itself runs the target repository's documented new-worktree setup checklist, before launching Codex — do not delegate this discovery to Codex.** Check `CLAUDE.md`/`AGENTS.md`/`.claude/rules/**` (or the nearest equivalent) for a worktree-setup convention; if one exists (e.g. this repo's `.claude/rules/base/worktrees.md` → "New Worktree Setup Checklist"), execute every step of it yourself, in `run_cwd`, exactly as a human-driven worktree session would:
-   - Copy any files the checklist names that are gitignored and therefore didn't arrive with the branch — typically `.env` (apps won't start without it) and a personal conventions file like `CLAUDE.local.md` (won't arrive automatically; if it doesn't exist in the main checkout either, skip it).
-   - Copy `node_modules/` (`cp -R`) if the checklist calls for it — this can take several minutes on a large monorepo; do not shorten the command's timeout to work around that.
-   - Run (never copy) any generated-artifact regeneration step the checklist calls out (e.g. this repo's `npx nx run prisma:generate` for the Prisma Client) — copying a generated client byte-identical from the main checkout has caused type desync here; regenerating is fast and doesn't need a DB connection.
-   - If the target repository documents no such convention at all, skip this sub-step — there's nothing repo-specific to replicate, and Codex proceeds straight from Step 2's prompt.
-   Codex needs a working dev environment inside the worktree to build/test; it should find one already set up, not have to discover and assemble it mid-run.
-4. From here on, `run_cwd` is the worktree's absolute path, and `<plan-path>` (as passed to the sidecar and referenced in the prompt) is the plan's path **relative to the worktree**, not the original path.
-5. On completion, block, or abort — **never call `ExitWorktree`, never remove the worktree.** It stays for the user to inspect, test, commit, and merge/discard on their own schedule. Say so explicitly in the final report (Step 4).
+Codex runs in the current working directory on the current branch. Use `run_cwd = process.cwd()` and `plan-path` unchanged, then go to Step 2.
 
 ### Step 2 — Launch and wait
 
 1. If `.codex-implement/<slug>/state.json` doesn't exist yet for this plan, this is a fresh run: launch the sidecar's `start` command. Otherwise (resuming an interrupted prior run), launch `resume`.
 2. Run the sidecar call via `Bash` with `run_in_background: true` — a full implementation pass can run for a long time (up to the per-checkpoint timeout, default 45 min, cap 120 min), and this must not block the conversation turn. Do not add a separate polling loop that re-checks `codex-implement.mjs status` on a timer to *detect completion* — the background task's own completion notification (the sidecar process exiting) *is* the "Codex finished this checkpoint" signal — the sidecar call itself blocks until `codex exec` returns.
-3. Tell the user: "Launching Codex (mode=`<current|worktree>`, profile=`<name>`, checkpoint `<N>`) in the background — this can take a while, I'll report back when it finishes a checkpoint."
+3. Tell the user: "Launching Codex (profile=`<name>`, checkpoint `<N>`) in the background — this can take a while, I'll report back when it finishes a checkpoint."
 4. When the background task completes, parse its stdout JSON line:
    - `done: true, blocked: false` → the run is cleanly finished. Go to Step 3.
    - `done: true, blocked: true` → Codex reported it's stuck. Go to Step 3b (no verification/review — nothing coherent to check against an admittedly-incomplete implementation).
@@ -166,14 +151,14 @@ Only reached on `done: true, blocked: false`. **The sidecar state is not finishe
 
 1. **Independently verify** — actually run the repo's build/lint/test commands yourself, in `run_cwd`. Do not trust Codex's self-report, nor even a green you reported to it earlier in a handoff: this is the final run over the finished tree. Prefer, in order: (a) the exact commands the plan's own "Testing strategy"/verification section names, if present — that's the authoritative source; (b) the target repository's own documented conventions (`package.json` scripts, `CLAUDE.md`, `Makefile`, etc.). Never hardcode one stack's commands — discover them per-repo. The repository's rule against running the full suite/e2e automatically still applies: run what the plan names and the affected specs, not everything.
 2. **Anything red → back to Codex, not forward.** Write the failures (command, failing test names, first error lines, trimmed) to `<state_dir>/verification-<n>-result.md` and launch `resume <plan-path> --result-file=<that file>` — Codex fixes it in the same warm session. Then loop through Step 2 again and return here on the next `done: true`. Do not patch Codex's code yourself and do not call `finish` while anything is red. The same stuck-loop rule as in Step 2b applies (the same failure three times in a row → stop and report).
-3. **Only when verification is fully green: one final code review** — invoke `superpowers:requesting-code-review` if it's available in this environment, scoped to the diff this run actually produced: `git diff <base_sha>..HEAD` plus any uncommitted worktree changes, where `base_sha` is the value the sidecar captured in `state.json` before checkpoint 1 (read it with `status` before `finish`). If it isn't available, do a direct read-through of the same diff yourself. There is exactly one review pass — no per-checkpoint or per-task review. If the review finds real defects, route them back through step 2 (a `--result-file` with the findings), then re-verify.
+3. **Only when verification is fully green: one final code review** — invoke `superpowers:requesting-code-review` if it's available in this environment, scoped to the diff this run actually produced: `git diff <base_sha>..HEAD` plus any uncommitted working-tree changes, where `base_sha` is the value the sidecar captured in `state.json` before checkpoint 1 (read it with `status` before `finish`). If it isn't available, do a direct read-through of the same diff yourself. There is exactly one review pass — no per-checkpoint or per-task review. If the review finds real defects, route them back through step 2 (a `--result-file` with the findings), then re-verify.
 4. **Cleanup, once verification and review are clean.** Call `finish --reason=complete`: the sidecar returns the run summary inline (`summary` field; keep it for the Step 4 report) and deletes the whole `.codex-implement/<slug>/` directory — state, checkpoint prompts/messages, handoff and verification result files. After that no Codex artifacts remain, and the task is done for Codex.
 5. **Plan-file cleanup is Claude's job, never Codex's.** Codex is instructed never to delete, rename, or move the plan file, even if the repository says to delete a plan file after implementation. If the target repository documents such a convention (check `CLAUDE.md`/`AGENTS.md`/`.claude/rules/**`), delete the plan file yourself now — it is the last step, after the green verification and clean review above, never while issues are outstanding.
 6. Report to the user per the format in Step 4.
 
 ### Step 3b — Blocked
 
-Codex signaled `IMPLEMENTATION_BLOCKED: <reason>`. Call `finish --reason=blocked`. Report the reason to the user directly; skip verification and review entirely — there's nothing coherent to check against a run Codex itself says didn't finish. Tell the user they can resolve whatever's blocking it and re-invoke `/codex-implement <plan-path> --current|--worktree` (same mode as before) — the sidecar detects existing state and resumes automatically rather than starting over.
+Codex signaled `IMPLEMENTATION_BLOCKED: <reason>`. Call `finish --reason=blocked`. Report the reason to the user directly; skip verification and review entirely — there's nothing coherent to check against a run Codex itself says didn't finish. Tell the user they can resolve whatever's blocking it and re-invoke `/codex-implement <plan-path>` — the sidecar detects existing state and resumes automatically rather than starting over.
 
 ### Step 3c — Checkpoint cap hit
 
@@ -184,7 +169,7 @@ Codex signaled `IMPLEMENTATION_BLOCKED: <reason>`. Call `finish --reason=blocked
 On clean completion (Step 3), print a compact report:
 
 ```
-codex-implement on <plan-path>: complete after N checkpoint(s) (<mode> mode, profile <name>/<model><, worktree: <path> on branch <branch>>).
+codex-implement on <plan-path>: complete after N checkpoint(s) (profile <name>/<model>).
 
 Verification:
 - build: <pass/fail, one line>
@@ -200,9 +185,7 @@ Changes: <files changed count>, uncommitted.
 Service files cleaned up (.codex-implement/<slug>/ removed).
 ```
 
-If `--worktree` mode, add: "Work is in the worktree at `<path>` (branch `<branch>`) — not merged, not committed. Review it there, then commit/merge/discard yourself when ready."
-
-**Never propose or perform a commit — this line must be absent from the report entirely, not merely answered "no."** This is a hard difference from `doc-review`, which offers an optional post-loop commit; this skill has no equivalent, ever, in any mode or outcome.
+**Never propose or perform a commit — this line must be absent from the report entirely, not merely answered "no."** This is a hard difference from `doc-review`, which offers an optional post-loop commit; this skill has no equivalent, ever, in any outcome.
 
 ## Important constraints
 
@@ -215,18 +198,15 @@ If `--worktree` mode, add: "Work is in the worktree at `<path>` (branch `<branch
 - **Handoffs are batched, not per-group.** Codex works on everything it can first, accumulates all blocked verifications, and only then hands them off in one request list. Once Claude unblocks them, Codex continues with everything now reachable, again until the next real blocker. Claude's side of this: execute the whole request list in one pass and report all results in one result file.
 - **The sandbox boundary is a handoff, not a skip.** Dependency installs, Docker-backed suites, red/green confirmations and anything else Codex's sandbox cannot do are executed by Claude (Step 2b) and fed back into the same Codex session. Codex must not write implementation for a unit before its tests were confirmed red for the right reason; Claude must not soften a `WRONG-REASON RED` or `UNEXPECTED GREEN` result into `AS EXPECTED`.
 - **`finish` comes last.** It deletes the service directory, so it is called only after the final verification is green and the review is clean (Step 3). Before that, failures go back to Codex with `resume --result-file`.
-- **Worktrees are never cleaned up by this skill.** Not on success, not on block, not on cap-hit, not on `--reset`. That's the user's own `ExitWorktree`/`git worktree remove` call, on their own schedule.
-- **Worktree setup (copying `.env`, `node_modules`, regenerating generated clients, etc.) is Claude's job, not Codex's.** Claude reads the target repo's own documented checklist (if any) and executes it itself in `run_cwd` before launching Codex (Step 1, `--worktree` sub-step 3) — Codex is never asked to discover or assemble its own dev environment mid-run.
-- **State lives in the CWD, not the skill.** `.codex-implement/<slug>/` is written relative to wherever the sidecar was invoked from (worktree root, in worktree mode). The sidecar refuses to accept a `--worktree-dir` that doesn't match its own `process.cwd()` — always invoke it with the shell already `cd`'d into the worktree in that mode.
+- **State lives in the CWD, not the skill.** `.codex-implement/<slug>/` is written relative to wherever the sidecar was invoked from (the working directory).
 - **`.gitignore` is never touched.** The sidecar does not add a `.codex-implement/` entry anywhere. Instead, the service directory is deleted automatically on a clean `finish --reason=complete` (see below), so there's normally nothing left behind to ignore.
 - **Service files are deleted after a clean completion, kept otherwise.** On `finish --reason=complete` the sidecar `rm -rf`s the whole `.codex-implement/<slug>/` directory (state.json, checkpoint prompts/messages/stdout, handoff/verification result files, `.lock`) after folding the summary into its JSON output. On `blocked`/`checkpoint-cap`/`aborted` the directory and `final-summary.md` are left on disk — Step 3b/3c point the user at those files for inspection, and a later `resume` needs `state.json` to still exist.
 - If `codex` is not available or returns auth errors, tell the user to run `codex login` or `/codex:setup` and stop.
 
 ## Troubleshooting
 
-- **`run is waiting on a handoff: pass --result-file=…`**: the last checkpoint ended in `IMPLEMENTATION_HANDOFF`; perform Step 2b and pass the report file. Re-running `/codex-implement <plan> --current|--worktree` after a crash lands here too — read the last `checkpoint-*-message.md` for the pending requests.
+- **`run is waiting on a handoff: pass --result-file=…`**: the last checkpoint ended in `IMPLEMENTATION_HANDOFF`; perform Step 2b and pass the report file. Re-running `/codex-implement <plan>` after a crash lands here too — read the last `checkpoint-*-message.md` for the pending requests.
 
 - **"state dir locked"**: another `start`/`resume` is running for the same plan. Wait, or inspect `.codex-implement/<slug>/.lock`.
-- **Resume after a crash**: just re-run `/codex-implement <same-plan-path> --current|--worktree` with the same mode as the original run. The sidecar detects existing non-terminal state and calls `resume` with the stored session id — no fresh session, no re-reading the plan from scratch (Codex's own warm context plus a fresh `git status`/`git diff` orients it).
+- **Resume after a crash**: just re-run `/codex-implement <same-plan-path>`. The sidecar detects existing non-terminal state and calls `resume` with the stored session id — no fresh session, no re-reading the plan from scratch (Codex's own warm context plus a fresh `git status`/`git diff` orients it).
 - **Session id missing after a `start` failure**: rare — if the very first checkpoint crashed before Codex emitted its first JSONL event, there's no session to resume; run `reset` and start over.
-- **`--worktree-dir` mismatch error**: the sidecar insists its own `process.cwd()` equals `--worktree-dir` — always run the `node .../codex-implement.mjs start ...` call with the shell already inside the worktree, not from the original directory with a path argument.
