@@ -39,7 +39,7 @@ Read only the reference the situation calls for — they all assume this file's 
 A roadmap-sized feature moves through three phases, each handled entirely by one reference here — no separate orchestrator needed:
 
 - **Phase 1 — Roadmap:** `references/writing.md`. Analyzes the feature, decomposes it into checkpoints (Core Principle: the app stays buildable after every step), writes the roadmap. The feature's goals and requirements live in the roadmap's own `Context` section — there is no separate PRD document.
-- **Phase 2 — Per-step spec, validated:** `references/batch-plan-validate.md` over the roadmap's checklist, with the per-task drafting mode set to **`brainstorming`, design-only** — no implementation plan is produced yet. Result: for every step, a validated design/spec (`brainstorming`) that also carries the step's requirements and success criteria, reviewed through the standard `EnterPlanMode → ExitPlanMode → Plannotator` loop.
+- **Phase 2 — Per-step spec, validated:** `references/batch-plan-validate.md` over the roadmap's checklist, with the per-task drafting mode set to **`brainstorming`, design-only** — no implementation plan is produced yet. Result: for every step, a validated design/spec (`brainstorming`) that also carries the step's requirements and success criteria, reviewed through the Plannotator approval loop (`rules/skills/document-approval.md`, no native Plan Mode).
 - **Phase 3 — Implementation plan per step, just-in-time:** `references/executing-checkpoints.md`, invoked when a step is actually picked up for work. It finds the step's approved spec and writes, at that point — not earlier — first the test plan (`rules/skills/writing-test-plans.md`, with its reviewer loop; skipped when the step has no test-worthy layer), then the implementation plan (`superpowers:writing-plans`) that references the test plan's IDs, so both reflect the repo state at the moment work starts, not whatever it looked like when the roadmap was first decomposed.
 
 Do not write every step's implementation plan upfront in Phase 2 — that is what the design-only mode in Phase 2 exists to prevent.
@@ -47,7 +47,7 @@ Do not write every step's implementation plan upfront in Phase 2 — that is wha
 ## Storage
 
 - Location: `docs/<feature-slug>/` at the repo root. Git-tracked, kept permanently as migration/rollout history — never `tmp/`, never deleted right after a checkpoint ships.
-- Writing here requires native Plan Mode first, same as `brainstorming`/`writing-plans`.
+- Writing here uses Plannotator approval without native Plan Mode, same as `brainstorming`/`writing-plans` (`rules/skills/document-approval.md`).
 
 ## Storage Precedence
 

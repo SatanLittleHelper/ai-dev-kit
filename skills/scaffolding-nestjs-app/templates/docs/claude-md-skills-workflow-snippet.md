@@ -5,8 +5,9 @@
 
 ## Работа со скиллами и субагентами
 
-**Plan Mode перед brainstorming/writing-plans:** при вызове `superpowers:brainstorming` или
-`superpowers:writing-plans` — всегда входить в план мод (EnterPlanMode) перед вызовом скилла.
+**Согласование документов без Plan Mode:** спеки и планы (`superpowers:brainstorming`,
+`superpowers:writing-plans`) согласуются через Plannotator (`plannotator annotate`) по файлу-черновику, без
+EnterPlanMode/ExitPlanMode; в целевой путь документ сохраняется только после `approved`.
 
 **Правила проекта передавать субагентам явно.** Субагенты (`subagent-driven-development`, `executing-plans` и др.)
 не видят контекст текущей сессии и не читают CLAUDE.md/AGENTS.md самостоятельно. Все релевантные конвенции проекта

@@ -39,9 +39,9 @@ Split the output into **two separate fenced code blocks** so the user can copy e
 
 Never wrap the entire issue in a single fenced code block.
 
-## Fallback: plannotator annotate loop (no Plan Mode)
+## Approval: plannotator annotate loop (no Plan Mode)
 
-Only use this when Plan Mode is unavailable (e.g. running as a subagent, or in an environment without `EnterPlanMode`/`ExitPlanMode`).
+Native Plan Mode is not used. Approve the draft through `rules/skills/document-approval.md`: stable path, `plannotator annotate --gate --json`, reopen the same file after edits.
 
 When writing to a temp file for use with `plannotator annotate`, write the file in **Jira Wiki Markup only** — no Markdown, no fenced code block wrapper. Use `.md` extension (plannotator does not support `.txt`). This allows the user to copy the content directly from Plannotator into Jira without any conversion.
 
@@ -118,10 +118,10 @@ For a simple bug, drop the `h3. Решение` block entirely.
 
 ## After output
 
-Primary flow — use Claude's native Plan Mode (triggers Plannotator review automatically on `ExitPlanMode`):
+Approval flow (no native Plan Mode; see `rules/skills/document-approval.md`):
 
-1. Before drafting the issue text, call `EnterPlanMode`.
-2. Write the issue draft into the plan-mode scratch file (path given in the system message when plan mode activates), using the same two-block structure as the chat output: first block — title only; second block — body in Jira Wiki Markup, starting at `h3. Контекст`.
-3. Once the draft is complete, call `ExitPlanMode` to request approval — this surfaces the draft to the user via Plannotator.
-4. If the user's annotation feedback comes back — stay in plan mode, revise the draft, rewrite the scratch file, and call `ExitPlanMode` again.
+1. Write the issue draft into `tmp/drafts/<issue-slug>.md`, using the same two-block structure as the chat output: first block — title only; second block — body in Jira Wiki Markup, starting at `h3. Контекст`.
+2. Open it with `plannotator annotate --gate --json` (version history on) and wait for the final decision.
+3. If annotation feedback comes back — revise the same file and reopen it.
+4. `dismissed` — stop, nothing is approved.
 5. Once approved as-is (no annotation feedback) — do NOT reprint the issue text in chat. The user already saw and approved the exact draft via Plannotator/the approval flow; repeating it in chat is a pure duplicate. Just move on to the next step (e.g. writing-plans).

@@ -4,9 +4,9 @@ These compact guardrails are always in context through `rules/RULES.md`. User in
 
 ## Required reads and gates
 
-- Before design or an architectural decision: enter native Plan Mode, then read `rules/skills/brainstorming.md` and invoke `superpowers:brainstorming`. The resulting design spec is written in Russian — see `rules/base/workflow-and-misc.md` → "Documentation Language".
-- Before writing a multi-step plan that touches test-worthy layers: first write and get approved a test plan — read `rules/skills/writing-test-plans.md`, enter native Plan Mode, and run its reviewer loop (unit → integration → e2e; behavior, no code). Skip it when no layer is test-worthy.
-- Before writing a multi-step plan: read `rules/skills/writing-plans.md`, enter native Plan Mode (a fresh file, after the test plan is approved when one is required), and invoke `superpowers:writing-plans`. The resulting plan document is written in Russian, except the machine-parsed markup that must stay English (`### Task N:` headings, checkboxes, `Step`/`Files`/`Global Constraints` labels) — see `rules/skills/writing-plans.md`.
+- Before design or an architectural decision: read `rules/skills/document-approval.md` and `rules/skills/brainstorming.md` and invoke `superpowers:brainstorming`. The resulting design spec is written in Russian — see `rules/base/workflow-and-misc.md` → "Documentation Language".
+- Before writing a multi-step plan that touches test-worthy layers: first write and get approved a test plan — read `rules/skills/writing-test-plans.md` and run its reviewer loop (unit → integration → e2e; behavior, no code). Skip it when no layer is test-worthy.
+- Before writing a multi-step plan: read `rules/skills/writing-plans.md` (a fresh draft file, after the test plan is approved when one is required) and invoke `superpowers:writing-plans`. The resulting plan document is written in Russian, except the machine-parsed markup that must stay English (`### Task N:` headings, checkboxes, `Step`/`Files`/`Global Constraints` labels) — see `rules/skills/writing-plans.md`.
 - Before test-worthy implementation: read `rules/base/testing.md` and `rules/base/test-execution-policy.md`, then invoke `superpowers:test-driven-development`. Follow the testing layer table; do not expand it from a generic TDD checklist.
 - Before committing or branching: read `rules/base/git-and-commits.md`. Never commit automatically.
 - Before reading a known file or choosing between Bash and a dedicated tool: apply `rules/base/mcp-tool-priority.md`.
@@ -18,9 +18,7 @@ This contract only points to the detailed files: read the one that matches the a
 
 Apply the imported naming, class-structure, file-structure, and workflow rules to TypeScript work. Apply the router for Angular/NestJS rules, roadmap work, codebase exploration, plan execution, subagents, and Plannotator.
 
-When a task matches a situation in the routing table, apply its rule or skill, and follow the checklist of any skill you invoke. Keep durable markdown artifacts in Plan Mode until `ExitPlanMode` approval; after approval, ask before starting implementation. Moving to the next planning document (design → test plan → implementation plan) is not implementation: start it automatically in a fresh Plan Mode file, without asking for confirmation. While native Plan Mode is active, end the turn with `ExitPlanMode` or `AskUserQuestion`.
-
-Writing the Plan Mode file: the file may already hold a stale plan and may change between `Read` and `Write` ("file modified since read"). `Read` it immediately before `Write`, with no other tool calls in between. If the write fails, do not call `ExitPlanMode` — re-`Read` and `Write` again. After a successful write, `Read` the head of the file and confirm it is the current document, not the stale one; only then call `ExitPlanMode`, because Plannotator shows whatever is in the file.
+When a task matches a situation in the routing table, apply its rule or skill, and follow the checklist of any skill you invoke. Every document that needs approval (design spec, test plan, implementation plan, roadmap, issue draft) is approved through Plannotator **without native Plan Mode** — read `rules/skills/document-approval.md`: draft in `tmp/drafts/<slug>.md`, open with `plannotator-annotate`, save to the target path only after `approved`. Do not call `EnterPlanMode`/`ExitPlanMode` for this, even if a global instruction says so. After approval, ask before starting implementation. Moving to the next planning document (design → test plan → implementation plan) is not implementation: start it automatically in a fresh draft file, without asking for confirmation.
 
 ## Autonomy
 
