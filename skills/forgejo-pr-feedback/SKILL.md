@@ -38,7 +38,9 @@ node <base>/scripts/cli/main.mts pr reply <N> --file <replies.json> [--confirm]
 
 1. Take the PR number from the user. No number → ask once.
 2. `pr get <N>` and `whoami`. `author` of the PR must equal `login` (case-insensitive). Otherwise answer «PR <N> принадлежит <author>, разбор замечаний — только для своих PR» and stop.
-3. The current git branch must equal `headRef` of the PR. Otherwise tell the user to switch to it and stop — do not switch branches yourself, the fixes are applied in this working tree.
+3. The current git branch must equal `headRef` of the PR, because the fixes are applied in this working tree. If it does not, run `git status --short`:
+   - Working tree is clean → switch yourself (`git fetch origin <headRef>` first if the branch is not local, then `git checkout <headRef>`). Then check `git branch --show-current` equals `headRef`; if the switch failed, show the git error and go to the blocked case below.
+   - Working tree has uncommitted changes (a diff), or the switch is blocked for another reason (the branch is checked out in another worktree, checkout error) → do not switch in place. Ask the user with AskUserQuestion whether to create a git worktree for `headRef` (e.g. `git worktree add ../<repo>-pr-<N> <headRef>`). Created → do all the following steps in the worktree directory. Declined → stop.
 
 ## 2. Read the comments
 

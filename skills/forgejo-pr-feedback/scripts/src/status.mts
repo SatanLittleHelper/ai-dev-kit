@@ -42,6 +42,9 @@ export interface ListRow {
   conflicted: boolean
 }
 
+// Сводка ревью-бота с вердиктом «Готово к мержу: 🟢 Да» — не замечание, даже если пришла позже моей активности.
+const CLEAN_SUMMARY = /готово к мерж[а-яё]*[:*\s]*🟢\s*да/i
+
 function same(a: string, b: string): boolean {
   return a !== '' && a.toLowerCase() === b.toLowerCase()
 }
@@ -83,7 +86,7 @@ export function intakeItems(data: PrData): IntakeItem[] {
       disagree: thread.comments.slice(0, -1).some(comment => same(comment.author, me)), at: lastOf(thread).createdAt,
     }
   })
-  const issueItems: IntakeItem[] = data.general.filter(comment => !same(comment.author, me) && later(comment.createdAt)).map(comment => ({
+  const issueItems: IntakeItem[] = data.general.filter(comment => !same(comment.author, me) && later(comment.createdAt) && !CLEAN_SUMMARY.test(comment.body)).map(comment => ({
     id: `issue/${comment.id}`, kind: 'issue', reviewId: null, threadId: null, path: null, position: null, commitId: '',
     author: comment.author, quote: comment.body, stale: false, disagree: false, at: comment.createdAt,
   }))
