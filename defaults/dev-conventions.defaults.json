@@ -1,0 +1,16 @@
+{
+  "codex": {
+    "profiles": {
+      "codex": {},
+      "local": {
+        "model": "YOUR-MODEL",
+        "provider": {
+          "name": "Local",
+          "baseUrl": "https://YOUR-HOST/v1",
+          "envKey": "LOCAL_LLM_API_KEY",
+          "wireApi": "responses"
+        }
+      }
+    }
+  }
+}

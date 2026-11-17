@@ -40,6 +40,24 @@ The superpowers tooling matches some plan markup by literal English text, so the
 
 Everything else (plan title, goal, architecture, task and step descriptions, prose) is Russian.
 
+## Review loop (before the user sees it)
+
+The plan is validated by Codex through the `doc-review` skill before the user sees it; the user sees only the result, through Plannotator approval (`rules/skills/document-approval.md`).
+
+1. Draft the plan in `tmp/drafts/<feature>-plan.md`.
+2. **Self-check first**, silently: every task heading is `### Task N: <название>`; every test ID of the approved test plan appears in exactly one task; no tests outside the test plan; test-first steps carry code and the expected failure reason; no `git add` / `git commit` / PR steps.
+3. Invoke the `doc-review` skill on the draft, **at most 3 iterations**:
+   ```
+   /doc-review tmp/drafts/<feature>-plan.md --type=plan --max=3 --profile=<P> --focus="<inputs>"
+   ```
+   - `<P>`: `codex.review.profile`, else `codex.profile`, else `codex`, read from `.claude/dev-conventions.json`. Pass it explicitly and **do not ask the user**.
+   - `<inputs>`: the approved design spec (path), the approved test plan (path; every ID in exactly one task, no new tests), and the stack rules loaded for this plan.
+   - The `doc-review` loop verifies the plan's claims against the actual code and applies fixes for critical/high findings; the draft lives in untracked `tmp/`, so its optional git steps are skipped.
+4. The loop ends at `VERDICT: NO_MAJOR_ISSUES` or after 3 iterations. With major findings still open, open the plan for approval anyway, with a «Не сошлись» block at the top (each finding, the reviewer's position, the author's position); the user is the tiebreaker.
+5. If `doc-review` or the `codex` CLI is unavailable, follow `rules/base/workflow-dependencies.md`; keep the step pending, do not skip it silently.
+
+Only after this loop open the draft in Plannotator.
+
 ## Test part of every task
 
 The cases, their Дано / Когда / Тогда, and mock rationale are decided in the approved test plan and are not repeated here. For every test-worthy task, build the task around its tests instead of appending them. Each such task states:
@@ -72,5 +90,6 @@ A plan for Markdown-only changes has no test steps: it lists each edit as before
 | Drafting the implementation plan before the test plan is approved | Run Stage A first (`rules/skills/writing-test-plans.md`), unless it is skipped for lack of test-worthy layers |
 | A test in the plan that has no ID in the test plan, or a test-plan ID in no task | Go back to Stage A, or place the ID in exactly one task |
 | Appending this plan to the approved test plan's draft file | Fresh draft file per document |
+| Showing the plan to the user before the `doc-review` loop | Run `doc-review --type=plan --max=3` first; the user sees the result |
 | A plan task for a layer with no test infrastructure that just omits the test | Start the task with adding the infrastructure, or stop and report it |
 | Test or grep-check steps in a plan that only edits Markdown | List the edits as before/after; no test steps |
