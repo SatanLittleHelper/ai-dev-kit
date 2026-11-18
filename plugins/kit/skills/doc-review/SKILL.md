@@ -50,7 +50,7 @@ All state and reports land in `.doc-review/<doc-slug>/` **in the working directo
 
 ## Profiles
 
-A profile picks the model backend that runs the review; the prompts, the loop and who edits the doc are identical. Definitions are shared with the `codex-implement` skill (same `codex` config block in `.claude/dev-conventions.json`, same resolver `scripts/profiles.mjs` — keep the two copies identical), so a backend is described once. This skill uses the **`review`** role.
+A profile picks the model backend that runs the review; the prompts, the loop and who edits the doc are identical. Definitions are shared with the `kit:codex-implement` skill (same `codex` config block in `.claude/dev-conventions.json`, same resolver `scripts/profiles.mjs` — keep the two copies identical), so a backend is described once. This skill uses the **`review`** role.
 
 Profile name, highest first: `--profile` → `codex.review.profile` → `codex.profile` → `codex`. Model/effort/timeout: CLI flags → `codex.review.*` (only for the role's own default profile) → profile fields → built-in defaults (`codex`: model `gpt-5.6-luna`, effort `medium`).
 

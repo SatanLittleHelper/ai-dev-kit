@@ -1,0 +1,5 @@
+{
+  "name": "kit",
+  "description": "Скиллы ai-dev-kit: roadmap, doc-review, codex-implement, forgejo-pr-dashboard, forgejo-pr-feedback, jira-writer, splitting-pr, testing-changes, scaffolding-nestjs-app, update-ai-dev-kit",
+  "author": { "name": "Aleksandr Fenin" }
+}

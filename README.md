@@ -1,24 +1,24 @@
 # ai-dev-kit
 
-Личный репозиторий dev-конвенций для работы с ИИ-агентом (Claude Code): часть контента — скиллы (в `skills/`, обнаруживаются штатным механизмом Claude Code), часть — плоские файлы правил (`rules/`), не скиллы, подключаемые через `@import` в CLAUDE.md проекта.
+Личный репозиторий dev-конвенций для работы с ИИ-агентом (Claude Code): часть контента — скиллы (в `plugins/kit/skills/`, поставляются плагином `kit` для Claude Code и Codex), часть — плоские файлы правил (`rules/`), не скиллы, подключаемые через `@import` в CLAUDE.md проекта.
 
 ## Состав репозитория
 
-### Скиллы (`skills/`)
+### Скиллы (`plugins/kit/skills/`)
 
 Каждый — папка с `SKILL.md` (описание триггера + логика/процесс с ветвлением):
 
 | Скилл | Что делает |
 |---|---|
-| `skills/jira-writer` | Готовит русскоязычные черновики Jira-задач в Jira Wiki Markup (название, описание, критерии приёмки) для ручной вставки; черновик согласуется через Plannotator без Plan Mode |
-| `skills/roadmap` | Всё, что касается роадмапов — создание, продолжение, взятие чекпоинта, пакетная валидация шагов (см. `skills/roadmap/SKILL.md` и `skills/roadmap/references/`) |
-| `skills/scaffolding-nestjs-app` | Скаффолдинг нового NestJS-приложения по личным конвенциям |
-| `skills/testing-changes` | Ручное тестирование изменений ветки: анализ изменений и документов задачи, тест-план (пишется и сохраняется без согласования), запуск всех приложений проекта, тесты (`curl`, Playwright, веб-версия Max), остановка запущенного и отчёт через Plannotator; проектные настройки читаются из блока `testing` в `.claude/dev-conventions.json` |
-| `skills/codex-implement` | Отдаёт реализацию утверждённого плана одной долгой сессии Codex (workspace-write, без git): Claude берёт на себя установки и red/green-проверки через handoff, затем финальные проверка и ревью. Бэкенд выбирается профилем (`codex` по умолчанию или `local` — своя OpenAI-совместимая модель; оба профиля `setup.sh` и `update-ai-dev-kit` прописывают в `.claude/dev-conventions.json` сами, секретов там нет — только имя переменной `LOCAL_LLM_API_KEY`) в блоке `codex` в `.claude/dev-conventions.json` (общем с `doc-review`) |
-| `skills/doc-review` | Автоматический цикл ревью документов (дизайн или план) через Codex: Codex только читает и пишет отчёт, правки вносит Claude, цикл идёт до вердикта `NO_MAJOR_ISSUES`. Модель выбирается тем же блоком `codex` (профиль роли `review`), поэтому ревью может делать и собственная модель |
-| `skills/update-ai-dev-kit` | Приводит проект к актуальному состоянию кита одной командой: обновляет rules-submodule (и `AGENTS.md`, если подключён Codex), установленные скиллы, **ставит новые скиллы и моды**, появившиеся в репозитории |
+| `plugins/kit/skills/jira-writer` | Готовит русскоязычные черновики Jira-задач в Jira Wiki Markup (название, описание, критерии приёмки) для ручной вставки; черновик согласуется через Plannotator без Plan Mode |
+| `plugins/kit/skills/roadmap` | Всё, что касается роадмапов — создание, продолжение, взятие чекпоинта, пакетная валидация шагов (см. `skills/roadmap/SKILL.md` и `skills/roadmap/references/`) |
+| `plugins/kit/skills/scaffolding-nestjs-app` | Скаффолдинг нового NestJS-приложения по личным конвенциям |
+| `plugins/kit/skills/testing-changes` | Ручное тестирование изменений ветки: анализ изменений и документов задачи, тест-план (пишется и сохраняется без согласования), запуск всех приложений проекта, тесты (`curl`, Playwright, веб-версия Max), остановка запущенного и отчёт через Plannotator; проектные настройки читаются из блока `testing` в `.claude/dev-conventions.json` |
+| `plugins/kit/skills/codex-implement` | Отдаёт реализацию утверждённого плана одной долгой сессии Codex (workspace-write, без git): Claude берёт на себя установки и red/green-проверки через handoff, затем финальные проверка и ревью. Бэкенд выбирается профилем (`codex` по умолчанию или `local` — своя OpenAI-совместимая модель; оба профиля `setup.sh` и `update-ai-dev-kit` прописывают в `.claude/dev-conventions.json` сами, секретов там нет — только имя переменной `LOCAL_LLM_API_KEY`) в блоке `codex` в `.claude/dev-conventions.json` (общем с `doc-review`) |
+| `plugins/kit/skills/doc-review` | Автоматический цикл ревью документов (дизайн или план) через Codex: Codex только читает и пишет отчёт, правки вносит Claude, цикл идёт до вердикта `NO_MAJOR_ISSUES`. Модель выбирается тем же блоком `codex` (профиль роли `review`), поэтому ревью может делать и собственная модель |
+| `plugins/kit/skills/update-ai-dev-kit` | Приводит проект к актуальному состоянию кита одной командой: обновляет rules-submodule (и `AGENTS.md`, если подключён Codex), плагины кита (скиллы, моды, стековые best-practices), **включает новые**, появившиеся в репозитории |
 
-**Правило проекта:** при добавлении нового скилла в `skills/` — обязательно дописать его имя в массив `OUR_SKILLS` в `setup.sh`. Список там захардкожен и не подтягивается автоматически из содержимого папки: `setup.sh` устанавливает только то, что перечислено явно, так что забытый скилл просто не попадёт новым пользователям при разовой установке.
+**Правило проекта:** новый скилл — просто папка в `plugins/kit/skills/` с `SKILL.md` (`name` равен имени папки; `tests/layout.test.mjs` это проверяет). Регистрировать его нигде не нужно: он попадёт в плагин `kit` автоматически. Скиллы вызываются как `kit:<имя>`.
 
 ### Моды (`mods/`)
 
@@ -37,7 +37,7 @@
 /plugin install polish --marketplace SatanLittleHelper/ai-dev-kit
 ```
 
-**Правило проекта:** новый мод нужно дописать и в `.claude-plugin/marketplace.json`, и в массив `OUR_MODS` в `setup.sh` — оба списка захардкожены. Проверки: `claude plugin validate mods/<name>`, `claude plugin validate .`, `claude plugin test mods/<name>`.
+**Правило проекта:** новый мод нужно дописать и в `.claude-plugin/marketplace.json`, и в массив `BASE_PLUGINS` в `setup.sh` — оба списка захардкожены. Проверки: `claude plugin validate mods/<name>`, `claude plugin validate .`, `claude plugin test mods/<name>`.
 
 ### Внешние зависимости workflow
 
@@ -115,13 +115,12 @@ On-demand файлы отдельно импортировать не нужно
 
 **Важно про `@import` и `index.md`:** `@import` резолвится только внутри always-on цепочки, начинающейся от `rules/RULES.md` (то есть при первой загрузке CLAUDE.md проекта). Файл, до которого агент доходит через `Read` посреди сессии (это все on-demand файлы — `rules/angular/*`, `rules/nestjs/*`, `rules/skills/executing-plans.md` и т.д.), не разворачивает `@`-ссылки внутри себя — они останутся как обычный текст. Поэтому `angular/index.md`/`nestjs/index.md` — это таблица-подсказка «что где», а не `@import`-агрегатор: агент должен явно `Read` нужный файл темы по пути, а не рассчитывать, что чтение `index.md` подтянет остальное.
 
-### Внешние зависимости: best-practices скиллы
+### Внешние зависимости: best-practices плагины
 
-`rules/nestjs/index.md` и `rules/angular/index.md` начинаются с «REQUIRED SUB-SKILL: invoke `nestjs-best-practices`/`angular-best-practices` первым» — внешние скиллы. `setup.sh` ставит их автоматически при обнаружении соответствующего стека; при ручном подключении их нужно установить отдельно:
+`rules/nestjs/index.md` и `rules/angular/index.md` начинаются с «REQUIRED SUB-SKILL: invoke `nestjs-best-practices:nestjs-best-practices`/`angular-best-practices:angular-best-practices` первым» — это скиллы внешних плагинов. Они подключены записями-ссылками в `.claude-plugin/marketplace.json` и `.agents/plugins/marketplace.json` (репозитории авторов без лицензии, поэтому не копируются в кит; закреплены по полному `sha`, обновление `sha` — осознанное изменение в ките). `setup.sh` включает их автоматически при обнаружении соответствующего стека; вручную:
 
 ```bash
-npx skills add alfredoperez/angular-best-practices --skill angular-best-practices -a claude-code
-npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices -a claude-code
+bash .claude/ai-dev-kit/mods/install-mods.sh angular-best-practices   # или nestjs-best-practices
 ```
 
 Если зависимость отсутствует, агент сообщает об этом и предлагает установку по `rules/base/workflow-dependencies.md`; без неё `rules/angular/`/`rules/nestjs/` реально дают только личный, более узкий слой конвенций, без базового общефреймворкового пласта, который эти best-practices скиллы должны были закрыть.
@@ -150,21 +149,21 @@ bash .claude/ai-dev-kit/rules/build-agents-md.sh
 curl -fsSL https://raw.githubusercontent.com/SatanLittleHelper/ai-dev-kit/main/setup.sh | bash
 ```
 
-Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано выше, за один проход: ставит `skills`-CLI, если его ещё нет, добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, **спрашивает, нужна ли поддержка Codex** (и если да — генерирует `AGENTS.md`), устанавливает все наши скиллы (`skills/roadmap`, `skills/scaffolding-nestjs-app`, `skills/update-ai-dev-kit`), включает наши моды (`mods/polish`, `mods/pr-flow`) в `.claude/settings.json` проекта, устанавливает официальные Superpowers и Plannotator с CLI, а также — если в `package.json` проекта уже есть `@angular/core`/`@nestjs/core` — соответствующий best-practices скилл из раздела выше. Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
+Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано выше, за один проход: добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, регистрирует хуки в `.claude/settings.json` (запрет trailer'ов в коммитах и `kit-sync` — см. ниже), убирает старые копии скиллов, установленные когда-то через `npx skills`, включает плагины кита (`kit` со скиллами, моды `polish`, `pr-flow` и — если в `package.json` есть `@angular/core`/`@nestjs/core` — соответствующий best-practices плагин) в `.claude/settings.json` проекта с `autoUpdate: true` и ставит их командой `claude plugin install … --scope project`, устанавливает официальные Superpowers и Plannotator с CLI, добавляет дефолтные профили Codex. **Спрашивает, нужна ли поддержка Codex**: если да — генерирует `AGENTS.md`, ставит плагины кита в Codex (`codex plugin marketplace add` + `codex plugin add`), включает их в `.codex/config.toml` и регистрирует хук в `.codex/hooks.json` (его нужно один раз одобрить в Codex через `/hooks`). Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
+
+### Хук проверки кита (`kit-sync`)
+
+SessionStart-хук `rules/hooks/kit-sync.js` лежит в submodule и регистрируется в `.claude/settings.json` (при Codex — и в `.codex/hooks.json`), поэтому работает даже тогда, когда плагин `kit` не установлен. Он только предупреждает (`systemMessage`) и ничего не меняет: submodule не инициализирован или отстаёт от `main` кита; плагины включены в проекте, но не установлены на этой машине (с точной командой установки); в `skills-lock.json` остались скиллы, которые теперь ставятся плагинами. Сетевая проверка — с таймаутом 3 с и кешем на 6 часов; без сети хук молчит.
 
 Вопрос про Codex читается из `/dev/tty`, не из stdin (stdin в `curl | bash` занят самим скриптом) — в среде без терминала (CI и т.п.) шаг просто пропускается с подсказкой, как вызвать генератор вручную позже.
 
 ### Вручную, по частям
 
-**Скиллы.** Живут в `skills/<name>`, но `--skill` берёт имя скилла (значение `name:` в его `SKILL.md`, совпадает с именем папки), а не путь:
+**Скиллы.** Поставляются плагином `kit` (`plugins/kit/skills/<name>`), вызываются как `kit:<имя>`. Claude Code: `bash .claude/ai-dev-kit/mods/install-mods.sh kit`; Codex: `bash .claude/ai-dev-kit/mods/install-codex-plugins.sh kit`.
 
-```bash
-npx skills add SatanLittleHelper/ai-dev-kit --skill roadmap -a claude-code
-```
+Обновление идёт само: Claude Code проверяет marketplace после первого сообщения сессии (`autoUpdate: true`, применяется в следующей сессии или по `/reload-plugins`), Codex — при запуске. Версий нет: обновление определяется по SHA коммита. Сразу и всё вместе (включая submodule) — скилл `kit:update-ai-dev-kit` («обнови скиллы» / «обнови правила» / «обнови кит»). Записей скиллов кита в `skills-lock.json` больше нет; остатки старой установки убирает `bash .claude/ai-dev-kit/mods/migrate-legacy-skills.sh`.
 
-Обновление — скилл `update-ai-dev-kit` («обнови скиллы» / «обнови правила» / «обнови кит»): обновляет правила, скиллы, моды и внешние workflow-зависимости и доустанавливает недостающие компоненты из репозитория. Голый `npx skills update` обновляет только уже установленные скиллы и новых не добавляет. Пин версий — в `skills-lock.json` проекта.
-
-**Правила.** `npx skills` их не обрабатывает — это не скиллы, а обычные файлы. Подключаются через git submodule + один `@import` в CLAUDE.md проекта:
+**Правила.** Это не скиллы и не плагины, а обычные файлы. Подключаются через git submodule + один `@import` в CLAUDE.md проекта:
 
 1. Добавить репозиторий как submodule:
 

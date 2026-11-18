@@ -26,7 +26,7 @@
    - Вероятная команда: `npx skills add GoogleChrome/modern-web-guidance --skill modern-web-guidance -a claude-code --yes`. Не проверено, структура `skills/` стандартная.
 2. **`rules/orchestrator.md`.** Добавить строку маршрутизации «HTML/CSS/a11y/клиентский JS → скилл `modern-web-guidance`». Задать приоритет: `rules/angular/*` главнее гайдов, а гайды дают платформенные детали. Их примеры на ванильном JS, в Angular их надо адаптировать.
 3. **Политика поддержки браузеров.** Завести ключ `browserSupport` в `.claude/dev-conventions.json`, а `orchestrator.md` читает его в разделе «Project Config». Скилл сам предлагает такую политику (например, «Allow Newly Available features с лёгким fallback»).
-4. **`legacy-scan` как необязательный шаг** в `skills/roadmap` или `skills/update-ai-dev-kit`: просканировать фронт на устаревшие паттерны.
+4. **`legacy-scan` как необязательный шаг** в `plugins/kit/skills/roadmap` или `plugins/kit/skills/update-ai-dev-kit`: просканировать фронт на устаревшие паттерны.
 
 ### Риски и вопросы
 

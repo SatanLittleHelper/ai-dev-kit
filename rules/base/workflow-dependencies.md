@@ -17,9 +17,10 @@ Run from the consuming project's root:
 | `pr-flow`, `polish`, or another kit mod | `bash .claude/ai-dev-kit/mods/install-mods.sh <mod-name>` — use the actual name from the kit's marketplace |
 | Codex CLI (`codex`) — needed by `doc-review` and `codex-implement` | `npm install -g @openai/codex`, then `codex login`; for the `local` profile also replace its `YOUR-…` placeholders in `.claude/dev-conventions.json` and export `LOCAL_LLM_API_KEY` in your shell (never in a project file) |
 | `doc-review` or another kit-owned skill (`codex-implement`, …) — also a missing default profile in `.claude/dev-conventions.json` | skill: below; profile: `bash .claude/ai-dev-kit/defaults/install-dev-conventions.sh` |
-| A kit-owned skill | `npx skills add SatanLittleHelper/ai-dev-kit --skill <skill-name> -a claude-code --yes` |
-| Angular best practices | `npx skills add alfredoperez/angular-best-practices --skill angular-best-practices -a claude-code --yes` |
-| NestJS best practices | `npx skills add kadajett/agent-nestjs-skills --skill nestjs-best-practices -a claude-code --yes` |
+| A kit-owned skill (skills are named `kit:<skill>`) | `bash .claude/ai-dev-kit/mods/install-mods.sh kit` |
+| Angular best practices (`angular-best-practices:angular-best-practices`) | `bash .claude/ai-dev-kit/mods/install-mods.sh angular-best-practices` |
+| NestJS best practices (`nestjs-best-practices:nestjs-best-practices`) | `bash .claude/ai-dev-kit/mods/install-mods.sh nestjs-best-practices` |
+| Kit plugins in Codex | `bash .claude/ai-dev-kit/mods/install-codex-plugins.sh kit` |
 | A routed rule or installer missing from an existing kit submodule | `git submodule update --init --remote .claude/ai-dev-kit`; regenerate the Codex block if already enabled |
 
 If the kit itself is not installed, offer its README setup instructions. If `claude` is missing, explain that Claude Code must be installed first. Never present the project installer as a Codex plugin installer.
@@ -32,6 +33,6 @@ Claude Code plugins and mods are host-specific. Do not claim they are available 
 
 - Superpowers: offer installation through Codex's plugin catalog; see current official instructions at `https://github.com/obra/superpowers`.
 - Plannotator: offer `curl -fsSL https://plannotator.ai/install.sh | bash` for host integrations, including Codex. Unlike the kit's minimal binary installation, this installer can configure detected agents; explain that scope before running it. Follow current official host instructions at `https://github.com/backnotprop/plannotator`.
-- Kit mods such as `pr-flow` and `polish`: explain that these require Claude Code. Offer to install for Claude Code or ask whether to proceed with a supported manual workflow in the current host.
+- Kit mods such as `pr-flow` and `polish`: explain that these require Claude Code. Offer to install for Claude Code or ask whether to proceed with a supported manual workflow in the current host. The `kit` skills and the stack best-practices plugins work in Codex too (`mods/install-codex-plugins.sh`).
 
 For unknown dependencies, locate official installation instructions before suggesting a command; never invent repositories or flags.

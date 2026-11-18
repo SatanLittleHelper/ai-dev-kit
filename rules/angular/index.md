@@ -1,6 +1,6 @@
 # Angular Personal Conventions
 
-**REQUIRED SUB-SKILL:** Invoke `angular-best-practices` first — it covers generic modern Angular (signals, RxJS, performance, testing). This directory is a personal layer on top of it: DI, inputs/outputs, forms, and async-data conventions this developer applies to every Angular project.
+**REQUIRED SUB-SKILL:** Invoke `angular-best-practices:angular-best-practices` first — it covers generic modern Angular (signals, RxJS, performance, testing). This directory is a personal layer on top of it: DI, inputs/outputs, forms, and async-data conventions this developer applies to every Angular project.
 
 Baseline testing (an agent asked to build a component with an input, output, reactive form, and HTTP-loaded data — no rule loaded) already defaults to `inject()`, signal-based `input()`/`output()`, and `NonNullableFormBuilder` on its own — modern Angular idioms are now mainstream enough that most of this layer reinforces rather than corrects. The one reliable gap: see `async-data.md`.
 

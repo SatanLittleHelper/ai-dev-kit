@@ -65,11 +65,11 @@ Answer in Russian. One markdown table per group, one row per PR, in the order of
 - Under a table, if some of its rows have `ci: failure` and non-empty `failedChecks`, one line «Упавшие проверки: #<number> — <failedChecks через запятую>»; several PRs go in one line separated by «; ». No such rows → no line.
 - Group headings come from `due` («Требует вашего действия») and `waiting` («Ждёт других») with the row count in brackets. Omit an empty group. Both empty → «Открытых PR нет.»
 - `truncated: true` → add «Прочитано 50 открытых PR — это предел одного запроса; остальные смотрите по номеру».
-- Do not add recommendations or next steps the user did not ask for. To work on review comments of an own PR, the user invokes the `forgejo-pr-feedback` skill.
+- Do not add recommendations or next steps the user did not ask for. To work on review comments of an own PR, the user invokes the `kit:forgejo-pr-feedback` skill.
 
 ## Follow-up: PR number
 
-If the user answers the dashboard with a PR number («297», «#297», «покажи 297»), invoke the `forgejo-pr-feedback` skill for that PR (pass the number) — do not answer from the dashboard rows and do not call the CLI yourself.
+If the user answers the dashboard with a PR number («297», «#297», «покажи 297»), invoke the `kit:forgejo-pr-feedback` skill for that PR (pass the number) — do not answer from the dashboard rows and do not call the CLI yourself.
 
 ## Errors
 

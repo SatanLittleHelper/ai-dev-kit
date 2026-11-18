@@ -1,6 +1,6 @@
 # NestJS Personal Conventions
 
-**REQUIRED SUB-SKILL:** Invoke `nestjs-best-practices` first — it covers generic NestJS architecture, DI, and security. This directory is a personal layer on top of it: opinionated conventions this developer applies to every NestJS project, closing gaps generic best-practice guidance leaves open (it doesn't mandate a repository layer, doesn't say DTOs must implement shared interfaces, and doesn't prescribe a shape for external HTTP integrations).
+**REQUIRED SUB-SKILL:** Invoke `nestjs-best-practices:nestjs-best-practices` first — it covers generic NestJS architecture, DI, and security. This directory is a personal layer on top of it: opinionated conventions this developer applies to every NestJS project, closing gaps generic best-practice guidance leaves open (it doesn't mandate a repository layer, doesn't say DTOs must implement shared interfaces, and doesn't prescribe a shape for external HTTP integrations).
 
 Baseline testing (an agent asked to add a DB lookup + outbound webhook call, no rule loaded) reproducibly violates the core ones: it calls the ORM client directly from a service, writes a DTO with no shared-interface contract, and bundles the outbound HTTP call into an ad-hoc service instead of a dedicated one. None of this is exotic knowledge — it just isn't default NestJS style, so it has to be stated explicitly.
 

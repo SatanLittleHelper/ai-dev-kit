@@ -1,8 +1,15 @@
 {
   "name": "ai-dev-kit",
   "description": "Personal dev conventions and mods",
-  "owner": { "name": "Aleksandr Fenin" },
+  "owner": {
+    "name": "Aleksandr Fenin"
+  },
   "plugins": [
+    {
+      "name": "kit",
+      "source": "./plugins/kit",
+      "description": "Скиллы кита: roadmap, doc-review, codex-implement, Forgejo-скиллы, jira-writer, splitting-pr, testing-changes, scaffolding-nestjs-app, update-ai-dev-kit"
+    },
     {
       "name": "polish",
       "source": "./mods/polish",
@@ -12,6 +19,28 @@
       "name": "pr-flow",
       "source": "./mods/pr-flow",
       "description": "Поток создания ПР: инструкции на «сделай ПР», запрет коммита в trunk, проверка серьёзности и описания перед созданием ПР"
+    },
+    {
+      "name": "angular-best-practices",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/alfredoperez/angular-best-practices.git",
+        "sha": "a499a4786182097a500dd2fb6ddc2489caee3854"
+      },
+      "description": "Angular best practices (сторонний плагин alfredoperez, закреплён по sha)"
+    },
+    {
+      "name": "nestjs-best-practices",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/kadajett/agent-nestjs-skills.git",
+        "sha": "3986e0cede33958e000f959031cbee0cd83c2941"
+      },
+      "strict": false,
+      "skills": [
+        "./skills/nestjs-best-practices"
+      ],
+      "description": "NestJS best practices (сторонний репозиторий kadajett без манифеста, закреплён по sha)"
     }
   ]
 }

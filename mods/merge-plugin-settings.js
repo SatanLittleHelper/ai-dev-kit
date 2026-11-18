@@ -4,13 +4,17 @@
 // .claude/settings.json: registers the marketplace under extraKnownMarketplaces and sets
 // enabledPlugins["<plugin>@<marketplace>"] to true, without touching anything else in the file.
 // A plugin that is already listed (even as false: someone opted out) is left as it is.
+// With --auto-update the marketplace also gets autoUpdate: true (added only when the field is absent).
 // Called by install-mods.sh.
 
 const fs = require('fs');
 
-const [, , settingsFile, marketplaceName, repo, ...plugins] = process.argv;
+const [, , settingsFile, marketplaceName, repo, ...rest] = process.argv;
+const AUTO_UPDATE_FLAG = '--auto-update';
+const autoUpdate = rest.includes(AUTO_UPDATE_FLAG);
+const plugins = rest.filter((arg) => arg !== AUTO_UPDATE_FLAG);
 if (!settingsFile || !marketplaceName || !repo || plugins.length === 0) {
-  console.error('Usage: merge-plugin-settings.js <settings.json path> <marketplace name> <owner/repo> <plugin>...');
+  console.error('Usage: merge-plugin-settings.js <settings.json path> <marketplace name> <owner/repo> [--auto-update] <plugin>...');
   process.exit(1);
 }
 
@@ -26,8 +30,13 @@ try {
 let isChanged = false;
 
 settings.extraKnownMarketplaces = settings.extraKnownMarketplaces || {};
-if (!settings.extraKnownMarketplaces[marketplaceName]) {
-  settings.extraKnownMarketplaces[marketplaceName] = { source: { source: 'github', repo } };
+const known = settings.extraKnownMarketplaces[marketplaceName];
+if (!known) {
+  settings.extraKnownMarketplaces[marketplaceName] = { source: { source: 'github', repo }, ...(autoUpdate ? { autoUpdate: true } : {}) };
+  isChanged = true;
+} else if (autoUpdate && !('autoUpdate' in known)) {
+  // Only add the missing field: an explicit autoUpdate: false is the project's own choice.
+  known.autoUpdate = true;
   isChanged = true;
 }
 

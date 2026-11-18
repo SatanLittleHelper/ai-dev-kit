@@ -5,6 +5,7 @@
 # project's settings.json is shared and merged with, never replaces, the user's own settings.
 #
 # Also installs the mods through the claude CLI (project scope), when it is on PATH.
+# The marketplace entry gets autoUpdate: true, so Claude Code refreshes the plugins itself.
 #
 # Usage: bash .claude/ai-dev-kit/mods/install-mods.sh <mod>...
 
@@ -41,7 +42,7 @@ SETTINGS_FILE="$SETTINGS_DIR/settings.json"
 mkdir -p "$SETTINGS_DIR"
 [ -f "$SETTINGS_FILE" ] || echo "{}" > "$SETTINGS_FILE"
 
-node "$MERGE_JS" "$SETTINGS_FILE" "$MARKETPLACE" "$REPO" "$@"
+node "$MERGE_JS" "$SETTINGS_FILE" "$MARKETPLACE" "$REPO" --auto-update "$@"
 
 # Writing enabledPlugins is not an install: the plugin must also be installed on this machine, or it
 # silently never loads ("enabled but not installed"). Done through the CLI when it is available;
@@ -59,3 +60,7 @@ if command -v claude >/dev/null 2>&1; then
 else
   echo "-- claude CLI not found; install the mods by hand: claude plugin install <mod>@$MARKETPLACE --scope project" >&2
 fi
+
+# `claude plugin marketplace add` rewrites the marketplace entry in settings.json and drops the
+# autoUpdate field the first merge added; put it back (idempotent, only adds a missing field).
+node "$MERGE_JS" "$SETTINGS_FILE" "$MARKETPLACE" "$REPO" --auto-update "$@" >/dev/null
