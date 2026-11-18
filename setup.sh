@@ -22,6 +22,10 @@ REQUIRED_KIT_FILES=(mods/install-mods.sh mods/install-codex-plugins.sh mods/migr
 log() { echo "-- $*"; }
 die() { echo "Error: $*" >&2; exit 1; }
 
+# Everything runs inside main() so bash parses the whole script before executing it: under
+# `curl | bash` stdin is the script itself, and any child command reading stdin would otherwise
+# swallow the unread rest of it.
+main() {
 echo "==> ai-dev-kit setup"
 
 # 1. Environment checks
@@ -89,7 +93,7 @@ bash "$SUBMODULE_PATH/rules/hooks/install-kit-sync.sh"
 # 3c. Old delivery channel: skills installed earlier by `npx skills` are removed before the plugins
 # are enabled, so nothing shows up twice.
 # Best-effort: a failed cleanup must not stop the setup (kit-sync warns about leftovers).
-bash "$SUBMODULE_PATH/mods/migrate-legacy-skills.sh" || log "WARNING: old npx-skills copies were not removed; rerun: bash $SUBMODULE_PATH/mods/migrate-legacy-skills.sh"
+bash "$SUBMODULE_PATH/mods/migrate-legacy-skills.sh" </dev/null || log "WARNING: old npx-skills copies were not removed; rerun: bash $SUBMODULE_PATH/mods/migrate-legacy-skills.sh"
 
 # 3d. Plugins (kit skills, mods, stack best-practices) enabled in the project's committed
 # .claude/settings.json (extraKnownMarketplaces with autoUpdate + enabledPlugins), so everyone who
@@ -146,3 +150,6 @@ esac
 
 echo "==> Done. Review 'git status' and commit when you're ready — nothing was committed automatically."
 echo "    Restart Claude Code to load the plugins. Updates arrive on their own (autoUpdate); the kit-sync hook warns if something lags."
+}
+
+main "$@"

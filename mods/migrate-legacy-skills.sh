@@ -20,4 +20,4 @@ command -v npx >/dev/null 2>&1 || { echo "Error: npx not found — install Node.
 echo "-- removing skills that are now shipped as plugins: $(echo "$NAMES" | tr '\n' ' ')"
 # Word splitting is intended: one argument per skill name (names are [a-z0-9-]).
 # shellcheck disable=SC2086
-npx --yes skills remove $NAMES -y
+npx --yes skills remove $NAMES -y </dev/null
