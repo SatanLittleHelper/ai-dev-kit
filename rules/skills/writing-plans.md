@@ -25,6 +25,8 @@ Include: goal, architecture, file map, implementation tasks, constraints, and on
 
 The final pass runs build, type-check, lint, and tests exactly once at the end. It is separate from TDD's scoped red/green runs. Do not include `git add`, `git commit`, or PR creation steps.
 
+The plan's `## Global Constraints` section lists `rules/base/minimal-change.md`, so the constraint reaches every implementer, including `codex-implement` and `executing-plans`.
+
 Store plans at `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`; delete them after implementation unless the user asks to keep them. Follow `rules/base/artifacts-and-tmp.md` for other artifacts.
 
 **Write the plan document in Russian** — see `rules/base/workflow-and-misc.md` → "Documentation Language". This applies to the whole document (headings, task descriptions, prose) regardless of what language the request came in; only code blocks/identifiers stay as-is.
@@ -51,7 +53,7 @@ The plan is validated by Codex through the `doc-review` skill before the user se
    /doc-review tmp/drafts/<feature>-plan.md --type=plan --max=3 --profile=<P> --focus="<inputs>"
    ```
    - `<P>`: `codex.review.profile`, else `codex.profile`, else `codex`, read from `.claude/dev-conventions.json`. Pass it explicitly and **do not ask the user**.
-   - `<inputs>`: the approved design spec (path), the approved test plan (path; every ID in exactly one task, no new tests), and the stack rules loaded for this plan.
+   - `<inputs>`: the approved design spec (path), the approved test plan (path; every ID in exactly one task, no new tests), the stack rules loaded for this plan, and the request to flag any task not required by the spec or test plan and any speculative option, layer, or dependency.
    - The `doc-review` loop verifies the plan's claims against the actual code and applies fixes for critical/high findings; the draft lives in untracked `tmp/`, so its optional git steps are skipped.
 4. The loop ends at `VERDICT: NO_MAJOR_ISSUES` or after 3 iterations. With major findings still open, open the plan for approval anyway, with a «Не сошлись» block at the top (each finding, the reviewer's position, the author's position); the user is the tiebreaker.
 5. If `doc-review` or the `codex` CLI is unavailable, follow `rules/base/workflow-dependencies.md`; keep the step pending, do not skip it silently.
