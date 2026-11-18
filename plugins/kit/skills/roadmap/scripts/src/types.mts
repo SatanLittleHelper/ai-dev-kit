@@ -56,6 +56,13 @@ export interface ReviewDraft {
   comments: Array<{ path: string; line: number; body: string }>
 }
 
+export interface PullDraft {
+  base: string
+  head: string
+  title: string
+  body: string
+}
+
 export interface Reply {
   threadId?: string
   quote?: string
@@ -97,6 +104,8 @@ export class PublishUnknownError extends Error {}
 export interface ForgeProvider {
   currentUser(): Promise<string>
   listPulls(state: 'open' | 'closed'): Promise<PullRequest[]>
+  findOpenPull(head: string): Promise<PullRequest | null>
+  createPull(draft: PullDraft): Promise<{ number: number; url: string }>
   getPull(number: number): Promise<PullRequest>
   listPullFiles(number: number): Promise<string[]>
   getCiStatus(sha: string): Promise<CiStatus>

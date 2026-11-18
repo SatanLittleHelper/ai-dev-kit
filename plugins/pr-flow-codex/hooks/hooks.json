@@ -1,0 +1,1 @@
+{"hooks":{"UserPromptSubmit":[{"hooks":[{"type":"command","command":"node \"${PLUGIN_ROOT}/hooks/codex.mts\""}]}],"PreToolUse":[{"matcher":"^Bash$","hooks":[{"type":"command","command":"node \"${PLUGIN_ROOT}/hooks/codex.mts\""}]}]}}

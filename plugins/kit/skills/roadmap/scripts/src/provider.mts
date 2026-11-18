@@ -33,6 +33,32 @@ export function createForgejo(deps: ProviderDeps): ForgeProvider {
   return {
     currentUser,
     listPulls: async state => ((await call('GET', `${repoPath}/pulls?state=${state}&page=1&limit=${PAGE_LIMIT}`)) as RawPull[]).map(toPull),
+    findOpenPull: async head => {
+      const name = `${deps.repo.owner}/${deps.repo.repo}`.toLowerCase()
+      const pulls = await paged<RawPull>(`${repoPath}/pulls?state=open`)
+      const candidates = pulls.filter(pull => pull.head?.ref === head)
+      const found = candidates.find(pull => pull.head.repo?.full_name?.toLowerCase() === name)
+      if (found) return toPull(found)
+      if (candidates.some(pull => !pull.head.repo?.full_name)) {
+        throw new Error('не удалось определить репозиторий head для открытого PR')
+      }
+      return null
+    },
+    createPull: async draft => {
+      try {
+        const posted = (await call('POST', `${repoPath}/pulls`, draft)) as Partial<RawPull> | null
+        if (typeof posted?.number !== 'number' || !Number.isInteger(posted.number) || posted.number < 1 ||
+            typeof posted.html_url !== 'string' || !posted.html_url.trim()) {
+          throw new Error('сервер не вернул номер и URL PR')
+        }
+        return { number: posted.number, url: posted.html_url }
+      } catch (error) {
+        const { status } = error as { status?: number }
+        if (status !== undefined && status < 500 && status !== 408) throw error
+        const reason = error instanceof SyntaxError ? 'сервер вернул невалидный JSON' : (error as Error).message
+        throw new PublishUnknownError(`${reason}; статус создания PR неизвестен — проверьте ветку через pr find перед повтором`)
+      }
+    },
     getPull: async number => toPull((await call('GET', `${repoPath}/pulls/${number}`)) as RawPull),
     listPullFiles: async number => (await paged<{ filename: string }>(`${repoPath}/pulls/${number}/files`)).map(file => file.filename),
     getCiStatus: async sha => toCiStatus((await call('GET', `${repoPath}/commits/${sha}/status`)) as RawCombinedStatus),

@@ -46,7 +46,7 @@ Run from the project root. A part whose prerequisite is missing is skipped, and 
      claude plugin update <plugin>@ai-dev-kit
      ```
    - An updated plugin takes effect only after the Claude Code session restarts (or `/reload-plugins`) — say so in the report.
-6. **Plugins (Codex), only if the project opted in** (`.codex/config.toml` contains `@ai-dev-kit"]` sections). Run `bash .claude/ai-dev-kit/mods/install-codex-plugins.sh kit [angular-best-practices] [nestjs-best-practices]` with the same stack rule, then `codex plugin marketplace upgrade ai-dev-kit`. No `codex` CLI → report it and skip.
+6. **Plugins (Codex), only if the project opted in** (`.codex/config.toml` contains `@ai-dev-kit"]` sections). Run `bash .claude/ai-dev-kit/mods/install-codex-plugins.sh kit [angular-best-practices] [nestjs-best-practices]` with the same stack rule. Installing kit also installs Codex PR-flow and preserves an explicit project opt-out. Then run `codex plugin marketplace upgrade ai-dev-kit`. Restart the session and review changed hooks when prompted. No `codex` CLI → report it and skip.
 7. **Hooks.** Register the kit-sync hook if it is missing (idempotent; an already registered hook is kept as is): `bash .claude/ai-dev-kit/rules/hooks/install-kit-sync.sh` (add `--codex` if `.codex/hooks.json` exists). In Codex the developer must approve the hook once via `/hooks`.
 8. **External workflow dependencies** (needs Claude Code CLI):
    ```
