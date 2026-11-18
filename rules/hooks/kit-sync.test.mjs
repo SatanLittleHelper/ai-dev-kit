@@ -95,6 +95,16 @@ test('K6: Claude — плагин включён в проекте, но не у
   assert.doesNotMatch(message, /polish|other@elsewhere/);
 });
 
+test('K6b: Claude — плагина нет в маркетплейсе кита: советуем удалить запись, а не ставить', () => {
+  const dir = project({ settings: { enabledPlugins: { 'ai-dev-kit@ai-dev-kit': true, 'kit@ai-dev-kit': true } } });
+  mkdirSync(join(dir, '.claude', 'ai-dev-kit', '.claude-plugin'), { recursive: true });
+  writeFileSync(join(dir, '.claude', 'ai-dev-kit', '.claude-plugin', 'marketplace.json'), JSON.stringify({ plugins: [{ name: 'kit' }] }));
+  const message = kit.checkClaudePlugins(ctxFor(dir, stub({}).exec));
+  assert.match(message, /claude plugin install kit@ai-dev-kit --scope project/);
+  assert.doesNotMatch(message, /install ai-dev-kit@ai-dev-kit/);
+  assert.match(message, /которых нет в маркетплейсе[^.]*ai-dev-kit@ai-dev-kit/);
+});
+
 test('K7: Claude — установленный плагин не вызывает предупреждений', () => {
   const dir = project({ settings: { enabledPlugins: { 'kit@ai-dev-kit': true } } });
   const installed = claudeDir({ 'kit@ai-dev-kit': [{ scope: 'project', projectPath: '/somewhere' }] });
