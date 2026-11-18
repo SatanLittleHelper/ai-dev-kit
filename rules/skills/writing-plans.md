@@ -6,8 +6,8 @@
 
 | Plan touches | Required before drafting |
 |---|---|
-| NestJS | `nestjs-best-practices`, then `rules/nestjs/index.md` and relevant topics |
-| Angular | `angular-best-practices`, then `rules/angular/index.md` and relevant topics |
+| NestJS | `nestjs-best-practices:nestjs-best-practices`, then `rules/nestjs/index.md` and relevant topics |
+| Angular | `angular-best-practices:angular-best-practices`, then `rules/angular/index.md` and relevant topics |
 | Both | Both pairs |
 | Neither | No stack rule |
 
@@ -44,11 +44,11 @@ Everything else (plan title, goal, architecture, task and step descriptions, pro
 
 ## Review loop (before the user sees it)
 
-The plan is validated by Codex through the `doc-review` skill before the user sees it; the user sees only the result, through Plannotator approval (`rules/skills/document-approval.md`).
+The plan is validated by Codex through the `kit:doc-review` skill before the user sees it; the user sees only the result, through Plannotator approval (`rules/skills/document-approval.md`).
 
 1. Draft the plan in `tmp/drafts/<feature>-plan.md`.
 2. **Self-check first**, silently: every task heading is `### Task N: <название>`; every test ID of the approved test plan appears in exactly one task; no tests outside the test plan; test-first steps carry code and the expected failure reason; no `git add` / `git commit` / PR steps.
-3. Invoke the `doc-review` skill on the draft, **at most 3 iterations**:
+3. Invoke the `kit:doc-review` skill on the draft, **at most 3 iterations**:
    ```
    /doc-review tmp/drafts/<feature>-plan.md --type=plan --max=3 --profile=<P> --focus="<inputs>"
    ```

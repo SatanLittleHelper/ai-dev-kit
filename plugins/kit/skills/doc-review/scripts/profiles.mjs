@@ -1,5 +1,5 @@
-// Shared Codex backend-profile resolver. IDENTICAL copy lives in skills/codex-implement/scripts and
-// skills/doc-review/scripts (skills are installed independently, so they cannot import across
+// Shared Codex backend-profile resolver. IDENTICAL copy lives in plugins/kit/skills/codex-implement/scripts and
+// plugins/kit/skills/doc-review/scripts (skills are installed independently, so they cannot import across
 // directories) — keep both in sync; `diff` them after any edit.
 //
 // Config: <cwd>/.claude/dev-conventions.json -> "codex":

@@ -61,11 +61,11 @@ One case, one behavior; an "and" in the name means two cases. Branch coverage fo
 
 ## Review loop (before the user sees it)
 
-The author is the main agent, drafting in `tmp/drafts/<feature>-test-plan.md`. The user sees only the document that came out of this loop, through Plannotator approval (`rules/skills/document-approval.md`, no native Plan Mode). The reviewer is Codex through the `doc-review` skill, not a Claude subagent: an independent model, the six-point test-plan check lives in the skill (`--type=test-plan`).
+The author is the main agent, drafting in `tmp/drafts/<feature>-test-plan.md`. The user sees only the document that came out of this loop, through Plannotator approval (`rules/skills/document-approval.md`, no native Plan Mode). The reviewer is Codex through the `kit:doc-review` skill, not a Claude subagent: an independent model, the six-point test-plan check lives in the skill (`--type=test-plan`).
 
 1. Draft the document in the draft file.
 2. **Self-check before the first review**, silently, so the reviewer is not spent on mechanics: every spec requirement has an `## R*` heading; every case has Дано / Когда / Тогда / Ловит and a layer tag; IDs are numbered continuously; no placeholders («TBD», «и т.д.», «аналогично U2»); no test code, private method names, or mock setup; one behavior per case; each case passes the `return mockResult` tautology check.
-3. Invoke the `doc-review` skill on the draft, **at most 3 iterations**:
+3. Invoke the `kit:doc-review` skill on the draft, **at most 3 iterations**:
    ```
    /doc-review tmp/drafts/<feature>-test-plan.md --type=test-plan --max=3 --profile=<P> --focus="<inputs>"
    ```

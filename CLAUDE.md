@@ -6,13 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Personal dev-conventions repo (`ai-dev-kit`), consumed by other projects three different ways:
 
-- `skills/` — actual Claude Code skills (`SKILL.md` + `references/`), installed into a consuming project with `npx skills add SatanLittleHelper/ai-dev-kit --skill <name>`.
+- `plugins/kit/` — the `kit` plugin: actual skills (`plugins/kit/skills/<name>/SKILL.md` + `references/`), delivered by the marketplace `ai-dev-kit` for Claude Code (`.claude-plugin/marketplace.json`) and Codex (`.agents/plugins/marketplace.json`); skills are named `kit:<name>`. No `version` anywhere: updates follow the commit SHA.
 - `rules/` — plain markdown, NOT skills, wired into a consuming project by adding it as a git submodule and importing one file from the project's own `CLAUDE.md`.
 - `mods/` — Claude Code plugins with UI and hooks (TypeScript), listed in `.claude-plugin/marketplace.json`; `setup.sh` enables them in a consuming project's `.claude/settings.json` via `mods/install-mods.sh`.
 - `defaults/` — kit-provided default values merged into a consuming project's `.claude/dev-conventions.json` (missing keys only, never overwriting, never secrets) by `defaults/install-dev-conventions.sh`, which `setup.sh` and the `update-ai-dev-kit` skill both call; currently the Codex backend profiles `codex` and `local`.
-- `tools/` — TypeScript tools with a CLI that skills call (no dependencies; Node 24 runs the `.mts` files directly). Currently `tools/forgejo/`: Forgejo/Gitea API and CLI for the `forgejo-pr-dashboard` and `forgejo-pr-feedback` skills. Skills install by folder, so each carries its own copy of the CLI in `scripts/`.
+- `tools/` — TypeScript tools with a CLI that skills call (no dependencies; Node 24 runs the `.mts` files directly). Currently `tools/forgejo/`: Forgejo/Gitea API and CLI for the `forgejo-pr-dashboard` and `forgejo-pr-feedback` skills. Skills ship as whole folders, so each carries its own copy of the CLI in `scripts/`.
 
-There is no application build or lint step here — the repo is markdown content, bash scripts (`setup.sh`, `rules/build-agents-md.sh`, `mods/install-mods.sh`, `defaults/install-dev-conventions.sh`) and the mods in `mods/`. A mod's tests run with `claude plugin test mods/<name>`; validate with `claude plugin validate mods/<name>` and `claude plugin validate .` (marketplace).
+There is no application build or lint step here — the repo is markdown content, bash and Node scripts (`setup.sh`, `rules/build-agents-md.sh`, `rules/hooks/*`, `mods/*.sh`, `mods/*.js`, `defaults/install-dev-conventions.sh`) and the mods in `mods/`. The scripts have tests (`node --test`, see Commands). A mod's tests run with `claude plugin test mods/<name>`; validate with `claude plugin validate mods/<name>` and `claude plugin validate .` (marketplace).
 
 ## Architecture: rules vs skills
 
@@ -25,7 +25,7 @@ There is no application build or lint step here — the repo is markdown content
 
 ## Commands
 
-Set up a consuming project (idempotent, safe to rerun; installs the `skills` CLI, adds the submodule, wires `CLAUDE.md`, optionally generates `AGENTS.md`, installs `OUR_SKILLS`, and stack-detected best-practices skills):
+Set up a consuming project (idempotent, safe to rerun; adds the submodule, wires `CLAUDE.md`, registers the commit-rules and kit-sync hooks, removes old `npx skills` copies, enables the kit plugins — skills, mods and stack-detected best-practices — with `autoUpdate`, and optionally sets up Codex):
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SatanLittleHelper/ai-dev-kit/main/setup.sh | bash
 ```
@@ -35,10 +35,10 @@ Regenerate a consuming project's Codex `AGENTS.md` block from the current always
 bash .claude/ai-dev-kit/rules/build-agents-md.sh
 ```
 
-Install or update a single skill for local testing without the full setup flow:
+Check the plugin layout and marketplaces, and run every test of the kit's scripts:
 ```bash
-npx skills add SatanLittleHelper/ai-dev-kit --skill <name> -a claude-code
-npx skills update
+node --test 'tests/*.test.mjs' 'mods/*.test.mjs' 'rules/hooks/*.test.mjs'
+claude plugin validate . && claude plugin validate plugins/kit
 ```
 
 Run the tests of the Forgejo tools, or re-copy the CLI into its skills after changing `tools/forgejo/src` or `tools/forgejo/cli`:
@@ -49,6 +49,7 @@ bash tools/forgejo/sync-skills.sh
 
 ## Project rules
 
-- When adding a new skill under `skills/`, add its name to the `OUR_SKILLS` array in `setup.sh` too — that list is hardcoded, not derived from the folder's contents, so a forgotten entry silently excludes the new skill from `setup.sh` installs.
-- When adding a new mod under `mods/`, add it to `.claude-plugin/marketplace.json` (entry `name` equal to the mod's `plugin.json` name) and to the `OUR_MODS` array in `setup.sh` — both lists are hardcoded, a forgotten entry silently excludes the mod.
-- `tools/forgejo/` is the source of truth for the CLI copied into `skills/forgejo-pr-dashboard/scripts/` and `skills/forgejo-pr-feedback/scripts/`. After changing `src/` or `cli/`, run `bash tools/forgejo/sync-skills.sh` and keep the copies in the change: consumers get only the skill folder, and `sync.test.mts` fails on any drift.
+- A new skill is just a folder in `plugins/kit/skills/` with a `SKILL.md` whose `name` equals the folder name (`tests/layout.test.mjs` checks it); there is nothing to register in `setup.sh`, the skill reaches the `kit` plugin by itself.
+- When adding a new mod under `mods/`, add it to `.claude-plugin/marketplace.json` (entry `name` equal to the mod's `plugin.json` name) and to the `BASE_PLUGINS` array in `setup.sh` — both lists are hardcoded, a forgotten entry silently excludes the mod. Never set `version` in a plugin manifest or marketplace entry: it freezes updates until the string changes.
+- Entries that Codex must see (`.agents/plugins/marketplace.json`, external entries in `.claude-plugin/marketplace.json`) use `./path`, `url` or `git-subdir` sources — never `github`, which Codex skips (`tests/layout.test.mjs` checks it). External plugins are pinned by full `sha`; bumping it is a deliberate change.
+- `tools/forgejo/` is the source of truth for the CLI copied into `plugins/kit/skills/forgejo-pr-dashboard/scripts/` and `plugins/kit/skills/forgejo-pr-feedback/scripts/`. After changing `src/` or `cli/`, run `bash tools/forgejo/sync-skills.sh` and keep the copies in the change: consumers get only the skill folder, and `sync.test.mts` fails on any drift.

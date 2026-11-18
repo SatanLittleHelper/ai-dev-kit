@@ -1,0 +1,31 @@
+{
+  "name": "ai-dev-kit",
+  "plugins": [
+    {
+      "name": "kit",
+      "source": "./plugins/kit",
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_USE" },
+      "category": "developer-tools"
+    },
+    {
+      "name": "angular-best-practices",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/alfredoperez/angular-best-practices.git",
+        "sha": "a499a4786182097a500dd2fb6ddc2489caee3854"
+      },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_USE" },
+      "category": "developer-tools"
+    },
+    {
+      "name": "nestjs-best-practices",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/kadajett/agent-nestjs-skills.git",
+        "sha": "3986e0cede33958e000f959031cbee0cd83c2941"
+      },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_USE" },
+      "category": "developer-tools"
+    }
+  ]
+}
