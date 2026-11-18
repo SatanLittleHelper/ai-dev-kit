@@ -7,7 +7,8 @@ description: >-
   "triage feedback on my PR"; also a bare PR number («297», «#297») right after the `forgejo-pr-dashboard` table;
   also «разбери CI», «почему упал CI на PR», "fix failed checks". Reads the unanswered
   comments and the failed CI checks, gives an assessment of each (valid, todo, invalid, question, out of scope),
-  proposes a fix (and a reply for every comment), gets the plan approved in Plannotator, then applies the approved
+  proposes a fix (and a reply for every comment) and, when the PR has merge conflicts, merging the base branch into
+  the PR branch and resolving them, gets the plan approved in Plannotator, then applies the approved
   fixes and posts the replies. For someone else's PR only shows an overview (description, status, CI, files, reviews,
   discussion) and changes nothing. Never commits or pushes by itself.
 ---
@@ -53,9 +54,11 @@ node <base>/scripts/cli/main.mts pr reply <N> --file <replies.json> [--confirm]
 
 ## 2. Read the comments
 
+`pr get <N>` already told whether the PR has conflicts (`conflicted: true`). If it does, the plan gets one more item, «Конфликт» (see step 3 and step 5), even when there are no comments.
+
 Run `pr ci <N>` too: it prints `{ "state", "failed" }` for the head commit, `failed` is the list of failed check names. `state: failure` → each failed check becomes a CI item of the plan (see step 3). `pending` → mention that CI is still running. `success` / `none` → no CI items.
 
-`pr feedback <N>` returns an array of items. Empty and no failed checks → answer «Замечаний нет» and stop. Empty but CI failed → continue with the CI items only. An item has:
+`pr feedback <N>` returns an array of items. Empty, no failed checks and no conflict → answer «Замечаний нет» and stop. Empty but CI failed or the PR is conflicted → continue with those items only. An item has:
 
 | Field | Meaning |
 |---|---|
@@ -102,6 +105,14 @@ The CLI gives only the names of failed checks, not their logs. Find out the caus
 
 A CI item has no reply to post.
 
+### Conflict item
+
+`conflicted: true` → propose merging the base branch into the PR branch and resolving the conflicts (a merge, not a rebase: no history rewrite, no force push). Do not run anything yet; only prepare the proposal:
+
+1. `git fetch origin <baseRef>`.
+2. Find which files will conflict without touching the working tree: `git merge-tree --write-tree --name-only HEAD origin/<baseRef>` (exit code 1 lists the conflicted files). Read each file's conflicting hunks and say, per file, how you would resolve it (keep ours, keep theirs, or the combined code). Do not guess intent: when both sides changed the same logic, say that and ask the user in the plan.
+3. The item has no reply to post. It is mandatory when `conflicted` is true; never skip it silently.
+
 ## 4. Plan and approval
 
 Write the plan to `tmp/drafts/forgejo-pr-feedback-<N>.md` (absolute path, in Russian). One section per item, in the order of `pr feedback`:
@@ -112,6 +123,15 @@ Write the plan to `tmp/drafts/forgejo-pr-feedback-<N>.md` (absolute path, in Rus
 **Оценка:** <class> — <reason with the code reference>
 **Правка:** <concrete change, or «не требуется»>
 **Ответ:** <the reply text that will be posted>
+```
+
+The conflict item goes first, before the comments (the merge changes the code the comments refer to):
+
+```
+## Конфликт · <headRef> ← <baseRef>
+**Файлы:** <conflicted files>
+**Предложение:** влить `origin/<baseRef>` в `<headRef>` и решить конфликты
+**Решение:** <per file: what to keep and why>
 ```
 
 CI items go after the comments, one section each, without a reply:
@@ -131,7 +151,9 @@ Open it for approval with the `plannotator-annotate` skill (tool `plannotator` i
 
 ## 5. Apply the approved fixes
 
-Make the changes of items with `valid` (comments and CI items; and the `todo` items the user asked to do) in the working tree. Do not touch anything outside the approved plan. Show a short summary of the changes. **Do not commit or push**: ask the user separately and follow the project's own rules for commits.
+If the conflict item is approved, do it first. Before merging check that `git branch --show-current` equals `headRef` (in the worktree if one was created in step 1.3); if not, repeat the switch from step 1.3 and never merge into another branch. Then `git merge --no-commit --no-ff origin/<baseRef>`, resolve the conflicted files as approved, `git add` them, check that no markers are left (`git diff --check`, grep for `<<<<<<<`). Leave the merge uncommitted (`MERGE_HEAD` stays); the user commits it. Then apply the other items on top of the merged code. Resolution that differs from the plan, or a file the plan did not list → stop and ask.
+
+Make the changes of items with `valid` (comments and CI items; and the `todo` items the user asked to do) in the working tree. Do not touch anything outside the approved plan. Show a short summary of the changes. **Do not commit or push** (this includes the merge commit): ask the user separately and follow the project's own rules for commits.
 
 ## 6. Post the replies
 
