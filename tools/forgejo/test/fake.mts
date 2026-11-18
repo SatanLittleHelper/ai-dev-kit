@@ -24,6 +24,8 @@ export function fakeProvider(data: FakeData): FakeProvider {
     replied,
     currentUser: async () => data.me,
     listPulls: async state => data.pulls.filter(item => item.state === state),
+    findOpenPull: async head => data.pulls.find(item => item.state === 'open' && item.headRef === head) ?? null,
+    createPull: async () => ({ number: 1, url: 'fake://1' }),
     getPull: async number => {
       const found = data.pulls.find(item => item.number === number)
       if (!found) throw new Error(`PR ${number} не найден`)

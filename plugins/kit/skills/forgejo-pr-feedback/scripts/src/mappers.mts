@@ -4,7 +4,7 @@ export const REVIEW_STATES: Record<string, Review['state']> = { APPROVED: 'appro
 export const EVENTS: Record<Verdict, string> = { approve: 'APPROVED', 'request-changes': 'REQUEST_CHANGES', comment: 'COMMENT' }
 
 type RawUser = { login: string } | null
-export interface RawPull { number: number; title: string; body?: string; user: RawUser; head: { ref: string; sha: string }; base: { ref: string }; state: string; merged?: boolean; mergeable?: boolean; html_url: string; updated_at?: string }
+export interface RawPull { number: number; title: string; body?: string; user: RawUser; head: { ref: string; sha: string; repo?: { full_name?: string } | null }; base: { ref: string }; state: string; merged?: boolean; mergeable?: boolean; html_url: string; updated_at?: string }
 export interface RawReview { id: number; user: RawUser; state: string; body?: string; commit_id: string; submitted_at: string | null; dismissed?: boolean; html_url?: string }
 export interface RawReviewComment { id: number; user: RawUser; body: string; created_at: string; path: string; position: number; commit_id: string; pull_request_review_id: number; resolver?: RawUser }
 export interface RawIssueComment { id: number; user: RawUser; body: string; created_at: string }

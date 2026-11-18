@@ -12,19 +12,19 @@ function sandbox() {
   const root = mkdtempSync(join(tmpdir(), 'forgejo-sync-'))
   const tool = join(root, 'tools', 'forgejo')
   const skills = join(root, 'skills')
+  const codex = join(root, 'codex', 'forgejo')
   for (const [file, text] of [['src/a.mts', 'a'], ['cli/main.mts', 'm'], ['test/fake.mts', 'fake'], ['test/a.test.mts', 'test'], ['test/fixtures/x.json', '{}']]) {
     mkdirSync(join(tool, file, '..'), { recursive: true })
     writeFileSync(join(tool, file), text)
   }
-  const sync = (...args: string[]) => spawnSync('bash', [SCRIPT, ...args], { encoding: 'utf8', env: { ...process.env, FORGEJO_SYNC_SRC: tool, FORGEJO_SYNC_SKILLS: skills } })
-  return { tool, skills, sync }
+  const sync = (...args: string[]) => spawnSync('bash', [SCRIPT, ...args], { encoding: 'utf8', env: { ...process.env, FORGEJO_SYNC_SRC: tool, FORGEJO_SYNC_SKILLS: skills, FORGEJO_SYNC_CODEX: codex } })
+  return { tool, skills, codex, sync }
 }
 
-test('U61: синхронизация копирует src/ и cli/ в scripts/ обоих скиллов без тестов и фикстур', () => {
-  const { skills, sync } = sandbox()
+test('U61: синхронизация копирует src/ и cli/ в пакеты без тестов и фикстур', () => {
+  const { skills, codex, sync } = sandbox()
   assert.equal(sync().status, 0)
-  for (const skill of SKILLS) {
-    const scripts = join(skills, skill, 'scripts')
+  for (const scripts of [...SKILLS.map(skill => join(skills, skill, 'scripts')), codex]) {
     assert.deepEqual(readdirSync(scripts).sort(), ['cli', 'src'])
     assert.equal(readFileSync(join(scripts, 'src', 'a.mts'), 'utf8'), 'a')
     assert.equal(readFileSync(join(scripts, 'cli', 'main.mts'), 'utf8'), 'm')
@@ -33,9 +33,9 @@ test('U61: синхронизация копирует src/ и cli/ в scripts/ 
 })
 
 test('U62: проверка расхождения падает при правке копии и при изменении источника без синхронизации', () => {
-  const { tool, skills, sync } = sandbox()
+  const { tool, codex, sync } = sandbox()
   assert.equal(sync().status, 0)
-  appendFileSync(join(skills, SKILLS[0], 'scripts', 'src', 'a.mts'), 'edited')
+  appendFileSync(join(codex, 'src', 'a.mts'), 'edited')
   const edited = sync('--check')
   assert.notEqual(edited.status, 0)
   assert.match(edited.stderr, /a\.mts/)
@@ -48,7 +48,7 @@ test('U62: проверка расхождения падает при прав�
   assert.match(stale.stderr, /a\.mts/)
 })
 
-test('U63: реальные scripts/ скиллов в репозитории совпадают с источником', () => {
+test('U63: реальные пакетные копии CLI совпадают с источником', () => {
   const result = spawnSync('bash', [SCRIPT, '--check'], { encoding: 'utf8' })
   assert.equal(result.status, 0, result.stderr)
 })

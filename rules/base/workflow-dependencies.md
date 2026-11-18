@@ -33,6 +33,7 @@ Claude Code plugins and mods are host-specific. Do not claim they are available 
 
 - Superpowers: offer installation through Codex's plugin catalog; see current official instructions at `https://github.com/obra/superpowers`.
 - Plannotator: offer `curl -fsSL https://plannotator.ai/install.sh | bash` for host integrations, including Codex. Unlike the kit's minimal binary installation, this installer can configure detected agents; explain that scope before running it. Follow current official host instructions at `https://github.com/backnotprop/plannotator`.
-- Kit mods such as `pr-flow` and `polish`: explain that these require Claude Code. Offer to install for Claude Code or ask whether to proceed with a supported manual workflow in the current host. The `kit` skills and the stack best-practices plugins work in Codex too (`mods/install-codex-plugins.sh`).
+- PR-flow in Codex: run `bash .claude/ai-dev-kit/mods/install-codex-plugins.sh kit` and start a new session. The skill requires Node.js 24+ for validation. Trust the bundled hooks via `/hooks` if you want automatic checks of supported shell calls.
+- `polish` and other Claude-only mods require Claude Code. Offer the supported manual workflow in the current host when applicable.
 
 For unknown dependencies, locate official installation instructions before suggesting a command; never invent repositories or flags.

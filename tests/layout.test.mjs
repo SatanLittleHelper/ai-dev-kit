@@ -51,9 +51,9 @@ function assertCodexReadable(entry, where) {
   );
 }
 
-test('L4: Codex-каталог содержит kit и два стековых плагина, но не моды', () => {
+test('L4: Codex-каталог содержит kit, Codex PR-flow и два стековых плагина', () => {
   assert.equal(codexCatalog.name, 'ai-dev-kit');
-  assert.deepEqual(codexCatalog.plugins.map((p) => p.name).sort(), ['angular-best-practices', 'kit', 'nestjs-best-practices']);
+  assert.deepEqual(codexCatalog.plugins.map((p) => p.name).sort(), ['angular-best-practices', 'kit', 'nestjs-best-practices', 'pr-flow']);
   for (const entry of codexCatalog.plugins) assertCodexReadable(entry, 'codex');
 });
 
@@ -68,6 +68,11 @@ test('L5: внешние записи Claude-marketplace закреплены п
 
 test('L6: источники записей в обоих каталогах совпадают', () => {
   for (const entry of codexCatalog.plugins) {
+    if (entry.name === 'pr-flow') {
+      assert.equal(entry.source, './plugins/pr-flow-codex');
+      assert.equal(marketplace.plugins.find(p => p.name === 'pr-flow').source, './mods/pr-flow');
+      continue;
+    }
     const twin = marketplace.plugins.find((p) => p.name === entry.name);
     assert.ok(twin, `${entry.name} нет в Claude-marketplace`);
     assert.deepEqual(entry.source, twin.source);

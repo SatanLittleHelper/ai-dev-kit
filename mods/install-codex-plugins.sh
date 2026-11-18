@@ -21,7 +21,18 @@ git rev-parse --show-toplevel >/dev/null 2>&1 || { echo "Error: run this inside 
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 
 IDS=()
-for PLUGIN in "$@"; do IDS+=("$PLUGIN@$MARKETPLACE"); done
+PR_FLOW_REQUESTED=0
+KIT_REQUESTED=0
+for PLUGIN in "$@"; do
+  IDS+=("$PLUGIN@$MARKETPLACE")
+  case "$PLUGIN" in
+    kit) KIT_REQUESTED=1 ;;
+    pr-flow) PR_FLOW_REQUESTED=1 ;;
+  esac
+done
+if [ "$KIT_REQUESTED" -eq 1 ] && [ "$PR_FLOW_REQUESTED" -eq 0 ]; then
+  IDS+=("pr-flow@$MARKETPLACE")
+fi
 
 mkdir -p "$PROJECT_ROOT/.codex"
 node "$SCRIPT_DIR/merge-codex-config.js" "$PROJECT_ROOT/.codex/config.toml" "${IDS[@]}"
@@ -41,7 +52,11 @@ fi
 for ID in "${IDS[@]}"; do
   if codex plugin add "$ID"; then
     echo "-- installed $ID for Codex"
+  elif [ "$ID" = "pr-flow@$MARKETPLACE" ] &&
+       codex plugin marketplace upgrade "$MARKETPLACE" &&
+       codex plugin add "$ID"; then
+    echo "-- installed $ID for Codex after marketplace upgrade"
   else
-    echo "-- could not install $ID; run: codex plugin add $ID" >&2
+    echo "-- could not install $ID; run: codex plugin marketplace upgrade $MARKETPLACE then codex plugin add $ID" >&2
   fi
 done

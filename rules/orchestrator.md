@@ -15,7 +15,7 @@ This file is always in context through `rules/RULES.md`. It routes work to detai
 | Known file path, Bash vs MCP, or dedicated-tool choice | Read `rules/base/mcp-tool-priority.md` |
 | Claim work complete, fixed, or passing | Read `rules/skills/verification-before-completion.md` and run its required checks |
 | Test the current changes by hand ("протестируй изменения", "test my changes") | Invoke `testing-changes` |
-| Create a PR ("сделай ПР", "open a PR") | Follow instructions injected by `pr-flow`; if unavailable, read `rules/base/workflow-dependencies.md` and offer installation |
+| Create a PR ("сделай ПР", "open a PR") | In Codex, use the `pr-flow` skill from the `pr-flow` plugin. In Claude Code, follow instructions injected by the `pr-flow` mod. If unavailable, read `rules/base/workflow-dependencies.md`. |
 | Required skill, mod, plugin, or CLI is unavailable | Read `rules/base/workflow-dependencies.md`; name the dependency and offer installation with the exact command |
 | Execute a written plan via subagents | Read `rules/skills/subagent-driven-development.md` |
 | Execute a written plan with checkpoints | Read `rules/skills/executing-plans.md` |

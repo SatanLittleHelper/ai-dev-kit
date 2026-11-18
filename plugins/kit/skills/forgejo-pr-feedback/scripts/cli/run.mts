@@ -2,17 +2,19 @@ import { resolveConfig, TOKEN_ENV } from '../src/config.mts'
 import type { Config } from '../src/config.mts'
 import { groupRows, intakeItems, loadPr, pullRows } from '../src/status.mts'
 import { PublishUnknownError } from '../src/types.mts'
-import type { ForgeProvider } from '../src/types.mts'
-import { CliError, parseDraft, parseReplies } from './draft.mts'
+import type { ForgeProvider, PullDraft } from '../src/types.mts'
+import { CliError, parseDraft, parsePullDraft, parseReplies } from './draft.mts'
 
 const USAGE_CODE = 2
 const UNKNOWN_STATUS_CODE = 3
 const FAILURE_CODE = 1
-const VALUE_FLAGS: readonly string[] = ['file', 'host', 'owner', 'repo', 'state']
+const VALUE_FLAGS: readonly string[] = ['file', 'host', 'owner', 'repo', 'state', 'head']
 const BOOLEAN_FLAGS: readonly string[] = ['confirm']
 const USAGE = `Использование:
   whoami
   pr list [--state open|closed]
+  pr find --head <ветка>
+  pr create --file draft.json [--confirm]
   pr files <N>
   pr get <N> | pr ci <N> | pr reviews <N> | pr threads <N> | pr feedback <N>
   pr dashboard
@@ -27,6 +29,7 @@ export interface Io {
   out(text: string): void
   err(text: string): void
   createProvider(config: Config): ForgeProvider
+  beforeCreate?(draft: PullDraft): void
 }
 
 interface Args {
@@ -88,9 +91,15 @@ async function execute(argv: string[], io: Io): Promise<void> {
   const confirm = args.flags.confirm === true
 
   const isWhoami = group === 'whoami'
-  const known = ['list', 'get', 'files', 'ci', 'reviews', 'threads', 'feedback', 'dashboard', 'review', 'reply']
+  const known = ['list', 'find', 'create', 'get', 'files', 'ci', 'reviews', 'threads', 'feedback', 'dashboard', 'review', 'reply']
   if (!isWhoami && !(group === 'pr' && known.includes(command))) throw usageError('неизвестная команда')
-  const number = ['list', 'dashboard'].includes(command) || isWhoami ? 0 : numberArg(target)
+  const number = ['list', 'find', 'create', 'dashboard'].includes(command) || isWhoami ? 0 : numberArg(target)
+  const head = args.flags.head
+  if (command === 'find' && (typeof head !== 'string' || !head.trim() || head.startsWith('--'))) {
+    throw usageError('нужен --head <ветка>')
+  }
+  const pullDraft = command === 'create' ? parsePullDraft(fileArg(args, io)) : undefined
+  if (pullDraft && !confirm) return print(io, { dryRun: true, action: 'create', payload: pullDraft })
   const draft = command === 'review' ? parseDraft(fileArg(args, io)) : undefined
   const replies = command === 'reply' ? parseReplies(fileArg(args, io)) : undefined
 
@@ -98,6 +107,11 @@ async function execute(argv: string[], io: Io): Promise<void> {
   const provider = io.createProvider(config)
 
   if (isWhoami) return print(io, { login: await provider.currentUser() })
+  if (command === 'find' && typeof head === 'string') return print(io, await provider.findOpenPull(head))
+  if (pullDraft) {
+    io.beforeCreate?.(pullDraft)
+    return print(io, await provider.createPull(pullDraft))
+  }
   if (command === 'list') return print(io, await provider.listPulls(args.flags.state === 'closed' ? 'closed' : 'open'))
   if (command === 'get') return print(io, { ...(await provider.getPull(number)), pullRef: provider.pullRef(number) })
   if (command === 'files') return print(io, await provider.listPullFiles(number))

@@ -1,4 +1,4 @@
-import type { Reply, ReviewDraft, Verdict } from '../src/types.mts'
+import type { PullDraft, Reply, ReviewDraft, Verdict } from '../src/types.mts'
 
 const VERDICTS: readonly string[] = ['approve', 'request-changes', 'comment']
 const INPUT_ERROR_CODE = 2
@@ -25,6 +25,17 @@ function parseJson(text: string, what: string): unknown {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export function parsePullDraft(text: string): PullDraft {
+  const raw = parseJson(text, 'черновик PR')
+  if (!isObject(raw)) return fail('черновик PR: нужен объект')
+  const { base, head, title, body } = raw
+  if (typeof base !== 'string' || !base.trim()) return fail('черновик PR: нужен непустой base')
+  if (typeof head !== 'string' || !head.trim()) return fail('черновик PR: нужен непустой head')
+  if (typeof title !== 'string' || !title.trim()) return fail('черновик PR: нужен непустой title')
+  if (typeof body !== 'string') return fail('черновик PR: body должен быть строкой')
+  return { base, head, title, body }
 }
 
 export function parseDraft(text: string): ReviewDraft {
