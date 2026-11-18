@@ -1,0 +1,30 @@
+{
+  "extraKnownMarketplaces": {
+    "ai-dev-kit": {
+      "source": {
+        "source": "github",
+        "repo": "SatanLittleHelper/ai-dev-kit"
+      },
+      "autoUpdate": true
+    },
+    "superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    },
+    "plannotator": {
+      "source": {
+        "source": "github",
+        "repo": "backnotprop/plannotator"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "kit@ai-dev-kit": true,
+    "polish@ai-dev-kit": true,
+    "pr-flow@ai-dev-kit": true,
+    "superpowers@superpowers-marketplace": true,
+    "plannotator@plannotator": true
+  }
+}
