@@ -7,4 +7,5 @@ Single entry point for the compact rules that must be in context every session. 
 @base/naming.md
 @base/class-structure.md
 @base/file-structure.md
+@base/minimal-change.md
 @base/workflow-and-misc.md

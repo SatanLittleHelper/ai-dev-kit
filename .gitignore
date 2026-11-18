@@ -1,0 +1,6 @@
+.claude/doc-review/
+.doc-review/
+.codex-implement/
+.claude/skills/
+.agents/
+skills-lock.json
