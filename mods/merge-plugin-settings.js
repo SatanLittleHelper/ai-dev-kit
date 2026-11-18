@@ -41,6 +41,13 @@ if (!known) {
 }
 
 settings.enabledPlugins = settings.enabledPlugins || {};
+// "ai-dev-kit" was a plugin of this marketplace before it was split into kit and friends. The entry
+// can no longer be installed and only makes kit-sync suggest a command that fails.
+const legacyKey = `${marketplaceName}@${marketplaceName}`;
+if (legacyKey in settings.enabledPlugins && !plugins.includes(marketplaceName)) {
+  delete settings.enabledPlugins[legacyKey];
+  isChanged = true;
+}
 for (const plugin of plugins) {
   const key = `${plugin}@${marketplaceName}`;
   if (!(key in settings.enabledPlugins)) {

@@ -48,3 +48,10 @@ test('A5: повторный запуск идемпотентен, явно в�
   assert.match(second.stdout, /already enabled/);
   assert.deepEqual(JSON.parse(readFileSync(first.file, 'utf8')), first.settings);
 });
+
+test('A-legacy: устаревшая запись ai-dev-kit@ai-dev-kit удаляется, остальные не трогаются', () => {
+  const initial = { enabledPlugins: { 'ai-dev-kit@ai-dev-kit': true, 'kit@ai-dev-kit': true, 'x@other': true } };
+  const { result, settings } = merge(initial, '--auto-update', 'kit');
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(settings.enabledPlugins, { 'kit@ai-dev-kit': true, 'x@other': true });
+});

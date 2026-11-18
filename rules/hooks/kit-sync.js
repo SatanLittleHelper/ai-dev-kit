@@ -90,6 +90,12 @@ function checkSubmodule(ctx) {
   return `ai-dev-kit: submodule отстаёт от main кита. Выполни: git submodule update --init --remote ${SUBMODULE} (или скилл kit:update-ai-dev-kit)`;
 }
 
+function kitPluginNames(ctx) {
+  const marketplace = readJson(path.join(ctx.projectDir, SUBMODULE, '.claude-plugin', 'marketplace.json'));
+  if (!marketplace || !Array.isArray(marketplace.plugins) || marketplace.plugins.length === 0) return null;
+  return new Set(marketplace.plugins.map((p) => p && p.name).filter(Boolean));
+}
+
 function checkClaudePlugins(ctx) {
   const settings = readJson(path.join(ctx.projectDir, '.claude', 'settings.json')) || {};
   const enabled = settings.enabledPlugins || {};
@@ -98,10 +104,21 @@ function checkClaudePlugins(ctx) {
   const installed = (readJson(path.join(ctx.claudeDir, 'plugins', 'installed_plugins.json')) || {}).plugins || {};
   // Any install record counts: project-scope records are keyed by projectPath, which differs for
   // git worktrees, and a false alarm there is worse than a missed one.
-  const missing = wanted.filter((id) => !(installed[id] && installed[id].length > 0));
-  if (missing.length === 0) return null;
-  const commands = missing.map((id) => `claude plugin install ${id} --scope project`).join(' && ');
-  return `ai-dev-kit: плагины включены в проекте, но не установлены на этой машине: ${missing.join(', ')}. Выполни: ${commands}`;
+  // The submodule's marketplace.json is the list of plugins the kit really has. An enabled entry that
+  // is not there (a renamed or removed plugin, e.g. the old "ai-dev-kit@ai-dev-kit") can never be
+  // installed, so it gets "remove it", not an install command that fails.
+  const known = kitPluginNames(ctx);
+  const stale = known ? wanted.filter((id) => !known.has(id.slice(0, id.lastIndexOf('@')))) : [];
+  const missing = wanted.filter((id) => !stale.includes(id) && !(installed[id] && installed[id].length > 0));
+  const parts = [];
+  if (missing.length > 0) {
+    const commands = missing.map((id) => `claude plugin install ${id} --scope project`).join(' && ');
+    parts.push(`плагины включены в проекте, но не установлены на этой машине: ${missing.join(', ')}. Выполни: ${commands}`);
+  }
+  if (stale.length > 0) {
+    parts.push(`в .claude/settings.json включены плагины, которых нет в маркетплейсе ${MARKETPLACE} (переименованы или удалены): ${stale.join(', ')}. Удали их из enabledPlugins или перезапусти setup.sh`);
+  }
+  return parts.length > 0 ? `ai-dev-kit: ${parts.join('. ')}` : null;
 }
 
 function codexEnabledPlugins(toml) {
