@@ -43,7 +43,7 @@ Never wrap the entire issue in a single fenced code block.
 
 Native Plan Mode is not used. Approve the draft through `rules/skills/document-approval.md`: stable path, `plannotator annotate --gate --json`, reopen the same file after edits.
 
-When writing to a temp file for use with `plannotator annotate`, write the file in **Jira Wiki Markup only** — no Markdown, no fenced code block wrapper. Use `.md` extension (plannotator does not support `.txt`). This allows the user to copy the content directly from Plannotator into Jira without any conversion.
+When writing to a temp file for use with `plannotator annotate`, the file has exactly the same format as the chat output: **two fenced code blocks** (title, then body in Jira Wiki Markup), nothing else — no «Название»/«Описание» labels, no headings, no text between or around the blocks. Use `.md` extension (plannotator does not support `.txt`). Each block is then copied from Plannotator straight into the matching Jira field without any conversion.
 
 **Why a file, not `plannotator last`:** `plannotator last` reads the previous completed turn. Since the issue and the Bash call happen in the same turn, `plannotator last` always captures the wrong message. Writing to a file and using `plannotator annotate` bypasses this entirely.
 
@@ -120,7 +120,7 @@ For a simple bug, drop the `h3. Решение` block entirely.
 
 Approval flow (no native Plan Mode; see `rules/skills/document-approval.md`):
 
-1. Write the issue draft into `tmp/drafts/<issue-slug>.md`, using the same two-block structure as the chat output: first block — title only; second block — body in Jira Wiki Markup, starting at `h3. Контекст`.
+1. Write the issue draft into `tmp/drafts/<issue-slug>.md`, in exactly the format from «Template»: two fenced code blocks and nothing else — first block: title only; second block: body in Jira Wiki Markup, starting at `h3. Контекст`. No «Название»/«Описание» labels or any other text outside the blocks.
 2. Open it with `plannotator annotate --gate --json` (version history on) and wait for the final decision.
 3. If annotation feedback comes back — revise the same file and reopen it.
 4. `dismissed` — stop, nothing is approved.
