@@ -6,7 +6,7 @@ test('U13: getPull отдаёт PR в доменной модели', async () =
   const { instance } = provider({ [`GET ${API}/pulls/42`]: ok(fixture('pull.json')) })
   assert.deepEqual(await instance.getPull(42), {
     number: 42, title: 'Добавить экспорт', body: 'Экспорт в CSV', author: 'Bob', headRef: 'feature/export', headSha: 'aaa111', baseRef: 'main',
-    state: 'open', merged: false, url: 'https://git.example.org/team/app/pulls/42', conflicted: false, updatedAt: '2026-10-02T08:30:00Z',
+    state: 'open', merged: false, url: 'https://git.example.org/team/app/pulls/42', conflicted: false, updatedAt: '2026-10-02T08:30:00Z', fromFork: false,
   })
 })
 
@@ -80,4 +80,17 @@ test('U19: listPullFiles отдаёт пути файлов PR и проходи
     [`GET ${API}/pulls/42/files?page=1&limit=50`]: ok(JSON.stringify([{ filename: 'docs/a/roadmap-state.json' }, { filename: 'src/x.ts' }]), { 'x-total-count': '2' }),
   })
   assert.deepEqual(await instance.listPullFiles(42), ['docs/a/roadmap-state.json', 'src/x.ts'])
+})
+
+test('U78: fromFork — head-репозиторий отличается от base; удалённый форк — тоже форк; без данных о base — не форк', async () => {
+  const raw = JSON.parse(fixture('pull.json')) as { head: Record<string, unknown>; base: Record<string, unknown> }
+  const fromFork = async (head: unknown, base: unknown) => {
+    const body = { ...raw, head: { ...raw.head, repo: head }, base: { ...raw.base, repo: base } }
+    const { instance } = provider({ [`GET ${API}/pulls/42`]: ok(JSON.stringify(body)) })
+    return (await instance.getPull(42)).fromFork
+  }
+  assert.equal(await fromFork({ full_name: 'Team/App' }, { full_name: 'team/app' }), false)
+  assert.equal(await fromFork({ full_name: 'bob/app' }, { full_name: 'team/app' }), true)
+  assert.equal(await fromFork(null, { full_name: 'team/app' }), true)
+  assert.equal(await fromFork({ full_name: 'bob/app' }, undefined), false)
 })

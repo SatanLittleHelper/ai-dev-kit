@@ -19,16 +19,19 @@ test('U65: approvals — последнее ревью каждого ревью
   assert.equal(rows[0].approvals, 2)
 })
 
-test('U66: stackParentOf — открытый PR, чья head-ветка равна base; fork main→main не родитель', () => {
+test('U66: stackParentOf — открытый PR из этого репозитория, чья head-ветка равна base; PR из форка не родитель', () => {
   const parent = pull({ number: 1, headRef: 'feature-a', baseRef: 'main' })
   const child = pull({ number: 2, headRef: 'feature-b', baseRef: 'feature-a' })
-  const fork = pull({ number: 3, headRef: 'main', baseRef: 'main' })
+  const fork = pull({ number: 3, headRef: 'main', baseRef: 'main', fromFork: true })
+  const namesake = pull({ number: 6, headRef: 'feature-z', baseRef: 'main', fromFork: true })
   const closed = pull({ number: 4, headRef: 'feature-c', baseRef: 'main', state: 'closed' })
   const orphan = pull({ number: 5, headRef: 'feature-d', baseRef: 'feature-c' })
-  const all = [parent, child, fork, closed, orphan]
+  const all = [parent, child, fork, closed, orphan, namesake]
   assert.equal(stackParentOf(child, all), 1)
   assert.equal(stackParentOf(parent, all), null)
   assert.equal(stackParentOf(orphan, all), null)
+  assert.equal(stackParentOf(pull({ number: 7, headRef: 'x', baseRef: 'feature-z' }), all), null)
+  assert.equal(stackParentOf(pull({ number: 8, headRef: 'y', baseRef: 'main' }), all), null)
 })
 
 test('U67: готовые к слиянию идут первыми в порядке стека; родитель выше ребёнка, даже с большим номером', async () => {

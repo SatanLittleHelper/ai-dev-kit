@@ -153,9 +153,9 @@ function approvalsOf(data: PrData): number {
   return activeReviews(data).filter(review => review.state === 'approved' && !same(review.author, data.pull.author)).length
 }
 
-// Родитель в стеке — открытый PR, чья head-ветка равна base этого PR. PR из форка с head=base (main→main) родителем не считается.
+// Родитель в стеке — открытый PR из ветки этого же репозитория, чья head-ветка равна base этого PR. PR из форков родителями не считаются.
 export function stackParentOf(pull: PullRequest, pulls: readonly PullRequest[]): number | null {
-  return pull.state !== 'open' ? null : pulls.find(other => other.number !== pull.number && other.state === 'open' && other.headRef === pull.baseRef && other.headRef !== other.baseRef)?.number ?? null
+  return pull.state !== 'open' ? null : pulls.find(other => other.number !== pull.number && other.state === 'open' && !other.fromFork && other.headRef === pull.baseRef)?.number ?? null
 }
 
 function readyToMerge(data: PrData): boolean {
