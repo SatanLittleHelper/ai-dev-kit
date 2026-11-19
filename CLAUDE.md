@@ -10,7 +10,7 @@ Personal dev-conventions repo (`ai-dev-kit`), consumed by other projects three d
 - `rules/` — plain markdown, NOT skills, wired into a consuming project by adding it as a git submodule and importing one file from the project's own `CLAUDE.md`.
 - `mods/` — Claude Code plugins with UI and hooks (TypeScript), listed in `.claude-plugin/marketplace.json`; `setup.sh` enables them in a consuming project's `.claude/settings.json` via `mods/install-mods.sh`.
 - `defaults/` — kit-provided default values merged into a consuming project's `.claude/dev-conventions.json` (missing keys only, never overwriting, never secrets) by `defaults/install-dev-conventions.sh`, which `setup.sh` and the `update-ai-dev-kit` skill both call; currently the Codex backend profiles `codex` and `local`.
-- `tools/` — TypeScript tools with a CLI that skills call (no dependencies; Node 24 runs the `.mts` files directly). Currently `tools/forgejo/`: Forgejo/Gitea API and CLI for the `forgejo-pr-dashboard` and `forgejo-pr-feedback` skills. Skills ship as whole folders, so each carries its own copy of the CLI in `scripts/`.
+- `tools/` — TypeScript tools with a CLI that skills call (no dependencies; Node 24 runs the `.mts` files directly). Currently `tools/forgejo/`: Forgejo/Gitea API and CLI for the `forgejo-pr-dashboard`, `forgejo-pr-feedback` and `roadmap` skills. The `kit` plugin is installed whole, so its skills share one copy of the CLI in `plugins/kit/tools/forgejo/` (a skill calls it as `<base>/../../tools/forgejo/cli/main.mts`); the separate Codex PR-flow plugin has its own copy.
 
 There is no application build or lint step here — the repo is markdown content, bash and Node scripts (`setup.sh`, `rules/build-agents-md.sh`, `rules/hooks/*`, `mods/*.sh`, `mods/*.js`, `defaults/install-dev-conventions.sh`) and the mods in `mods/`. The scripts have tests (`node --test`, see Commands). A mod's tests run with `claude plugin test mods/<name>`; validate with `claude plugin validate mods/<name>` and `claude plugin validate .` (marketplace).
 
@@ -41,7 +41,7 @@ node --test 'tests/*.test.mjs' 'mods/*.test.mjs' 'rules/hooks/*.test.mjs'
 claude plugin validate . && claude plugin validate plugins/kit
 ```
 
-Run the tests of the Forgejo tools, or re-copy the CLI into its skills after changing `tools/forgejo/src` or `tools/forgejo/cli`:
+Run the tests of the Forgejo tools, or re-copy the CLI into the plugins after changing `tools/forgejo/src` or `tools/forgejo/cli`:
 ```bash
 node --test 'tools/forgejo/test/*.test.mts'
 bash tools/forgejo/sync-skills.sh
@@ -52,4 +52,4 @@ bash tools/forgejo/sync-skills.sh
 - A new skill is just a folder in `plugins/kit/skills/` with a `SKILL.md` whose `name` equals the folder name (`tests/layout.test.mjs` checks it); there is nothing to register in `setup.sh`, the skill reaches the `kit` plugin by itself.
 - When adding a new mod under `mods/`, add it to `.claude-plugin/marketplace.json` (entry `name` equal to the mod's `plugin.json` name) and to the `BASE_PLUGINS` array in `setup.sh` — both lists are hardcoded, a forgotten entry silently excludes the mod. Never set `version` in a plugin manifest or marketplace entry: it freezes updates until the string changes.
 - Entries that Codex must see (`.agents/plugins/marketplace.json`, external entries in `.claude-plugin/marketplace.json`) use `./path`, `url` or `git-subdir` sources — never `github`, which Codex skips (`tests/layout.test.mjs` checks it). External plugins are pinned by full `sha`; bumping it is a deliberate change.
-- `tools/forgejo/` is the source of truth for the CLI bundled with the Forgejo dashboard, feedback and roadmap skills, and with the Codex PR-flow plugin (`plugins/pr-flow-codex/forgejo/`). After changing `src/` or `cli/`, run `bash tools/forgejo/sync-skills.sh` and keep the generated copies in the change. `sync.test.mts` checks that each package is in sync.
+- `tools/forgejo/` is the source of truth for the CLI bundled with the `kit` plugin (`plugins/kit/tools/forgejo/`, shared by the Forgejo dashboard, feedback and roadmap skills) and with the Codex PR-flow plugin (`plugins/pr-flow-codex/forgejo/`). After changing `src/` or `cli/`, run `bash tools/forgejo/sync-skills.sh` and keep the generated copies in the change. `sync.test.mts` checks that each package is in sync.
