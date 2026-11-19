@@ -5,10 +5,10 @@ import { API, failure, ok, provider } from './helpers.mts'
 
 const KEY = `POST ${API}/pulls/42/merge`
 
-test('U71: mergePull шлёт POST /merge с Do', async () => {
+test('U71: mergePull шлёт POST /merge с Do и удалением ветки после слияния, как кнопка в UI', async () => {
   const { instance, calls } = provider({ [KEY]: ok('') })
   await instance.mergePull(42, 'squash', 'abc123')
-  assert.equal(calls[0].init?.body, JSON.stringify({ Do: 'squash', head_commit_id: 'abc123' }))
+  assert.equal(calls[0].init?.body, JSON.stringify({ Do: 'squash', head_commit_id: 'abc123', delete_branch_after_merge: true }))
 })
 
 test('U72: отказ сервера (4xx) пробрасывается, 5xx и сбой сети — статус слияния неизвестен', async () => {

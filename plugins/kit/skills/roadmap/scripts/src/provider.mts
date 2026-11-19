@@ -110,7 +110,7 @@ export function createForgejo(deps: ProviderDeps): ForgeProvider {
     },
     mergePull: async (number, method, headSha) => {
       try {
-        await call('POST', `${repoPath}/pulls/${number}/merge`, { Do: method, head_commit_id: headSha })
+        await call('POST', `${repoPath}/pulls/${number}/merge`, { Do: method, head_commit_id: headSha, delete_branch_after_merge: true })
       } catch (error) {
         if (rejectedByServer(error)) throw error
         throw new PublishUnknownError(`${(error as Error).message}; статус слияния неизвестен — проверьте PR ${number} через pr get перед повтором`)
