@@ -223,7 +223,8 @@ Run it after step 5 or 6, and after any other completed work (including a merge)
 1. Run `pr route <N>` again (changes nothing).
 2. Check the local state: `git status --short` and `git log origin/<headRef>..HEAD` (in the worktree if one was used). `pr route` sees only the server, so unpushed work must be reported before the status is trusted.
 3. Run `pr threads <N>` and collect the threads with `resolved: false`, whoever left them (a person or a review bot). Forgejo has no public API to resolve a conversation, so this skill never resolves threads, not its own answered ones nor a bot's: replying is as far as it goes. Unresolved threads block the merge, so they are reported (see «Unresolved dialogs» below).
-4. Branch by the new `status` and `action`:
+4. Show the dashboard: invoke the `kit:forgejo-pr-dashboard` skill and output its table in full, exactly as that skill describes. This is what the user sees after the work instead of a bare recalculated status: it also shows the neighbours in the stack and what each PR waits for now. Do it before anything else is said; the notes of the steps below (unpushed work, unresolved dialogs, the link, the offers) follow the table.
+5. Branch by the new `status` and `action`:
 
 | New state | What to do |
 |---|---|
@@ -231,7 +232,7 @@ Run it after step 5 or 6, and after any other completed work (including a merge)
 | `есть замечания`, `конфликт`, `упал CI` | Say what is left in one or two lines and ask with AskUserQuestion «Продолжить разбор?»; yes → back to step 2 |
 | `готов к слиянию` (`action: merge`) | Offer the merge exactly as in the table of step 1 |
 | `action: merge-blocked` | Say that #`<stackParent>` has to be merged first |
-| anything else | One line with the status |
+| anything else | Nothing more: the dashboard already shows the status |
 
 ### Unresolved dialogs
 
