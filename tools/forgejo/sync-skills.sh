@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
-# Copies tools/forgejo/{src,cli} into kit skills and the Codex PR-flow plugin; --check only compares.
-# Overrides for tests: FORGEJO_SYNC_SRC, FORGEJO_SYNC_SKILLS, FORGEJO_SYNC_CODEX.
+# Copies tools/forgejo/{src,cli} into the kit plugin (one copy shared by all its Forgejo skills) and the Codex PR-flow plugin; --check only compares.
+# Overrides for tests: FORGEJO_SYNC_SRC, FORGEJO_SYNC_KIT, FORGEJO_SYNC_CODEX.
 set -euo pipefail
 
 SRC="${FORGEJO_SYNC_SRC:-$(cd "$(dirname "$0")" && pwd)}"
-SKILLS_ROOT="${FORGEJO_SYNC_SKILLS:-$SRC/../../plugins/kit/skills}"
-SKILLS=(forgejo-pr-dashboard forgejo-pr-feedback roadmap)
-DESTINATIONS=()
-for skill in "${SKILLS[@]}"; do
-  DESTINATIONS+=("$SKILLS_ROOT/$skill/scripts")
-done
+DESTINATIONS=("${FORGEJO_SYNC_KIT:-$SRC/../../plugins/kit/tools/forgejo}")
 DESTINATIONS+=("${FORGEJO_SYNC_CODEX:-$SRC/../../plugins/pr-flow-codex/forgejo}")
 MODE="${1:-sync}"
 status=0
