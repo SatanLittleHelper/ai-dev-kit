@@ -1,4 +1,4 @@
-import type { CiStatus, Comment, ForgeProvider, PullRequest, Reply, Review, ReviewDraft, Thread } from '../src/types.mts'
+import type { MergeMethod, CiStatus, Comment, ForgeProvider, PullRequest, Reply, Review, ReviewDraft, Thread } from '../src/types.mts'
 
 export interface FakeData {
   me: string
@@ -8,18 +8,22 @@ export interface FakeData {
   reviews?: Record<number, Review[]>
   threads?: Record<number, { threads: Thread[]; general: Comment[] }>
   publishReviewError?: Error
+  mergeError?: Error
   publishRepliesError?: Error
 }
 
 export type FakeProvider = ForgeProvider & {
+  merged: Array<{ number: number; method: MergeMethod; headSha: string }>
   published: Array<{ number: number; draft: ReviewDraft }>
   replied: Array<{ number: number; replies: Reply[] }>
 }
 
 export function fakeProvider(data: FakeData): FakeProvider {
+  const merged: FakeProvider['merged'] = []
   const published: FakeProvider['published'] = []
   const replied: FakeProvider['replied'] = []
   return {
+    merged,
     published,
     replied,
     currentUser: async () => data.me,
@@ -43,6 +47,10 @@ export function fakeProvider(data: FakeData): FakeProvider {
     publishReplies: async (number, replies) => {
       if (data.publishRepliesError) throw data.publishRepliesError
       replied.push({ number, replies })
+    },
+    mergePull: async (number, method, headSha) => {
+      if (data.mergeError) throw data.mergeError
+      merged.push({ number, method, headSha })
     },
     pullRef: number => `refs/pull/${number}/head`,
   }

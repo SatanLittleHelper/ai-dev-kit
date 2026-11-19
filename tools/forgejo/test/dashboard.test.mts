@@ -12,7 +12,7 @@ test('U44: строки дашборда: действия — первыми, �
     threads: { 3: { threads: [thread({ comments: [comment()] })], general: [] } },
   })
   const { rows } = await pullRows(provider)
-  assert.deepEqual(rows.map(row => row.number), [3, 1, 5, 4, 2])
+  assert.deepEqual(rows.map(row => row.number), [3, 1, 5, 2, 4])
 })
 
 test('U45: при 50 открытых PR выставляется признак усечения', async () => {

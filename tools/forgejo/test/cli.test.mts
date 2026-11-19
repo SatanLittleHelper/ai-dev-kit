@@ -154,3 +154,40 @@ test('U63: pr files печатает список файлов PR', async () => 
   assert.equal(await h.exec('pr', 'files', '42'), 0)
   assert.deepEqual(JSON.parse(h.out.join('\n')), ['docs/a/roadmap-state.json'])
 })
+
+test('U70: pr route печатает действие для PR', async () => {
+  const h = harness({ pulls: [pull({ number: 42 })], reviews: { 42: [review()] } })
+  assert.equal(await h.exec('pr', 'route', '42'), 0)
+  const result = JSON.parse(h.out.join('\n'))
+  assert.deepEqual([result.action, result.baseRef, result.stackParent], ['merge', 'main', null])
+})
+
+test('U73: pr merge без --confirm — dry-run, ничего не вливает', async () => {
+  const h = harness({ pulls: [pull({ number: 42 })], reviews: { 42: [review()] } })
+  assert.equal(await h.exec('pr', 'merge', '42'), 0)
+  assert.deepEqual(JSON.parse(h.out.join('\n')), { dryRun: true, action: 'merge', pull: 42, base: 'main', method: 'merge', ci: 'none' })
+  assert.deepEqual(h.fake.merged, [])
+})
+
+test('U74: pr merge --confirm --method squash вливает PR', async () => {
+  const h = harness({ pulls: [pull({ number: 42 })], reviews: { 42: [review()] } })
+  assert.equal(await h.exec('pr', 'merge', '42', '--method', 'squash', '--confirm'), 0)
+  assert.deepEqual(h.fake.merged, [{ number: 42, method: 'squash', headSha: 'h2' }])
+  assert.deepEqual(JSON.parse(h.out.join('\n')), { merged: true, pull: 42, method: 'squash' })
+})
+
+test('U75: pr merge отказывает, если PR сейчас нельзя влить', async () => {
+  const notReady = harness({ pulls: [pull({ number: 42 })] })
+  assert.equal(await notReady.exec('pr', 'merge', '42', '--confirm'), 1)
+  assert.match(notReady.err.join('\n'), /нельзя влить/)
+  const stacked = harness({ pulls: [pull({ number: 41, headRef: 'a' }), pull({ number: 42, headRef: 'b', baseRef: 'a' })], reviews: { 42: [review()] } })
+  assert.equal(await stacked.exec('pr', 'merge', '42', '--confirm'), 1)
+  assert.match(stacked.err.join('\n'), /сначала влейте #41/)
+  assert.deepEqual([...notReady.fake.merged, ...stacked.fake.merged], [])
+})
+
+test('U76: pr merge с неизвестным --method — код 2', async () => {
+  const h = harness({ pulls: [pull({ number: 42 })], reviews: { 42: [review()] } })
+  assert.equal(await h.exec('pr', 'merge', '42', '--method', 'fast', '--confirm'), 2)
+  assert.deepEqual(h.fake.merged, [])
+})

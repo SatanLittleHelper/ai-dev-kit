@@ -48,6 +48,7 @@ export interface Review {
   dismissed: boolean
 }
 
+export type MergeMethod = 'merge' | 'squash' | 'rebase'
 export type Verdict = 'approve' | 'request-changes' | 'comment'
 
 export interface ReviewDraft {
@@ -113,5 +114,6 @@ export interface ForgeProvider {
   listThreads(number: number): Promise<{ threads: Thread[]; general: Comment[] }>
   publishReview(number: number, draft: ReviewDraft): Promise<{ url: string }>
   publishReplies(number: number, replies: Reply[]): Promise<void>
+  mergePull(number: number, method: MergeMethod, headSha: string): Promise<void>
   pullRef(number: number): string
 }
