@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { actionOf, pullRows, routeOf, scenarioOf, stackParentOf, statusOf } from '../src/status.mts'
+import { actionOf, groupRows, pullRows, routeOf, scenarioOf, stackParentOf, statusOf } from '../src/status.mts'
 import type { PrData } from '../src/status.mts'
 import { fakeProvider } from './fake.mts'
 import { pull, review, comment, data, thread } from './helpers.mts'
@@ -90,4 +90,38 @@ test('U69: routeOf собирает действие, ветку и родите
     number: 2, url: 'https://git.example.org/team/app/pulls/2', isOwn: false, scenario: 'wait-author', status: 'готов к слиянию',
     ci: 'none', baseRef: 'a', headSha: 'h2', stackParent: 1, action: 'merge-blocked',
   })
+})
+
+test('U90: стек идёт цепочкой от корня к потомкам, даже если готов только последний PR', async () => {
+  const blocked = () => [review(), review({ id: 'x', author: 'carol', state: 'changes' })]
+  const provider = fakeProvider({
+    me: 'me',
+    pulls: [
+      pull({ number: 302, headRef: 'c', baseRef: 'b' }),
+      pull({ number: 300, headRef: 'a', baseRef: 'main' }),
+      pull({ number: 301, headRef: 'b', baseRef: 'a' }),
+    ],
+    reviews: { 300: blocked(), 301: blocked(), 302: [review()] },
+  })
+  const { rows } = await pullRows(provider)
+  assert.deepEqual(rows.map(row => row.number), [300, 301, 302])
+  assert.equal(rows[2].status, 'готов к слиянию')
+})
+
+test('U91: свой PR, готовый к слиянию и без родителя в стеке, — «требует действия»; готовый потомок, пока родитель не влит, — нет', async () => {
+  const approved = () => [review({ author: 'dave' })]
+  const blocked = () => [review({ author: 'dave' }), review({ id: 'x', author: 'carol', state: 'changes' })]
+  const provider = fakeProvider({
+    me: 'me',
+    pulls: [
+      pull({ number: 300, author: 'me', headRef: 'a', baseRef: 'main' }),
+      pull({ number: 301, author: 'me', headRef: 'b', baseRef: 'a' }),
+      pull({ number: 302, author: 'me', headRef: 'c', baseRef: 'b' }),
+    ],
+    reviews: { 300: approved(), 301: blocked(), 302: approved() },
+  })
+  const { rows } = await pullRows(provider)
+  const { due, waiting } = groupRows(rows)
+  assert.deepEqual(due.map(row => row.number), [300])
+  assert.deepEqual(waiting.map(row => row.number), [301, 302])
 })

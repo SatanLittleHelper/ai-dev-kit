@@ -34,7 +34,7 @@ Output is JSON on stdout:
 { "due": [Row], "waiting": [Row], "truncated": false }
 ```
 
-A `Row` has `number`, `title`, `author`, `isOwn`, `headRef`, `baseRef` (branch the PR merges into), `scenario`, `status`, `conflicted`, `ci` (`success` | `failure` | `pending` | `none`), `failedChecks` (names of the failed CI checks), `url` (link to the PR), `activity` (age of the last activity: «5 мин», «3 ч», «2 дн», or empty), `approvals` (number of active approvals), `stackParent` (number of the open PR this one is stacked on, or `null`). The CLI already sorts the rows: PRs that need the user's action first; inside each group the rows with status `готов к слиянию` come first in merge order (a parent before its stacked children, otherwise by number); then own PRs above others, then by number.
+A `Row` has `number`, `title`, `author`, `isOwn`, `headRef`, `baseRef` (branch the PR merges into), `scenario`, `status`, `conflicted`, `ci` (`success` | `failure` | `pending` | `none`), `failedChecks` (names of the failed CI checks), `url` (link to the PR), `activity` (age of the last activity: «5 мин», «3 ч», «2 дн», or empty), `approvals` (number of active approvals), `stackParent` (number of the open PR this one is stacked on, or `null`). The CLI already sorts the rows, and a stack always stays together as a chain from the root to its children (a parent above the PR stacked on it, even when only the last one is ready). Chains go in this order: those with PRs that need the user's action first, then those with a `готов к слиянию` PR, then those with own PRs, then by the number of the chain's root. Do not re-sort.
 
 ## Output
 
@@ -67,7 +67,7 @@ Answer in Russian. One markdown table per group, one row per PR, in the order of
 - CI cell by `ci`: `success` ✅, `failure` ❌, `pending` ⏳, `none` —.
 - Author cell: `вы` when `isOwn`, otherwise `author`. Activity cell: `activity` as given; empty → —.
 - Under a table, if some of its rows have `ci: failure` and non-empty `failedChecks`, one line «Упавшие проверки: #<number> — <failedChecks через запятую>»; several PRs go in one line separated by «; ». No such rows → no line.
-- Group headings come from `due` («Требует вашего действия») and `waiting` («Ждёт других») with the row count in brackets. Omit an empty group. Both empty → «Открытых PR нет.»
+- Group headings come from `due` («Требует вашего действия») and `waiting` («Ждёт других») with the row count in brackets. `due` also holds the user's own PR that is `готов к слиянию` and not stacked on an open parent: merging it is the user's action. A ready PR waiting for its parent stays in `waiting`. Omit an empty group. Both empty → «Открытых PR нет.»
 - `truncated: true` → add «Прочитано 50 открытых PR — это предел одного запроса; остальные смотрите по номеру».
 - Do not add recommendations or next steps the user did not ask for. To work on review comments of an own PR, the user invokes the `kit:forgejo-pr-feedback` skill.
 

@@ -222,7 +222,8 @@ Run it after step 5 or 6, and after any other completed work (including a merge)
 
 1. Run `pr route <N>` again (changes nothing).
 2. Check the local state: `git status --short` and `git log origin/<headRef>..HEAD` (in the worktree if one was used). `pr route` sees only the server, so unpushed work must be reported before the status is trusted.
-3. Branch by the new `status` and `action`:
+3. Run `pr threads <N>` and collect the threads with `resolved: false`, whoever left them (a person or a review bot). Forgejo has no public API to resolve a conversation, so this skill never resolves threads, not its own answered ones nor a bot's: replying is as far as it goes. Unresolved threads block the merge, so they are reported (see «Unresolved dialogs» below).
+4. Branch by the new `status` and `action`:
 
 | New state | What to do |
 |---|---|
@@ -231,6 +232,10 @@ Run it after step 5 or 6, and after any other completed work (including a merge)
 | `готов к слиянию` (`action: merge`) | Offer the merge exactly as in the table of step 1 |
 | `action: merge-blocked` | Say that #`<stackParent>` has to be merged first |
 | anything else | One line with the status |
+
+### Unresolved dialogs
+
+Applies when the PR is open and step 7.3 found unresolved threads, in any of the states above. Before the table's answer say, in Russian: «Для дальнейшей работы нужно закрыть все диалоги вручную (в Forgejo нельзя сделать это через API): <k> шт.», then list them as `<path>:<line> — @<author>` (a general comment has no place, write «общий»), and end with the link of the PR in the form of the next section, so the user can open it and press «Resolve». When a state needs a merge («готов к слиянию»), still offer the merge only after the dialogs are closed: tell that `pr merge` will refuse while any are open.
 
 ### Copy-ready link
 
