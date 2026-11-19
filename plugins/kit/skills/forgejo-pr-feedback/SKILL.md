@@ -10,7 +10,7 @@ description: >-
   proposes a fix (and a reply for every comment) and, when the PR has merge conflicts, merging the base branch into
   the PR branch and resolving them, gets the plan approved in Plannotator, then applies the approved
   fixes and posts the replies. For someone else's PR only shows an overview (description, status, CI, files, reviews,
-  discussion) and changes nothing. By the state of the PR it offers to merge a ready PR, opens the review page of someone else's PR waiting for review, or goes through the comments of the user's own PR. Never commits or pushes by itself.
+  discussion) and changes nothing. By the state of the PR it offers to merge a ready PR, opens the review page of someone else's PR waiting for review, or goes through the comments of the user's own PR. After the work is done it re-checks the PR status and offers the current action; for the user's own PR waiting for review it gives a link to forward to colleagues. Never commits or pushes by itself.
 ---
 
 # Forgejo PR Feedback
@@ -55,11 +55,11 @@ node <base>/scripts/cli/main.mts pr reply <N> --file <replies.json> [--confirm]
 
 | `action` | What to do |
 |---|---|
-| `merge` | Ask with AskUserQuestion «Влить #<N> в `<baseRef>`?»; when `ci` is `pending`, say in the question that CI is still running. Yes → `pr merge <N> --confirm` and report the result; any other answer → stop. Never merge without the explicit yes. Exit code 3: do not retry, run `pr get <N>` and report the state. |
+| `merge` | Ask with AskUserQuestion «Влить #<N> в `<baseRef>`?»; when `ci` is `pending`, say in the question that CI is still running. Yes → `pr merge <N> --confirm`, report the result, then step 7; any other answer → stop. Never merge without the explicit yes. Exit code 3: do not retry, run `pr get <N>` and report the state. |
 | `merge-blocked` | Tell that the PR is stacked on #`<stackParent>` and that one has to be merged first. Stop. |
 | `open-review` | Open `<url>/files` in the browser (`open "<url>/files"` on macOS, otherwise print the link), say in one line what was opened. Stop. |
-| `triage` | Own PR with comments, CI failure or conflict: continue with step 3 below and the steps 3–6 of this skill. |
-| `overview` | Go to «Overview» below and stop there; steps 3–6 apply to `triage` only. |
+| `triage` | Own PR with comments, CI failure or conflict: continue with step 3 below and the steps 3–7 of this skill. |
+| `overview` | Go to «Overview» below and stop there; steps 3–7 apply to `triage` only (the link of step 7 is the one thing «Overview» borrows). |
 
 3. (`triage` only) Run `pr get <N>`. The current git branch must equal `headRef` of the PR, because the fixes are applied in this working tree. If it does not, run `git status --short`:
    - Working tree is clean → switch yourself (`git fetch origin <headRef>` first if the branch is not local, then `git checkout <headRef>`). Then check `git branch --show-current` equals `headRef`; if the switch failed, show the git error and go to the blocked case below.
@@ -85,7 +85,14 @@ Run `pr ci <N>` too: it prints `{ "state", "failed" }` for the head commit, `fai
 
 ## 3. Assess every item
 
-For `thread` items read the code at `path` in the working tree (the branch is the PR head). Give each item exactly one class:
+For `thread` items read the code at `path` in the working tree (the branch is the PR head).
+
+Gather the context first, the plan is built from it:
+
+- the **whole comment** (for a thread, the whole conversation), not its first line;
+- for `thread` items, 3–5 lines of the current file around `path:position` from the working tree, with the target line marked `→`; if the file is gone, note «файл удалён в этом PR»; if the code differs from what the comment saw (`stale`), show the current code and mark it «код изменился с момента комментария».
+
+Give each item exactly one class:
 
 | Class | Meaning | Reply |
 |---|---|---|
@@ -128,33 +135,66 @@ A CI item has no reply to post.
 
 ## 4. Plan and approval
 
-Write the plan to `tmp/drafts/forgejo-pr-feedback-<N>.md` (absolute path, in Russian). One section per item, in the order of `pr feedback`:
+Write the plan to `tmp/drafts/forgejo-pr-feedback-<N>.md` (absolute path, in Russian). The plan has three layers: a summary on top, groups by action, then one card per item. The reader must see what was written and what code it is about before reading your verdict.
+
+### Layer 1. Summary
+
+Starts the file. A header with counters and a table with one row per item:
 
 ```
-## 1 · <path>:<position> — <author>
-> <first line of the quote>
-**Оценка:** <class> — <reason with the code reference>
-**Правка:** <concrete change, or «не требуется»>
+# PR #<N> · <k> замечаний · <m> CI · конфликт
+Правим код: <a> · Только ответ: <b> · Ничего не меняем: <c>
+
+| # | Где | Кто | Класс | Что делаем |
+|---|-----|-----|-------|------------|
+| 1 | <path>:<line> | @<author> | valid | <the change in a few words> |
+| 2 | <path or «общий»> | @<author> | question | ответить |
+| CI | <check> | | valid | <the change in a few words> |
+```
+
+Leave out «· <m> CI» and «· конфликт» when there are none.
+
+### Layer 2. Groups
+
+Group the cards in this order, skip empty groups, each group is a `##` heading with the number of items:
+
+1. `## Конфликт` — first, because the merge changes the code the comments refer to.
+2. `## Правим код` — `valid`, and `todo` items the user asked to do now.
+3. `## Только ответ` — `invalid`, `question`, `out-of-scope`, `todo` without a code change.
+4. `## CI` — one card per failed check.
+
+Inside a group keep the order of `pr feedback`.
+
+### Layer 3. Cards
+
+Comment and code first, the verdict after:
+
+````markdown
+### <n> · <path>:<line> · @<author> · `<class>`
+> <the whole comment; for a thread the whole conversation, each reply as its own quote line with the author>
+
+Код сейчас (`<path>:<from>-<to>`):
+```<lang>
+<3–5 lines around the place, the target line starts with →>
+```
+**Правка:**
+```diff
+<exact change>
+```
+**Почему:** <one line, cites what you read: file:line>
 **Ответ:** <the reply text that will be posted>
-```
+````
 
-The conflict item goes first, before the comments (the merge changes the code the comments refer to):
+Rules: «Правка» exists only for items with a code change; for `invalid`, `question`, `out-of-scope` the card is comment, code, «Почему», «Ответ». «Почему» is one line, not a paragraph.
 
-```
-## Конфликт · <headRef> ← <baseRef>
-**Файлы:** <conflicted files>
-**Предложение:** влить `origin/<baseRef>` в `<headRef>` и решить конфликты
-**Решение:** <per file: what to keep and why>
-```
+### Special cases
 
-CI items go after the comments, one section each, without a reply:
-
-```
-## CI · <check name>
-**Причина:** <what the output says, with the command that was run>
-**Оценка:** <class> — <reason>
-**Правка:** <concrete change, or «не требуется»>
-```
+- `stale`: mark «код изменился с момента комментария» under the heading and show the current code, not the line of the old commit. Already fixed → class `valid`, «Правка» is «не требуется», «Почему» says where it is fixed.
+- File of `path` deleted: instead of the code block write «файл удалён в этом PR».
+- `disagree`: the quote holds the whole thread, «Ответ» answers the new point only.
+- `issue` and `review` items have no code: the card is heading `### <n> · общий комментарий · @<author> · <class>`, the quote, «Почему», «Ответ».
+- CI card: heading `### CI · <check name> · \`<class>\``; instead of the quote «Что упало:» (the command that was run and the essence of its output), then «Правка» (or «перезапустить CI» for `flaky`) and «Почему». No «Ответ».
+- Conflict card: heading `### Конфликт · <headRef> ← <baseRef>`; «Файлы:» the conflicted files; «Решение:» per file what to keep and why; «Предложение:» влить `origin/<baseRef>` в `<headRef>` и решить конфликты. No «Ответ».
 
 Open it for approval with the `plannotator-annotate` skill (tool `plannotator` if available, otherwise `plannotator annotate <absolute path> --gate --json` in the background). Wait for the final decision; an empty output or a polling timeout is not a result.
 
@@ -166,7 +206,7 @@ Open it for approval with the `plannotator-annotate` skill (tool `plannotator` i
 
 If the conflict item is approved, do it first. Before merging check that `git branch --show-current` equals `headRef` (in the worktree if one was created in step 1.3); if not, repeat the switch from step 1.3 and never merge into another branch. Then `git merge --no-commit --no-ff origin/<baseRef>`, resolve the conflicted files as approved, `git add` them, check that no markers are left (`git diff --check`, grep for `<<<<<<<`). Leave the merge uncommitted (`MERGE_HEAD` stays); the user commits it. Then apply the other items on top of the merged code. Resolution that differs from the plan, or a file the plan did not list → stop and ask.
 
-Make the changes of items with `valid` (comments and CI items; and the `todo` items the user asked to do) in the working tree. Do not touch anything outside the approved plan. Show a short summary of the changes. **Do not commit or push** (this includes the merge commit): ask the user separately and follow the project's own rules for commits.
+Make the changes of items with `valid` (comments and CI items; and the `todo` items the user asked to do) in the working tree. Do not touch anything outside the approved plan. Show a short summary of the changes. **Do not commit or push** (this includes the merge commit): ask the user separately and follow the project's own rules for commits. If step 6 has nothing to post, go to step 7.
 
 ## 6. Post the replies
 
@@ -174,7 +214,33 @@ Make the changes of items with `valid` (comments and CI items; and the `todo` it
 2. Dry run: `pr reply <N> --file <path>`. Show the printed payload to the user in chat and ask for confirmation with AskUserQuestion.
 3. Confirmed → run the same command with `--confirm`.
 4. Exit code 3 means the post may or may not have gone through: do **not** retry. Run `pr threads <N>`, check which replies are already there and report it to the user.
-5. Delete the files in `tmp/drafts/` created by this skill.
+5. Delete the files in `tmp/drafts/` created by this skill, then step 7.
+
+## 7. What next
+
+Run it after step 5 or 6, and after any other completed work (including a merge). The state of the PR changed: after the replies are posted the PR leaves `есть замечания`, so the earlier action is no longer the right one.
+
+1. Run `pr route <N>` again (changes nothing).
+2. Check the local state: `git status --short` and `git log origin/<headRef>..HEAD` (in the worktree if one was used). `pr route` sees only the server, so unpushed work must be reported before the status is trusted.
+3. Branch by the new `status` and `action`:
+
+| New state | What to do |
+|---|---|
+| `ждём ревью` (own PR) | Output the **copy-ready link** (see below). When there are uncommitted or unpushed changes, say first «Ревьюеры пока не видят правки: они не запушены» and leave the push to the user, following the project's rules. Never commit or push yourself |
+| `есть замечания`, `конфликт`, `упал CI` | Say what is left in one or two lines and ask with AskUserQuestion «Продолжить разбор?»; yes → back to step 2 |
+| `готов к слиянию` (`action: merge`) | Offer the merge exactly as in the table of step 1 |
+| `action: merge-blocked` | Say that #`<stackParent>` has to be merged first |
+| anything else | One line with the status |
+
+### Copy-ready link
+
+Whenever the status of the user's own PR is `ждём ревью` (after step 7 and in «Overview» alike), the last line of the answer is the link in a form that can be forwarded to colleagues as is:
+
+```
+[#<N> <title>](<url>)
+```
+
+Nothing after that line.
 
 ## Overview
 
@@ -187,7 +253,7 @@ Read-only; used for the `overview` action (any PR that has nothing to merge, rev
 5. Reviews: `<author> — <approved ✅ | changes 🔴 | comment 💬 | pending ⏳>` and a short quote of `body`; skip dismissed.
 6. Discussion: unresolved threads (`<path>:<line> — <author>: <first line of the last comment>`), the number of resolved ones, then general comments.
 
-No plan, no Plannotator, no fixes, no replies, no recommendations.
+No plan, no Plannotator, no fixes, no replies, no recommendations. The one exception is the copy-ready link of step 7: when the PR is the user's own and its `status` is `ждём ревью`, finish with that link.
 
 ## Errors
 
