@@ -4,7 +4,7 @@ export const REVIEW_STATES: Record<string, Review['state']> = { APPROVED: 'appro
 export const EVENTS: Record<Verdict, string> = { approve: 'APPROVED', 'request-changes': 'REQUEST_CHANGES', comment: 'COMMENT' }
 
 type RawUser = { login: string } | null
-export interface RawPull { number: number; title: string; body?: string; user: RawUser; head: { ref: string; sha: string; repo?: { full_name?: string } | null }; base: { ref: string }; state: string; merged?: boolean; mergeable?: boolean; html_url: string; updated_at?: string }
+export interface RawPull { number: number; title: string; body?: string; user: RawUser; head: { ref: string; sha: string; repo?: { full_name?: string } | null }; base: { ref: string; repo?: { full_name?: string } | null }; state: string; merged?: boolean; mergeable?: boolean; html_url: string; updated_at?: string }
 export interface RawReview { id: number; user: RawUser; state: string; body?: string; commit_id: string; submitted_at: string | null; dismissed?: boolean; html_url?: string }
 export interface RawReviewComment { id: number; user: RawUser; body: string; created_at: string; path: string; position: number; commit_id: string; pull_request_review_id: number; resolver?: RawUser }
 export interface RawIssueComment { id: number; user: RawUser; body: string; created_at: string }
@@ -13,12 +13,18 @@ export function login(user: RawUser): string {
   return user?.login ?? ''
 }
 
+// PR из форка: head-репозиторий отличается от base (удалённый форк — тоже форк). Без данных о base-репозитории считаем, что форка нет.
+function isFork(raw: RawPull): boolean {
+  const base = raw.base.repo?.full_name
+  return Boolean(base) && raw.head.repo?.full_name?.toLowerCase() !== base?.toLowerCase()
+}
+
 export function toPull(raw: RawPull): PullRequest {
   const state = raw.state === 'closed' ? 'closed' : 'open'
   const merged = Boolean(raw.merged)
   return {
     number: raw.number, title: raw.title, body: raw.body ?? '', author: login(raw.user), headRef: raw.head.ref, headSha: raw.head.sha,
-    baseRef: raw.base.ref, state, merged, url: raw.html_url, conflicted: state === 'open' && !merged && raw.mergeable === false, updatedAt: raw.updated_at ?? '',
+    baseRef: raw.base.ref, state, merged, url: raw.html_url, conflicted: state === 'open' && !merged && raw.mergeable === false, updatedAt: raw.updated_at ?? '', fromFork: isFork(raw),
   }
 }
 

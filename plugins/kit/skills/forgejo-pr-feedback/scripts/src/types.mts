@@ -11,6 +11,7 @@ export interface PullRequest {
   url: string
   conflicted: boolean
   updatedAt: string
+  fromFork: boolean
 }
 
 export interface CiStatus {

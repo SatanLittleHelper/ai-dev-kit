@@ -47,7 +47,7 @@ export const READ_ROUTES = {
 }
 
 export const pull = (over: Partial<PullRequest> = {}): PullRequest => ({
-  number: 1, title: 'Заголовок', body: '', author: 'bob', headRef: 'feature', headSha: 'h2', baseRef: 'main', state: 'open', merged: false, url: 'https://git.example.org/team/app/pulls/1', conflicted: false, updatedAt: '2026-10-01T10:00:00Z', ...over,
+  number: 1, title: 'Заголовок', body: '', author: 'bob', headRef: 'feature', headSha: 'h2', baseRef: 'main', state: 'open', merged: false, url: 'https://git.example.org/team/app/pulls/1', conflicted: false, updatedAt: '2026-10-01T10:00:00Z', fromFork: false, ...over,
 })
 export const review = (over: Partial<Review> = {}): Review => ({
   id: 'r1', author: 'me', state: 'approved', body: '', commitSha: 'h2', submittedAt: '2026-10-01T10:00:00Z', dismissed: false, ...over,
