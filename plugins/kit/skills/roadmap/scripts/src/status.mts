@@ -4,7 +4,7 @@ export const PULL_LIMIT = 50
 const PULL_CONCURRENCY = 4
 
 export type Scenario = 'closed' | 'conflict' | 'ci-failed' | 'feedback' | 'none-own' | 'review' | 'recheck' | 'wait-author'
-export type Status = 'влит' | 'закрыт' | 'конфликт' | 'упал CI' | 'есть замечания' | 'на проверке' | 'перепроверка' | 'готов к слиянию' | 'ждём автора' | 'ждём ревью'
+export type Status = 'влит' | 'закрыт' | 'конфликт' | 'упал CI' | 'есть замечания' | 'на проверке' | 'перепроверка' | 'готов к слиянию' | 'закройте диалоги' | 'ждём автора' | 'ждём ревью'
 
 export const ACTIONABLE: readonly Scenario[] = ['feedback', 'conflict', 'ci-failed', 'review', 'recheck']
 
@@ -158,12 +158,18 @@ export function stackParentOf(pull: PullRequest, pulls: readonly PullRequest[]):
   return pull.state !== 'open' ? null : pulls.find(other => other.number !== pull.number && other.state === 'open' && !other.fromFork && other.headRef === pull.baseRef)?.number ?? null
 }
 
-function readyToMerge(data: PrData): boolean {
+// Одобрен, CI не красный, без конфликта и без запроса изменений; открытые диалоги здесь не учитываются.
+function approvedAndClean(data: PrData): boolean {
   const active = activeReviews(data)
-  return !data.pull.conflicted && data.ci.state !== 'failure' && active.some(review => review.state === 'approved' && !same(review.author, data.pull.author)) && !active.some(review => review.state === 'changes') && live(data).threads.every(thread => thread.resolved)
+  return !data.pull.conflicted && data.ci.state !== 'failure' && active.some(review => review.state === 'approved' && !same(review.author, data.pull.author)) && !active.some(review => review.state === 'changes')
+}
+
+function readyToMerge(data: PrData): boolean {
+  return approvedAndClean(data) && live(data).threads.every(thread => thread.resolved)
 }
 
 const READY: Status = 'готов к слиянию'
+const RESOLVE: Status = 'закройте диалоги'
 
 function depthOf(row: ListRow, byNumber: ReadonlyMap<number, ListRow>): number {
   const seen = new Set<number>([row.number])
@@ -183,6 +189,8 @@ export function statusOf(data: PrData, scenario: Scenario): Status {
   if (scenario === 'review') return 'на проверке'
   if (scenario === 'recheck') return 'перепроверка'
   if (readyToMerge(data)) return READY
+  // Свой PR уже одобрен, но слиянию мешают открытые диалоги: закрыть их может только сам автор вручную, ревьюеры тут ни при чём.
+  if (scenario === 'none-own' && approvedAndClean(data)) return RESOLVE
   return scenario === 'wait-author' ? 'ждём автора' : 'ждём ревью'
 }
 
@@ -239,9 +247,9 @@ function stackOrder(rows: readonly ListRow[]): ListRow[] {
   return { rows: sorted, truncated: pulls.length >= PULL_LIMIT }
 }
 
-// «Требует действия»: сценарий из ACTIONABLE, а также свой PR, который уже можно влить (готов и не стоит на открытом родителе): слить его — действие пользователя.
+// «Требует действия»: сценарий из ACTIONABLE, свой PR с открытыми диалогами при готовом остальном, а также свой PR, который уже можно влить (готов и не стоит на открытом родителе): слить его — действие пользователя.
 export function isDue(row: ListRow): boolean {
-  return ACTIONABLE.includes(row.scenario) || (row.isOwn && row.status === READY && row.stackParent === null)
+  return ACTIONABLE.includes(row.scenario) || (row.isOwn && row.status === RESOLVE) || (row.isOwn && row.status === READY && row.stackParent === null)
 }
 
 export function groupRows(rows: readonly ListRow[]): { due: ListRow[]; waiting: ListRow[] } {

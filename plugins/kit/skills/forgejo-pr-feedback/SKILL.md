@@ -61,6 +61,8 @@ node <base>/scripts/cli/main.mts pr reply <N> --file <replies.json> [--confirm]
 | `triage` | Own PR with comments, CI failure or conflict: continue with step 3 below and the steps 3–7 of this skill. |
 | `overview` | Go to «Overview» below and stop there; steps 3–7 apply to `triage` only (the link of step 7 is the one thing «Overview» borrows). |
 
+Stacked PRs: once the parent PR is merged, Forgejo itself retargets the PRs stacked on it to `main` (the base branch). Never suggest or ask the user to change the base branch of such a PR, never call it an action for the user, and do not describe a leftover old `baseRef` as a problem: the status already says what is really left (for example open dialogs).
+
 3. (`triage` only) Run `pr get <N>`. The current git branch must equal `headRef` of the PR, because the fixes are applied in this working tree. If it does not, run `git status --short`:
    - Working tree is clean → switch yourself (`git fetch origin <headRef>` first if the branch is not local, then `git checkout <headRef>`). Then check `git branch --show-current` equals `headRef`; if the switch failed, show the git error and go to the blocked case below.
    - Working tree has uncommitted changes (a diff), or the switch is blocked for another reason (the branch is checked out in another worktree, checkout error) → do not switch in place. Ask the user with AskUserQuestion whether to create a git worktree for `headRef` (e.g. `git worktree add ../<repo>-pr-<N> <headRef>`). Created → do all the following steps in the worktree directory. Declined → stop.
@@ -229,6 +231,7 @@ Run it after step 5 or 6, and after any other completed work (including a merge)
 |---|---|
 | `ждём ревью` (own PR) | Output the **copy-ready link** (see below). When there are uncommitted or unpushed changes, say first «Ревьюеры пока не видят правки: они не запушены» and leave the push to the user, following the project's rules. Never commit or push yourself |
 | `есть замечания`, `конфликт`, `упал CI` | Say what is left in one or two lines and ask with AskUserQuestion «Продолжить разбор?»; yes → back to step 2 |
+| `закройте диалоги` | Follow «Unresolved dialogs» below: list the open dialogs and the link of the PR; nothing else to do until the user closes them |
 | `готов к слиянию` (`action: merge`) | Offer the merge exactly as in the table of step 1 |
 | `action: merge-blocked` | Say that #`<stackParent>` has to be merged first |
 | anything else | One line with the status |
