@@ -45,6 +45,9 @@ export interface ListRow {
   failedChecks: string[]
   url: string
   activity: string
+  baseRef: string
+  approvals: number
+  stackParent: number | null
 }
 
 const MINUTE_MS = 60_000
@@ -140,12 +143,36 @@ export function scenarioOf(data: PrData): Scenario {
   return answered ? 'recheck' : 'wait-author'
 }
 
-function readyToMerge(data: PrData): boolean {
-  const { reviews, threads } = live(data)
+function activeReviews(data: PrData): Review[] {
   const latest = new Map<string, Review>()
-  for (const review of [...reviews].sort((a, b) => Date.parse(a.submittedAt) - Date.parse(b.submittedAt))) latest.set(review.author.toLowerCase(), review)
-  const active = [...latest.values()].filter(review => !review.dismissed)
-  return data.ci.state !== 'failure' && active.some(review => review.state === 'approved') && !active.some(review => review.state === 'changes') && threads.every(thread => thread.resolved)
+  for (const review of [...live(data).reviews].sort((a, b) => Date.parse(a.submittedAt) - Date.parse(b.submittedAt))) latest.set(review.author.toLowerCase(), review)
+  return [...latest.values()].filter(review => !review.dismissed)
+}
+
+function approvalsOf(data: PrData): number {
+  return activeReviews(data).filter(review => review.state === 'approved' && !same(review.author, data.pull.author)).length
+}
+
+// Родитель в стеке — открытый PR, чья head-ветка равна base этого PR. PR из форка с head=base (main→main) родителем не считается.
+export function stackParentOf(pull: PullRequest, pulls: readonly PullRequest[]): number | null {
+  return pull.state !== 'open' ? null : pulls.find(other => other.number !== pull.number && other.state === 'open' && other.headRef === pull.baseRef && other.headRef !== other.baseRef)?.number ?? null
+}
+
+function readyToMerge(data: PrData): boolean {
+  const active = activeReviews(data)
+  return !data.pull.conflicted && data.ci.state !== 'failure' && active.some(review => review.state === 'approved' && !same(review.author, data.pull.author)) && !active.some(review => review.state === 'changes') && live(data).threads.every(thread => thread.resolved)
+}
+
+const READY: Status = 'готов к слиянию'
+
+function depthOf(row: ListRow, byNumber: ReadonlyMap<number, ListRow>): number {
+  const seen = new Set<number>([row.number])
+  let depth = 0
+  for (let parent = row.stackParent; parent !== null && !seen.has(parent); parent = byNumber.get(parent)?.stackParent ?? null) {
+    seen.add(parent)
+    depth++
+  }
+  return depth
 }
 
 export function statusOf(data: PrData, scenario: Scenario): Status {
@@ -155,7 +182,7 @@ export function statusOf(data: PrData, scenario: Scenario): Status {
   if (scenario === 'ci-failed') return 'упал CI'
   if (scenario === 'review') return 'на проверке'
   if (scenario === 'recheck') return 'перепроверка'
-  if (readyToMerge(data)) return 'готов к слиянию'
+  if (readyToMerge(data)) return READY
   return scenario === 'wait-author' ? 'ждём автора' : 'ждём ревью'
 }
 
@@ -166,14 +193,58 @@ export async function pullRows(provider: ForgeProvider, now: number = Date.now()
     const batch = await Promise.all(pulls.slice(at, at + PULL_CONCURRENCY).map(async pull => {
       const data = await loadPr(provider, pull.number, pull)
       const scenario = scenarioOf(data)
-      return { number: pull.number, title: pull.title, author: pull.author, isOwn: same(pull.author, data.me), headRef: pull.headRef, scenario, status: statusOf(data, scenario), conflicted: pull.conflicted, ci: data.ci.state, failedChecks: data.ci.failed, url: pull.url, activity: activityOf(pull.updatedAt, now) }
+      const status = statusOf(data, scenario)
+      const stackParent = stackParentOf(pull, pulls)
+      return {
+        number: pull.number, title: pull.title, author: pull.author, isOwn: same(pull.author, data.me), headRef: pull.headRef, scenario, status,
+        conflicted: pull.conflicted, ci: data.ci.state, failedChecks: data.ci.failed, url: pull.url, activity: activityOf(pull.updatedAt, now),
+        baseRef: pull.baseRef, approvals: approvalsOf(data), stackParent,
+      }
     }))
     rows.push(...batch)
   }
+  const byNumber = new Map(rows.map(row => [row.number, row]))
+  const depth = new Map(rows.map(row => [row.number, depthOf(row, byNumber)]))
   const rank = (row: ListRow) => (ACTIONABLE.includes(row.scenario) ? 0 : 1)
-  return { rows: rows.sort((a, b) => rank(a) - rank(b) || Number(b.isOwn) - Number(a.isOwn) || a.number - b.number), truncated: pulls.length >= PULL_LIMIT }
+  const ready = (row: ListRow) => row.status === READY
+  const sorted = [...rows].sort((a, b) =>
+    rank(a) - rank(b) ||
+    Number(!ready(a)) - Number(!ready(b)) ||
+    (ready(a) ? (depth.get(a.number) ?? 0) - (depth.get(b.number) ?? 0) : Number(b.isOwn) - Number(a.isOwn)) ||
+    a.number - b.number)
+  return { rows: sorted, truncated: pulls.length >= PULL_LIMIT }
 }
 
 export function groupRows(rows: readonly ListRow[]): { due: ListRow[]; waiting: ListRow[] } {
   return { due: rows.filter(row => ACTIONABLE.includes(row.scenario)), waiting: rows.filter(row => !ACTIONABLE.includes(row.scenario)) }
+}
+
+export type Action = 'merge' | 'merge-blocked' | 'open-review' | 'triage' | 'overview'
+
+export interface Route {
+  number: number
+  url: string
+  isOwn: boolean
+  scenario: Scenario
+  status: Status
+  ci: CiStatus['state']
+  baseRef: string
+  headSha: string
+  stackParent: number | null
+  action: Action
+}
+
+export function actionOf(scenario: Scenario, status: Status, isOwn: boolean, stackParent: number | null): Action {
+  if (status === READY) return stackParent === null ? 'merge' : 'merge-blocked'
+  if (isOwn) return scenario === 'feedback' || scenario === 'conflict' || scenario === 'ci-failed' ? 'triage' : 'overview'
+  return scenario === 'review' || scenario === 'recheck' ? 'open-review' : 'overview'
+}
+
+export async function routeOf(provider: ForgeProvider, number: number): Promise<Route> {
+  const [data, pulls] = await Promise.all([loadPr(provider, number), provider.listPulls('open')])
+  const scenario = scenarioOf(data)
+  const status = statusOf(data, scenario)
+  const isOwn = same(data.pull.author, data.me)
+  const stackParent = stackParentOf(data.pull, pulls)
+  return { number, url: data.pull.url, isOwn, scenario, status, ci: data.ci.state, baseRef: data.pull.baseRef, headSha: data.pull.headSha, stackParent, action: actionOf(scenario, status, isOwn, stackParent) }
 }

@@ -1,14 +1,16 @@
 import { resolveConfig, TOKEN_ENV } from '../src/config.mts'
 import type { Config } from '../src/config.mts'
-import { groupRows, intakeItems, loadPr, pullRows } from '../src/status.mts'
+import { groupRows, intakeItems, loadPr, pullRows, routeOf } from '../src/status.mts'
 import { PublishUnknownError } from '../src/types.mts'
-import type { ForgeProvider, PullDraft } from '../src/types.mts'
+import type { ForgeProvider, PullDraft, MergeMethod } from '../src/types.mts'
 import { CliError, parseDraft, parsePullDraft, parseReplies } from './draft.mts'
 
 const USAGE_CODE = 2
 const UNKNOWN_STATUS_CODE = 3
 const FAILURE_CODE = 1
-const VALUE_FLAGS: readonly string[] = ['file', 'host', 'owner', 'repo', 'state', 'head']
+const MERGE_METHODS: readonly MergeMethod[] = ['merge', 'squash', 'rebase']
+const isMergeMethod = (value: unknown): value is MergeMethod => MERGE_METHODS.includes(value as MergeMethod)
+const VALUE_FLAGS: readonly string[] = ['file', 'host', 'owner', 'repo', 'state', 'head', 'method']
 const BOOLEAN_FLAGS: readonly string[] = ['confirm']
 const USAGE = `Использование:
   whoami
@@ -18,6 +20,8 @@ const USAGE = `Использование:
   pr files <N>
   pr get <N> | pr ci <N> | pr reviews <N> | pr threads <N> | pr feedback <N>
   pr dashboard
+  pr route <N>
+  pr merge <N> [--method merge|squash|rebase] [--confirm]
   pr review <N> --file draft.json [--confirm]
   pr reply <N> --file replies.json [--confirm]
 Репозиторий — из git remote origin или флагов --host --owner --repo. Токен — переменная FORGEJO_TOKEN или GITEA_TOKEN.`
@@ -91,13 +95,15 @@ async function execute(argv: string[], io: Io): Promise<void> {
   const confirm = args.flags.confirm === true
 
   const isWhoami = group === 'whoami'
-  const known = ['list', 'find', 'create', 'get', 'files', 'ci', 'reviews', 'threads', 'feedback', 'dashboard', 'review', 'reply']
+  const known = ['list', 'find', 'create', 'get', 'files', 'ci', 'reviews', 'threads', 'feedback', 'dashboard', 'route', 'merge', 'review', 'reply']
   if (!isWhoami && !(group === 'pr' && known.includes(command))) throw usageError('неизвестная команда')
   const number = ['list', 'find', 'create', 'dashboard'].includes(command) || isWhoami ? 0 : numberArg(target)
   const head = args.flags.head
   if (command === 'find' && (typeof head !== 'string' || !head.trim() || head.startsWith('--'))) {
     throw usageError('нужен --head <ветка>')
   }
+  const method = args.flags.method ?? 'merge'
+  if (command === 'merge' && !isMergeMethod(method)) throw usageError('--method: merge, squash или rebase')
   const pullDraft = command === 'create' ? parsePullDraft(fileArg(args, io)) : undefined
   if (pullDraft && !confirm) return print(io, { dryRun: true, action: 'create', payload: pullDraft })
   const draft = command === 'review' ? parseDraft(fileArg(args, io)) : undefined
@@ -122,6 +128,17 @@ async function execute(argv: string[], io: Io): Promise<void> {
   if (command === 'dashboard') {
     const { rows, truncated } = await pullRows(provider)
     return print(io, { ...groupRows(rows), truncated })
+  }
+  if (command === 'route') return print(io, await routeOf(provider, number))
+  if (command === 'merge') {
+    const route = await routeOf(provider, number)
+    if (route.action !== 'merge') {
+      const reason = route.action === 'merge-blocked' ? `сначала влейте #${route.stackParent}` : `статус «${route.status}»`
+      throw new CliError(`PR ${number} нельзя влить сейчас: ${reason}`, FAILURE_CODE)
+    }
+    if (!confirm) return print(io, { dryRun: true, action: 'merge', pull: number, base: route.baseRef, method, ci: route.ci })
+    await provider.mergePull(number, method as MergeMethod, route.headSha)
+    return print(io, { merged: true, pull: number, method })
   }
   if (!confirm) return print(io, { dryRun: true, action: command, pull: number, payload: draft ?? replies })
   if (draft) return print(io, { published: true, ...(await provider.publishReview(number, draft)) })

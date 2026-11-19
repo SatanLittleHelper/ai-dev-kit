@@ -10,14 +10,14 @@ description: >-
   proposes a fix (and a reply for every comment) and, when the PR has merge conflicts, merging the base branch into
   the PR branch and resolving them, gets the plan approved in Plannotator, then applies the approved
   fixes and posts the replies. For someone else's PR only shows an overview (description, status, CI, files, reviews,
-  discussion) and changes nothing. Never commits or pushes by itself.
+  discussion) and changes nothing. By the state of the PR it offers to merge a ready PR, opens the review page of someone else's PR waiting for review, or goes through the comments of the user's own PR. Never commits or pushes by itself.
 ---
 
 # Forgejo PR Feedback
 
 Turns review comments and CI failures on the user's own PR into an approved plan, then executes it: code fixes in the working tree and replies in the PR (CI failures get fixes only, no replies). Nothing is changed or posted before the plan is approved in Plannotator.
 
-For someone else's PR there is nothing to fix or reply to: the skill only shows an overview of it (see «Someone else's PR») and changes nothing.
+For someone else's PR there is nothing to fix or reply to: the skill only shows an overview of it (see «Overview») and changes nothing.
 
 ## Preconditions
 
@@ -33,6 +33,8 @@ Check these once, before the first CLI call. If one fails, tell the user in Russ
 
 ```bash
 node <base>/scripts/cli/main.mts whoami
+node <base>/scripts/cli/main.mts pr route <N>
+node <base>/scripts/cli/main.mts pr merge <N> [--method merge|squash|rebase] [--confirm]
 node <base>/scripts/cli/main.mts pr get <N>
 node <base>/scripts/cli/main.mts pr feedback <N>
 node <base>/scripts/cli/main.mts pr ci <N>
@@ -44,11 +46,22 @@ node <base>/scripts/cli/main.mts pr reply <N> --file <replies.json> [--confirm]
 
 `pr reply` without `--confirm` is a dry run: it validates the file and prints the payload, posting nothing.
 
-## 1. Pick the PR and check it is the user's own
+`pr merge` without `--confirm` is a dry run: it checks that the PR can be merged now and prints what would happen.
+
+## 1. Pick the PR and route it
 
 1. Take the PR number from the user. No number → ask once.
-2. `pr get <N>` and `whoami`. `author` of the PR must equal `login` (case-insensitive). Otherwise the PR is someone else's: go to «Someone else's PR» below and stop there; steps 3–6 apply to own PRs only.
-3. The current git branch must equal `headRef` of the PR, because the fixes are applied in this working tree. If it does not, run `git status --short`:
+2. `pr route <N>` prints `{ number, url, isOwn, scenario, status, ci, baseRef, stackParent, action }`. Branch by `action` and do not decide by yourself:
+
+| `action` | What to do |
+|---|---|
+| `merge` | Ask with AskUserQuestion «Влить #<N> в `<baseRef>`?»; when `ci` is `pending`, say in the question that CI is still running. Yes → `pr merge <N> --confirm` and report the result; any other answer → stop. Never merge without the explicit yes. Exit code 3: do not retry, run `pr get <N>` and report the state. |
+| `merge-blocked` | Tell that the PR is stacked on #`<stackParent>` and that one has to be merged first. Stop. |
+| `open-review` | Open `<url>/files` in the browser (`open "<url>/files"` on macOS, otherwise print the link), say in one line what was opened. Stop. |
+| `triage` | Own PR with comments, CI failure or conflict: continue with step 3 below and the steps 3–6 of this skill. |
+| `overview` | Go to «Overview» below and stop there; steps 3–6 apply to `triage` only. |
+
+3. (`triage` only) Run `pr get <N>`. The current git branch must equal `headRef` of the PR, because the fixes are applied in this working tree. If it does not, run `git status --short`:
    - Working tree is clean → switch yourself (`git fetch origin <headRef>` first if the branch is not local, then `git checkout <headRef>`). Then check `git branch --show-current` equals `headRef`; if the switch failed, show the git error and go to the blocked case below.
    - Working tree has uncommitted changes (a diff), or the switch is blocked for another reason (the branch is checked out in another worktree, checkout error) → do not switch in place. Ask the user with AskUserQuestion whether to create a git worktree for `headRef` (e.g. `git worktree add ../<repo>-pr-<N> <headRef>`). Created → do all the following steps in the worktree directory. Declined → stop.
 
@@ -163,9 +176,9 @@ Make the changes of items with `valid` (comments and CI items; and the `todo` it
 4. Exit code 3 means the post may or may not have gone through: do **not** retry. Run `pr threads <N>`, check which replies are already there and report it to the user.
 5. Delete the files in `tmp/drafts/` created by this skill.
 
-## Someone else's PR
+## Overview
 
-Read-only. Run `pr ci <N>`, `pr files <N>`, `pr reviews <N>`, `pr threads <N>` (the `pr get` result is already there). Answer in Russian, skipping empty sections:
+Read-only; used for the `overview` action (any PR that has nothing to merge, review or fix right now). Run `pr ci <N>`, `pr files <N>`, `pr reviews <N>`, `pr threads <N>` (the `pr get` result is already there). Answer in Russian, skipping empty sections:
 
 1. Header: `[#<N> <title>](<url>)` · `<author>` · `<headRef> → <baseRef>`.
 2. State: `открыт` / `влит` (`merged`) / `закрыт`; ` · конфликт` when `conflicted`; CI ✅ `success`, ❌ `failure` (+ names from `failed`), ⏳ `pending`, — `none`.

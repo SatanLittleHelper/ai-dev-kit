@@ -9,6 +9,12 @@ import type { ForgeProvider, ProviderDeps, Review } from './types.mts'
 const RECONCILE_ATTEMPTS = 3
 const RECONCILE_PAUSE_MS = 5000
 
+// Сервер явно отклонил запрос (4xx кроме 408): ничего не применено, ошибку можно показать как есть.
+function rejectedByServer(error: unknown): boolean {
+  const { status } = error as { status?: number }
+  return status !== undefined && status < 500 && status !== 408
+}
+
 export function createForgejo(deps: ProviderDeps): ForgeProvider {
   const { repoPath, call, paged } = createClient(deps)
   const me: { value?: Promise<string> } = {}
@@ -53,8 +59,7 @@ export function createForgejo(deps: ProviderDeps): ForgeProvider {
         }
         return { number: posted.number, url: posted.html_url }
       } catch (error) {
-        const { status } = error as { status?: number }
-        if (status !== undefined && status < 500 && status !== 408) throw error
+        if (rejectedByServer(error)) throw error
         const reason = error instanceof SyntaxError ? 'сервер вернул невалидный JSON' : (error as Error).message
         throw new PublishUnknownError(`${reason}; статус создания PR неизвестен — проверьте ветку через pr find перед повтором`)
       }
@@ -101,6 +106,14 @@ export function createForgejo(deps: ProviderDeps): ForgeProvider {
           }
           throw new Error(message)
         }
+      }
+    },
+    mergePull: async (number, method, headSha) => {
+      try {
+        await call('POST', `${repoPath}/pulls/${number}/merge`, { Do: method, head_commit_id: headSha })
+      } catch (error) {
+        if (rejectedByServer(error)) throw error
+        throw new PublishUnknownError(`${(error as Error).message}; статус слияния неизвестен — проверьте PR ${number} через pr get перед повтором`)
       }
     },
     pullRef: number => `refs/pull/${number}/head`,

@@ -34,7 +34,7 @@ Output is JSON on stdout:
 { "due": [Row], "waiting": [Row], "truncated": false }
 ```
 
-A `Row` has `number`, `title`, `author`, `isOwn`, `headRef`, `scenario`, `status`, `conflicted`, `ci` (`success` | `failure` | `pending` | `none`), `failedChecks` (names of the failed CI checks), `url` (link to the PR), `activity` (age of the last activity: «5 мин», «3 ч», «2 дн», or empty). The CLI already sorts the rows: PRs that need the user's action first, own PRs above others, then by number.
+A `Row` has `number`, `title`, `author`, `isOwn`, `headRef`, `baseRef` (branch the PR merges into), `scenario`, `status`, `conflicted`, `ci` (`success` | `failure` | `pending` | `none`), `failedChecks` (names of the failed CI checks), `url` (link to the PR), `activity` (age of the last activity: «5 мин», «3 ч», «2 дн», or empty), `approvals` (number of active approvals), `stackParent` (number of the open PR this one is stacked on, or `null`). The CLI already sorts the rows: PRs that need the user's action first; inside each group the rows with status `готов к слиянию` come first in merge order (a parent before its stacked children, otherwise by number); then own PRs above others, then by number.
 
 ## Output
 
@@ -43,21 +43,25 @@ Answer in Russian. One markdown table per group, one row per PR, in the order of
 ```
 Требует вашего действия (3)
 
-| PR | Статус | CI | Автор | Заголовок | Активность |
-|---|---|---|---|---|---|
-| [#297](https://forgejo.example/o/r/pulls/297) | 🔴 упал CI (мой) | ❌ | вы | Пересоздал страницу | 2 ч |
-| [#295](https://forgejo.example/o/r/pulls/295) | 💬 есть замечания (мой) | ✅ | вы | Исправил импорт | 1 дн |
-| [#290](https://forgejo.example/o/r/pulls/290) | 👀 на проверке | ⏳ | bob | Экспорт | 5 мин |
+| PR | Статус | CI | Одобрения | Ветка | Автор | Заголовок | Активность |
+|---|---|---|---|---|---|---|---|
+| [#297](https://forgejo.example/o/r/pulls/297) | 🔴 упал CI (мой) | ❌ | — | `fix-page` → `main` | вы | Пересоздал страницу | 2 ч |
+| [#295](https://forgejo.example/o/r/pulls/295) | 💬 есть замечания (мой) | ✅ | — | `fix-import` → `main` | вы | Исправил импорт | 1 дн |
+| [#290](https://forgejo.example/o/r/pulls/290) | 👀 на проверке | ⏳ | — | `export` → `main` | bob | Экспорт | 5 мин |
 
 Упавшие проверки: #297 — [CI] build and test / check (pull_request)
 
-Ждёт других (1)
+Ждёт других (2)
 
-| PR | Статус | CI | Автор | Заголовок | Активность |
-|---|---|---|---|---|---|
-| [#288](https://forgejo.example/o/r/pulls/288) | ⏳ ждём автора | ✅ | alice | Рефакторинг | 3 дн |
+| PR | Статус | CI | Одобрения | Ветка | Автор | Заголовок | Активность |
+|---|---|---|---|---|---|---|---|
+| [#288](https://forgejo.example/o/r/pulls/288) | ✅ готов к слиянию | ✅ | 2 ✅ | `refactor-a` → `main` | alice | Рефакторинг | 3 дн |
+| [#289](https://forgejo.example/o/r/pulls/289) | ✅ готов к слиянию · после #288 | ✅ | 1 ✅ | `refactor-b` → `refactor-a` | alice | Экспорт | 1 дн |
 ```
 
+- Branch cell: `` `<headRef>` → `<baseRef>` ``. Approvals cell: `<approvals> ✅`; `0` → —.
+- Status cell gets ` · после #<stackParent>` when `stackParent` is not null (after the conflict mark).
+- Do not reorder the rows: the CLI order is the merge order.
 - The PR cell is a link: `[#<number>](<url>)`.
 - Status cell: icon + `status` exactly as given + ` (мой)` when `isOwn` + ` · конфликт` when `conflicted`. Icons: `упал CI` 🔴, `есть замечания` 💬, `конфликт` ⚠️, `на проверке` 👀, `перепроверка` 🔁, `готов к слиянию` ✅, `ждём автора` ⏳, `ждём ревью` ⏳, `влит` 🟣, `закрыт` ⚫.
 - CI cell by `ci`: `success` ✅, `failure` ❌, `pending` ⏳, `none` —.
