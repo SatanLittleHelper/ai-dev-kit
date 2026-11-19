@@ -61,13 +61,14 @@ Answer in Russian. One markdown table per group, one row per PR, in the order of
 
 - Branch cell: `` `<headRef>` → `<baseRef>` ``. Approvals cell: `<approvals> ✅`; `0` → —.
 - Status cell gets ` · после #<stackParent>` when `stackParent` is not null (after the conflict mark).
+- When the parent of a stack is merged, Forgejo retargets the child PRs to `main` by itself. Never put «change the base branch» into the table, the comments or the next steps: it is not an action for the user.
 - Do not reorder the rows: the CLI order is the merge order.
 - The PR cell is a link: `[#<number>](<url>)`.
-- Status cell: icon + `status` exactly as given + ` (мой)` when `isOwn` + ` · конфликт` when `conflicted`. Icons: `упал CI` 🔴, `есть замечания` 💬, `конфликт` ⚠️, `на проверке` 👀, `перепроверка` 🔁, `готов к слиянию` ✅, `ждём автора` ⏳, `ждём ревью` ⏳, `влит` 🟣, `закрыт` ⚫.
+- Status cell: icon + `status` exactly as given + ` (мой)` when `isOwn` + ` · конфликт` when `conflicted`. Icons: `упал CI` 🔴, `есть замечания` 💬, `конфликт` ⚠️, `на проверке` 👀, `перепроверка` 🔁, `готов к слиянию` ✅, `закройте диалоги` 💬, `ждём автора` ⏳, `ждём ревью` ⏳, `влит` 🟣, `закрыт` ⚫.
 - CI cell by `ci`: `success` ✅, `failure` ❌, `pending` ⏳, `none` —.
 - Author cell: `вы` when `isOwn`, otherwise `author`. Activity cell: `activity` as given; empty → —.
 - Under a table, if some of its rows have `ci: failure` and non-empty `failedChecks`, one line «Упавшие проверки: #<number> — <failedChecks через запятую>»; several PRs go in one line separated by «; ». No such rows → no line.
-- Group headings come from `due` («Требует вашего действия») and `waiting` («Ждёт других») with the row count in brackets. `due` also holds the user's own PR that is `готов к слиянию` and not stacked on an open parent: merging it is the user's action. A ready PR waiting for its parent stays in `waiting`. Omit an empty group. Both empty → «Открытых PR нет.»
+- Group headings come from `due` («Требует вашего действия») and `waiting` («Ждёт других») with the row count in brackets. `due` also holds the user's own PR that is `закройте диалоги` (approved, CI fine, only open dialogs left: only the user can close them in Forgejo), and the user's own PR that is `готов к слиянию` and not stacked on an open parent: merging it is the user's action. A ready PR waiting for its parent stays in `waiting`. Omit an empty group. Both empty → «Открытых PR нет.»
 - `truncated: true` → add «Прочитано 50 открытых PR — это предел одного запроса; остальные смотрите по номеру».
 - Do not add recommendations or next steps the user did not ask for. To work on review comments of an own PR, the user invokes the `kit:forgejo-pr-feedback` skill.
 

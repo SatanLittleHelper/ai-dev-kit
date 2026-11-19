@@ -51,6 +51,13 @@ test('U36: чужой PR: «готов к слиянию» только при a
   assert.equal(verdict({ reviews: [review({ author: 'dave' })] })[1], 'на проверке')
 })
 
+test('U37a: свой PR с approve, но с открытыми диалогами, на которые уже ответили: «закройте диалоги», а не «ждём ревью»', () => {
+  const approve = review({ author: 'dave' })
+  const answered = thread({ comments: [comment({ author: 'bob' }), mine()] })
+  assert.deepEqual(verdict({ pull: pull({ author: 'me' }), reviews: [approve], threads: [answered] }), ['none-own', 'закройте диалоги'])
+  assert.equal(verdict({ pull: pull({ author: 'me' }), threads: [answered] })[1], 'ждём ревью')
+})
+
 test('U37: свой PR без замечаний: «готов к слиянию» при approve другого ревьюера, иначе «ждём ревью»', () => {
   const approve = review({ author: 'dave' })
   assert.equal(verdict({ pull: pull({ author: 'me' }), reviews: [approve] })[1], 'готов к слиянию')
