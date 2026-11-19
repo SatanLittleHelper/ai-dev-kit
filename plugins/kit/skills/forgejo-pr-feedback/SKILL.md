@@ -198,17 +198,18 @@ Rules: «Правка» exists only for items with a code change; for `invalid`,
 - CI card: heading `### CI · <check name> · \`<class>\``; instead of the quote «Что упало:» (the command that was run and the essence of its output), then «Правка» (or «перезапустить CI» for `flaky`) and «Почему». No «Ответ».
 - Conflict card: heading `### Конфликт · <headRef> ← <baseRef>`; «Файлы:» the conflicted files; «Решение:» per file what to keep and why; «Предложение:» влить `origin/<baseRef>` в `<headRef>` и решить конфликты. No «Ответ».
 
-Open it for approval with the `plannotator-annotate` skill (tool `plannotator` if available, otherwise `plannotator annotate <absolute path> --gate --json` in the background). Wait for the final decision; an empty output or a polling timeout is not a result.
+Open it for approval with the `plannotator-annotate` skill (tool `plannotator` with `action: "annotate"`, the absolute path as `target` and **`gate: true`** if available — without `gate: true` there is no Approve button; otherwise `plannotator annotate <absolute path> --gate --json` in the background). Wait for the final decision; an empty output or a polling timeout is not a result.
 
 - `annotated` → apply the annotations to the same file (same path) and open it again. An annotation «Looks good» on an item means: do it as proposed.
 - `approved` → go to step 5. Notes attached to an approval are guidance, not a request for another review.
 - `dismissed` → stop, change nothing.
+- «no feedback» / any answer without `approved`, `annotated` or `dismissed` → this is **not** approval (usually it was opened without `gate: true`). Reopen with `gate: true` / `--gate`; apply nothing until `approved`.
 
 ## 5. Apply the approved fixes
 
 If the conflict item is approved, do it first. Before merging check that `git branch --show-current` equals `headRef` (in the worktree if one was created in step 1.3); if not, repeat the switch from step 1.3 and never merge into another branch. Then `git merge --no-commit --no-ff origin/<baseRef>`, resolve the conflicted files as approved, `git add` them, check that no markers are left (`git diff --check`, grep for `<<<<<<<`). Leave the merge uncommitted (`MERGE_HEAD` stays); the user commits it. Then apply the other items on top of the merged code. Resolution that differs from the plan, or a file the plan did not list → stop and ask.
 
-Make the changes of items with `valid` (comments and CI items; and the `todo` items the user asked to do) in the working tree. Do not touch anything outside the approved plan. Show a short summary of the changes. **Do not commit or push** (this includes the merge commit): ask the user separately and follow the project's own rules for commits. If step 6 has nothing to post, go to step 7.
+Make the changes of items with `valid` (comments and CI items; and the `todo` items the user asked to do) in the working tree. Do not touch anything outside the approved plan. Show a short summary of the changes. **Do not commit or push** (this includes the merge commit): ask the user separately and follow the project's own rules for commits. Step 7 (with the dashboard) always follows, also when the only approved item was the conflict one and step 6 has nothing to post: the merge is left uncommitted and unpushed, so the dashboard still shows the server state (`конфликт`); say that right after the table.
 
 ## 6. Post the replies
 
@@ -220,7 +221,7 @@ Make the changes of items with `valid` (comments and CI items; and the `todo` it
 
 ## 7. What next
 
-Run it after step 5 or 6, and after any other completed work (including a merge). The state of the PR changed: after the replies are posted the PR leaves `есть замечания`, so the earlier action is no longer the right one.
+Run it after step 5 or 6 (including a resolved merge conflict, even though the merge is not committed yet), and after any other completed work (including a merge). The state of the PR changed: after the replies are posted the PR leaves `есть замечания`, so the earlier action is no longer the right one.
 
 1. Run `pr route <N>` again (changes nothing).
 2. Check the local state: `git status --short` and `git log origin/<headRef>..HEAD` (in the worktree if one was used). `pr route` sees only the server, so unpushed work must be reported before the status is trusted.
