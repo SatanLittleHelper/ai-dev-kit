@@ -112,7 +112,7 @@ chat message and not by `AskUserQuestion`.
    first, never a bulleted or comma-separated list; an explicit
    "cap exceeded" note naming the coupling for any block over 15 logic files; and the reason for
    the block order.
-2. **Open it** through the `plannotator-annotate` skill — the `plannotator` tool if available,
+2. **Open it** through the `plannotator-annotate` skill — the `plannotator` tool (`action: "annotate"`, **`gate: true`** — without it there is no Approve button) if available,
    otherwise the CLI with version history, run via `Bash` with `run_in_background: true`:
    ```bash
    env PLANNOTATOR_ANNOTATE_HISTORY=1 plannotator annotate <absolute-path> --gate --json
