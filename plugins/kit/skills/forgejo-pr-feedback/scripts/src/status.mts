@@ -203,20 +203,49 @@ export async function pullRows(provider: ForgeProvider, now: number = Date.now()
     }))
     rows.push(...batch)
   }
+  return { rows: stackOrder(rows), truncated: pulls.length >= PULL_LIMIT }
+}
+
+// Стек идёт цепочкой от корня к потомкам, а не россыпью: PR, который можно влить только после родителя, не поднимается выше него.
+// Цепочки между собой: сначала с требующими действия, затем с готовыми к слиянию, затем свои, затем по номеру корня.
+function stackOrder(rows: readonly ListRow[]): ListRow[] {
   const byNumber = new Map(rows.map(row => [row.number, row]))
   const depth = new Map(rows.map(row => [row.number, depthOf(row, byNumber)]))
-  const rank = (row: ListRow) => (ACTIONABLE.includes(row.scenario) ? 0 : 1)
-  const ready = (row: ListRow) => row.status === READY
-  const sorted = [...rows].sort((a, b) =>
-    rank(a) - rank(b) ||
-    Number(!ready(a)) - Number(!ready(b)) ||
-    (ready(a) ? (depth.get(a.number) ?? 0) - (depth.get(b.number) ?? 0) : Number(b.isOwn) - Number(a.isOwn)) ||
-    a.number - b.number)
+  const rootOf = (row: ListRow): ListRow => {
+    const seen = new Set<number>([row.number])
+    let current = row
+    while (current.stackParent !== null) {
+      const parent = byNumber.get(current.stackParent)
+      if (!parent || seen.has(parent.number)) break
+      seen.add(parent.number)
+      current = parent
+    }
+    return current
+  }
+  const chains = new Map<number, ListRow[]>()
+  for (const row of rows) {
+    const root = rootOf(row).number
+    chains.set(root, [...(chains.get(root) ?? []), row])
+  }
+  const key = (members: readonly ListRow[]) => ({
+    due: members.some(isDue) ? 0 : 1,
+    ready: members.some(row => row.status === READY) ? 0 : 1,
+    own: members.some(row => row.isOwn) ? 0 : 1,
+  })
+  return [...chains.entries()]
+    .map(([root, members]) => ({ root, members: [...members].sort((a, b) => (depth.get(a.number) ?? 0) - (depth.get(b.number) ?? 0) || a.number - b.number), key: key(members) }))
+    .sort((a, b) => a.key.due - b.key.due || a.key.ready - b.key.ready || (a.key.ready === 0 ? 0 : a.key.own - b.key.own) || a.root - b.root)
+    .flatMap(chain => chain.members)
   return { rows: sorted, truncated: pulls.length >= PULL_LIMIT }
 }
 
+// «Требует действия»: сценарий из ACTIONABLE, а также свой PR, который уже можно влить (готов и не стоит на открытом родителе): слить его — действие пользователя.
+export function isDue(row: ListRow): boolean {
+  return ACTIONABLE.includes(row.scenario) || (row.isOwn && row.status === READY && row.stackParent === null)
+}
+
 export function groupRows(rows: readonly ListRow[]): { due: ListRow[]; waiting: ListRow[] } {
-  return { due: rows.filter(row => ACTIONABLE.includes(row.scenario)), waiting: rows.filter(row => !ACTIONABLE.includes(row.scenario)) }
+  return { due: rows.filter(isDue), waiting: rows.filter(row => !isDue(row)) }
 }
 
 export type Action = 'merge' | 'merge-blocked' | 'open-review' | 'triage' | 'overview'
