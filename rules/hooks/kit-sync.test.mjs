@@ -172,3 +172,12 @@ test('K15: Codex — результат «всё установлено» кеш
   assert.ok(kit.checkCodexPlugins({ ...ctx2, now: NOW + 60_000 }));
   assert.equal(missing.calls.filter((c) => c.includes('codex plugin list')).length, 2);
 });
+
+import { renderOutput } from './kit-sync.js';
+
+test('renderOutput: claude gets a banner and model context, codex a plain message', () => {
+  const out = renderOutput('claude', ['ai-dev-kit: submodule отстаёт']);
+  assert.match(out.systemMessage, /ТРЕБУЕТСЯ ДЕЙСТВИЕ/);
+  assert.match(out.hookSpecificOutput.additionalContext, /submodule отстаёт/);
+  assert.deepEqual(renderOutput('codex', ['a', 'b']), { systemMessage: 'a\nb' });
+});
