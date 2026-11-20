@@ -1,0 +1,8 @@
+{
+  "name": "ai-dev-kit-jira",
+  "private": true,
+  "description": "Только для тестов plugins/kit/tools/jira: playwright-core. В рантайме CLI берёт его из ~/.config/ai-dev-kit/jira/.",
+  "devDependencies": {
+    "playwright-core": "1.55.0"
+  }
+}

@@ -22,10 +22,10 @@ Check these once, before the first CLI call. If one fails, tell the user in Russ
 
 ## The CLI
 
-`<base>` is the skill's base directory, shown as «Base directory for this skill» when this skill is loaded. Run:
+`<base>` is the skill's base directory, shown as «Base directory for this skill» when this skill is loaded. The CLI lives in the same plugin (`<base>/../../tools/forgejo`), there is no copy in the skill. Run:
 
 ```bash
-node <base>/scripts/cli/main.mts pr dashboard
+node <base>/../../tools/forgejo/cli/main.mts pr dashboard
 ```
 
 Output is JSON on stdout:
