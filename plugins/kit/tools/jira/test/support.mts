@@ -28,14 +28,14 @@ export function useFakeJira(): FakeJira {
 
 export const CREATE = ['create', '--title-file', 't.txt', '--body-file', 'b.txt']
 
-export function sandbox(fake: FakeJira, { title = 'Заголовок задачи', body = 'h3. Контекст\n* пункт\n' } = {}): Sandbox {
+export function sandbox(fake: FakeJira, { title = 'Заголовок задачи', body = 'h3. Контекст\n* пункт\n', jira = {} }: { title?: string; body?: string; jira?: Record<string, unknown> } = {}): Sandbox {
   const root = mkdtempSync(join(tmpdir(), 'jira-e2e-'))
   const cwd = join(root, 'project')
   const home = join(root, 'home')
   mkdirSync(join(cwd, '.claude'), { recursive: true })
   writeFileSync(join(cwd, '.claude', 'dev-conventions.json'), JSON.stringify({
     ticketPrefix: 'ABC',
-    jira: { baseUrl: fake.url, defaultIssueType: 'Task' },
+    jira: { baseUrl: fake.url, defaultIssueType: 'Task', ...jira },
   }))
   writeFileSync(join(cwd, 't.txt'), title)
   writeFileSync(join(cwd, 'b.txt'), body)

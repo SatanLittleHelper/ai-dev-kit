@@ -6,10 +6,12 @@ export interface JiraConfig {
   host: string
   ticketPrefix?: string
   defaultIssueType?: string
+  dryRun?: boolean
 }
 
 const CONFIG_FILE = join('.claude', 'dev-conventions.json')
 
+const flag = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined)
 const text = (value: unknown): string | undefined => (typeof value === 'string' && value.trim() ? value.trim() : undefined)
 
 export function loadConfig(cwd: string, readFile: (path: string) => string): JiraConfig {
@@ -20,7 +22,7 @@ export function loadConfig(cwd: string, readFile: (path: string) => string): Jir
   } catch {
     throw new CliError(`Не найден ${path}: запустите команду из корня проекта.`, EXIT.FAILURE)
   }
-  let json: { ticketPrefix?: unknown; jira?: { baseUrl?: unknown; defaultIssueType?: unknown } }
+  let json: { ticketPrefix?: unknown; jira?: { baseUrl?: unknown; defaultIssueType?: unknown; dryRun?: unknown } }
   try {
     json = JSON.parse(raw)
   } catch {
@@ -39,6 +41,7 @@ export function loadConfig(cwd: string, readFile: (path: string) => string): Jir
     host: url.host,
     ticketPrefix: text(json.ticketPrefix),
     defaultIssueType: text(json.jira?.defaultIssueType),
+    dryRun: flag(json.jira?.dryRun),
   }
 }
 
@@ -56,4 +59,9 @@ export function resolveIssueType(flag: string | undefined, config: JiraConfig): 
   const type = flag ?? config.defaultIssueType
   if (!type) throw new CliError('Не задан тип задачи: укажите --type или jira.defaultIssueType в .claude/dev-conventions.json.', EXIT.FAILURE)
   return type
+}
+
+// Флаг командной строки главнее настройки jira.dryRun; без обоих задача создаётся по-настоящему.
+export function resolveDryRun(flagValue: boolean | undefined, config: JiraConfig): boolean {
+  return flagValue ?? config.dryRun ?? false
 }

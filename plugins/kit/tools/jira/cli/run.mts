@@ -1,4 +1,4 @@
-import { loadConfig, resolveIssueType, resolveProject } from '../src/config.mts'
+import { loadConfig, resolveDryRun, resolveIssueType, resolveProject } from '../src/config.mts'
 import type { JiraConfig } from '../src/config.mts'
 import { CliError, EXIT } from '../src/errors.mts'
 import { launch, openJira, whenClosed, withSession } from '../src/browser.mts'
@@ -57,7 +57,9 @@ async function login(rest: string[], io: Io): Promise<number> {
 async function create(rest: string[], io: Io): Promise<number> {
   const config = loadConfig(io.cwd, io.readFile)
   const args = parseCreateArgs(rest, io.readFile)
-  const request = { ...args, project: resolveProject(args.project, config), type: resolveIssueType(args.type, config) }
+  const dryRun = resolveDryRun(args.dryRun, config)
+  if (dryRun && args.dryRun === undefined) io.err('Пробный запуск включён настройкой jira.dryRun; для настоящего создания добавьте --no-dry-run.')
+  const request = { ...args, dryRun, project: resolveProject(args.project, config), type: resolveIssueType(args.type, config) }
   return withProfile(io, config, async (pw, home) => {
     // Пробный запуск всегда с видимым окном и ждёт его закрытия; JIRA_HEADLESS=1 отключает это для автотестов.
     const headed = Boolean(request.dryRun) && io.env.JIRA_HEADLESS !== '1'
