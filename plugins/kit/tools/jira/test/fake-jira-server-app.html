@@ -1,0 +1,118 @@
+<!doctype html><meta charset="utf-8"><title>Fake Jira Server</title>
+<a id="create_link" role="button" href="#">Создать</a>
+<div id="flags"></div>
+<script>
+var DATA = __DATA__;
+var dialog = null;
+var values = {};
+var mode = DATA.serverVisualEditor ? 'wysiwyg' : 'source';
+function el(tag, attrs, text) {
+  var node = document.createElement(tag);
+  for (var name in attrs || {}) node.setAttribute(name, attrs[name]);
+  if (text) node.textContent = text;
+  return node;
+}
+// Подсказки как в Jira Server: без listbox с aria-busy, варианты — a[role=option] в блоке aui-list, каждый встречается дважды («недавние» и «все»).
+function suggest(id, label, search) {
+  var wrap = document.createElement('div');
+  var title = el('label', { 'for': id }, label);
+  title.appendChild(el('span', { 'class': 'visually-hidden' }, ' Обязательно'));
+  wrap.appendChild(title);
+  var input = el('input', { id: id, autocomplete: 'off' });
+  var list = el('div', { 'class': 'aui-list', id: id.replace(/-field$/, '') + '-suggestions' });
+  input.addEventListener('input', function () {
+    list.replaceChildren();
+    search(input.value.toLowerCase()).forEach(function (item) {
+      [1, 2].forEach(function () {
+        var option = el('a', { 'class': 'aui-list-item-link', role: 'option', href: '#' }, item.label);
+        option.onclick = function (event) { event.preventDefault(); input.value = item.label; values[id] = item.value; list.replaceChildren(); };
+        list.appendChild(option);
+      });
+    });
+  });
+  wrap.appendChild(input);
+  wrap.appendChild(list);
+  return wrap;
+}
+function renderEditor() {
+  var holder = dialog.querySelector('#editor');
+  var previous = dialog.querySelector('#description');
+  var text = previous ? previous.value : '';
+  holder.replaceChildren();
+  var area = el('textarea', { id: 'description' });
+  area.value = text;
+  if (mode === 'wysiwyg') {
+    area.style.display = 'none';
+    holder.appendChild(area);
+    holder.appendChild(el('div', { contenteditable: 'true', 'class': 'rte' }));
+  } else {
+    holder.appendChild(area);
+  }
+  Array.prototype.forEach.call(dialog.querySelectorAll('[data-mode]'), function (item) {
+    item.querySelector('button').setAttribute('aria-pressed', String(item.getAttribute('data-mode') === mode));
+  });
+}
+function showFlag(node) {
+  document.getElementById('flags').replaceChildren(node);
+}
+function openDialog() {
+  dialog = el('section', { id: 'create-issue-dialog', role: 'dialog', 'aria-labelledby': 'dialog-heading' });
+  dialog.appendChild(el('h2', { id: 'dialog-heading' }, 'Создание задачи'));
+  var filter = el('select', {});
+  filter.appendChild(el('option', {}, 'Все поля'));
+  dialog.appendChild(filter);
+  dialog.appendChild(suggest('project-field', 'Проект', function (q) {
+    return DATA.projects.filter(function (p) { return p.key.toLowerCase().indexOf(q) === 0 || p.name.toLowerCase().indexOf(q) >= 0; })
+      .map(function (p) { return { label: p.name + ' (' + p.key + ')', value: p.key }; });
+  }));
+  dialog.appendChild(suggest('issuetype-field', 'Тип задачи', function (q) {
+    return DATA.types.filter(function (t) { return t.toLowerCase().indexOf(q) >= 0; })
+      .map(function (t) { return { label: t, value: t }; });
+  }));
+  var summaryWrap = document.createElement('div');
+  summaryWrap.appendChild(el('label', { 'for': 'summary' }, 'Тема'));
+  summaryWrap.appendChild(el('input', { id: 'summary' }));
+  dialog.appendChild(summaryWrap);
+  var modes = el('ul', {});
+  [['wysiwyg', 'Визуальный'], ['source', 'Текст']].forEach(function (entry) {
+    var item = el('li', { 'data-mode': entry[0] });
+    var button = el('button', { type: 'button', 'aria-pressed': 'false' }, entry[1]);
+    button.onclick = function () { mode = entry[0]; renderEditor(); };
+    item.appendChild(button);
+    modes.appendChild(item);
+  });
+  dialog.appendChild(modes);
+  dialog.appendChild(el('div', { id: 'editor' }));
+  dialog.appendChild(suggest('assignee-field', 'Исполнитель', function (q) {
+    return DATA.users.filter(function (u) { return u.login.indexOf(q) >= 0 || u.name.toLowerCase().indexOf(q) >= 0; })
+      .map(function (u) { return { label: u.name + ' (' + u.login + ')', value: u.login }; });
+  }));
+  var me = el('button', { type: 'button', id: 'assign-to-me-trigger' }, 'Назначить меня');
+  me.onclick = function () {
+    values['assignee-field'] = DATA.currentUser.login;
+    dialog.querySelector('#assignee-field').value = DATA.currentUser.name;
+  };
+  dialog.appendChild(me);
+  var submit = el('input', { type: 'submit', id: 'create-issue-submit', value: 'Создать' });
+  submit.onclick = async function () {
+    var response = await fetch('/api/issue', {
+      method: 'POST',
+      body: JSON.stringify({
+        project: values['project-field'], type: values['issuetype-field'],
+        summary: dialog.querySelector('#summary').value, description: dialog.querySelector('#description').value,
+        assignee: values['assignee-field'],
+      }),
+    });
+    if (!response.ok) { showFlag(el('div', { role: 'alert', 'class': 'aui-message-error' }, 'Ошибка Jira: ' + response.status)); return; }
+    var created = await response.json();
+    var flag = el('div', { 'class': 'aui-flag', role: 'alert' });
+    flag.appendChild(el('a', { 'class': 'issue-created-key', href: '/browse/' + created.key }, created.key));
+    flag.appendChild(document.createTextNode(' создана'));
+    showFlag(flag);
+  };
+  dialog.appendChild(submit);
+  document.body.appendChild(dialog);
+  renderEditor();
+}
+document.getElementById('create_link').onclick = function (event) { event.preventDefault(); openDialog(); };
+</script>
