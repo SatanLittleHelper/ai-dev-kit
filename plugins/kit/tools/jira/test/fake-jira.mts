@@ -25,6 +25,8 @@ export interface FakeState {
   failMode: 'none' | 'noKey' | 'error'
   hideBrowse: boolean
   disableSubmit: boolean
+  flavor: 'cloud' | 'server'
+  serverVisualEditor: boolean
   issues: FakeIssue[]
   submits: number
 }
@@ -48,11 +50,14 @@ const defaultState = (): FakeState => ({
   failMode: 'none',
   hideBrowse: false,
   disableSubmit: false,
+  flavor: 'cloud',
+  serverVisualEditor: false,
   issues: [],
   submits: 0,
 })
 
 const APP_HTML = readFileSync(new URL('./fake-jira-app.html', import.meta.url), 'utf8')
+const SERVER_APP_HTML = readFileSync(new URL('./fake-jira-server-app.html', import.meta.url), 'utf8')
 
 const readBody = (req: IncomingMessage): Promise<string> => new Promise(resolve => {
   let data = ''
@@ -76,7 +81,7 @@ export async function startFakeJira(): Promise<FakeJira> {
         return
       }
       const data = JSON.stringify(state).replace(/</g, '\\u003c')
-      send(res, 200, 'text/html', APP_HTML.replace('__DATA__', () => data))
+      send(res, 200, 'text/html', (state.flavor === 'server' ? SERVER_APP_HTML : APP_HTML).replace('__DATA__', () => data))
       return
     }
     if (req.method === 'GET' && url.pathname === '/login') {

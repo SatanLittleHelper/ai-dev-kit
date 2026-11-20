@@ -39,15 +39,21 @@ const notFound = (field: string, value: string): CliError => new CliError(`По�
 
 async function choose(page: Page, field: Locator, value: string, accept: (label: string) => boolean, fieldName: string): Promise<void> {
   await field.fill(value)
-  await sel.listboxReady(page).waitFor({ state: 'attached' })
+  // У Jira Server при пустой выдаче варианты не появляются: таймаут ожидания значит «ничего не найдено», а не сбой.
+  await sel.listboxReady(page).waitFor({ state: 'attached' }).catch(() => undefined)
   const labels = (await sel.options(page).allInnerTexts()).map(label => label.trim())
   const index = labels.findIndex(accept)
   if (index < 0) throw notFound(fieldName, value)
   await sel.options(page).nth(index).click()
 }
 
-async function chooseType(dialog: Locator, type: string): Promise<void> {
+async function chooseType(page: Page, dialog: Locator, type: string): Promise<void> {
   const select = sel.field(dialog, 'Issue Type')
+  // В Jira Server тип выбирается в поле с подсказками, а не в нативном select.
+  if (await select.evaluate(node => node.tagName) !== 'SELECT') {
+    await choose(page, select, type, label => label === type, 'Тип задачи')
+    return
+  }
   const labels = (await select.locator('option').allInnerTexts()).map(label => label.trim())
   if (!labels.includes(type)) throw notFound('Тип задачи', type)
   await select.selectOption({ label: type })
@@ -78,7 +84,8 @@ async function submit(page: Page, dialog: Locator, context: CreateContext): Prom
   try {
     await sel.submitButton(dialog).click()
     await sel.createdLink(page).or(sel.errorAlert(page)).first().waitFor()
-    if (await sel.errorAlert(page).count() > 0) {
+    // Флаг успеха Jira Server тоже может иметь role="alert", поэтому ошибка — только когда ключа задачи нет.
+    if (await sel.createdLink(page).count() === 0 && await sel.errorAlert(page).count() > 0) {
       throw unknownState(`Jira показала ошибку после Create: ${(await sel.errorAlert(page).first().innerText()).trim()}.`)
     }
     const key = (await sel.createdLink(page).innerText()).trim()
@@ -101,7 +108,7 @@ export async function createIssue(page: Page, context: CreateContext, request: R
   await dialog.waitFor()
   context.progress(`Проект ${request.project}`)
   await choose(page, sel.field(dialog, 'Project'), request.project, label => label.endsWith(`(${request.project})`), 'Проект')
-  await chooseType(dialog, request.type)
+  await chooseType(page, dialog, request.type)
   await sel.field(dialog, 'Summary').fill(request.title)
   // Visual-редактор искажает Wiki Markup — вводим описание в режиме Text.
   await sel.tab(dialog, 'Text').click()
