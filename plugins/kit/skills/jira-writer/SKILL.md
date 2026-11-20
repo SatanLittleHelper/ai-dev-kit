@@ -129,7 +129,7 @@ Approval flow (no native Plan Mode; see `rules/skills/document-approval.md`):
 
 ## Creating the issue in Jira
 
-CLI: `node <base>/../../tools/jira/cli/main.mts <command>`, where `<base>` is this skill's «Base directory for this skill» (the tool lives in the same plugin, there is no copy in the skill). It reads `.claude/dev-conventions.json` of the current project: `jira.baseUrl` (required), `jira.defaultIssueType`, and `ticketPrefix` as the Jira project key. If `jira.baseUrl` is missing, ask the user for it once and save it under `jira.baseUrl`; never invent it.
+CLI: `node <base>/../../tools/jira/cli/main.mts <command>`, where `<base>` is this skill's «Base directory for this skill» (the tool lives in the same plugin, there is no copy in the skill). It reads `.claude/dev-conventions.json` of the current project: `jira.baseUrl` (required), `jira.defaultIssueType`, `jira.dryRun` and `ticketPrefix` as the Jira project key. If `jira.baseUrl` is missing, ask the user for it once and save it under `jira.baseUrl`; never invent it.
 
 The browser profile with the user's Jira session lives in `~/.config/ai-dev-kit/jira/<host>/` and is shared by all projects of this developer. Nothing from it is committed.
 
@@ -142,4 +142,4 @@ The browser profile with the user's Jira session lives in `~/.config/ai-dev-kit/
 5. **Exit codes:** `0` created; `1` configuration or usage error (read stderr, fix the input); `2` sign in required; `3` a field value was not found in Jira (the issue was NOT created: name the field and ask for another value); `4` the browser profile is busy with another run (wait and retry); `5` the state after pressing Create is unknown — **do not retry**, ask the user to check Jira for the issue before doing anything else.
 6. Delete the two temporary files after a successful run.
 
-**Dry run for debugging the scenario.** Add `--dry-run` to `create`: Chrome opens with a visible window, the form is filled in front of the user, Create is not pressed and nothing is saved; the command ends when the user closes the window and prints `{"dryRun":true,…}`. Use it when checking the CLI against a real project (or after a Jira update); never use it as a substitute for the explicit confirmation in step 2.
+**Dry run for debugging the scenario.** Add `--dry-run` to `create`: Chrome opens with a visible window, the form is filled in front of the user, Create is not pressed and nothing is saved; the command ends when the user closes the window and prints `{"dryRun":true,…}`. Use it when checking the CLI against a real project (or after a Jira update); never use it as a substitute for the explicit confirmation in step 2. `jira.dryRun: true` in `.claude/dev-conventions.json` makes every `create` a dry run by default (stderr says so); `--no-dry-run` overrides it for one real creation, and the command-line flag always wins over the setting. With `jira.dryRun` on, ask for the explicit «да» of step 2 and only then add `--no-dry-run`.

@@ -20,7 +20,7 @@ test('U18: полный набор флагов разбирается', () => {
     '--assignee', 'me', '--parent', 'KEY-12', '--sprint', 'Спринт 5', '--project', 'ABC',
   ], read)
   assert.deepEqual(args, {
-    title: 'Название задачи', body: 'h3. Контекст\n* пункт', dryRun: false, project: 'ABC', type: 'Task',
+    title: 'Название задачи', body: 'h3. Контекст\n* пункт', dryRun: undefined, project: 'ABC', type: 'Task',
     assignee: 'me', parent: 'KEY-12', sprint: 'Спринт 5',
   })
 })
@@ -53,10 +53,12 @@ test('U24: флаг без значения — ошибка использов�
   assert.throws(() => parseCreateArgs(['--title-file', file('t.txt'), '--body-file', file('b.txt'), '--assignee'], read), usage)
 })
 
-test('U25: флаг --dry-run булев, по умолчанию выключен', () => {
+test('U25: --dry-run включает пробный запуск, --no-dry-run выключает, без флагов значение не задано', () => {
   const base = ['--title-file', file('t.txt'), '--body-file', file('b.txt')]
   const on = parseCreateArgs(['--dry-run', '--type', 'Task', ...base], read)
   assert.equal(on.dryRun, true)
   assert.equal(on.type, 'Task')
-  assert.equal(parseCreateArgs(base, read).dryRun, false)
+  assert.equal(parseCreateArgs(base, read).dryRun, undefined)
+  assert.equal(parseCreateArgs(['--no-dry-run', ...base], read).dryRun, false)
+  assert.throws(() => parseCreateArgs(['--dry-run', '--no-dry-run', ...base], read), /нельзя использовать вместе/)
 })

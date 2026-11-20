@@ -3,14 +3,15 @@ import { CliError, EXIT } from '../src/errors.mts'
 export const USAGE = `Использование:
   login
   status
-  create --title-file <файл> --body-file <файл> [--type <тип>] [--project <код>] [--assignee me|<логин>] [--parent <KEY-N>] [--sprint <имя>] [--dry-run]
-Настройки — .claude/dev-conventions.json в текущем каталоге: jira.baseUrl, jira.defaultIssueType, ticketPrefix.
---dry-run заполняет форму в видимом окне, но не нажимает Create и ничего не сохраняет.`
+  create --title-file <файл> --body-file <файл> [--type <тип>] [--project <код>] [--assignee me|<логин>] [--parent <KEY-N>] [--sprint <имя>] [--dry-run | --no-dry-run]
+Настройки — .claude/dev-conventions.json в текущем каталоге: jira.baseUrl, jira.defaultIssueType, jira.dryRun, ticketPrefix.
+--dry-run заполняет форму в видимом окне, но не нажимает Create и ничего не сохраняет.
+jira.dryRun: true включает пробный запуск по умолчанию; --no-dry-run создаёт задачу по-настоящему, флаг главнее настройки.`
 
 interface CreateArgs {
   title: string
   body: string
-  dryRun: boolean
+  dryRun: boolean | undefined
   project?: string
   type?: string
   assignee?: string
@@ -19,7 +20,7 @@ interface CreateArgs {
 }
 
 const VALUE_FLAGS = ['title-file', 'body-file', 'type', 'project', 'assignee', 'parent', 'sprint']
-const SWITCH_FLAGS = ['dry-run']
+const SWITCH_FLAGS = ['dry-run', 'no-dry-run']
 
 export const usageError = (message: string): CliError => new CliError(`${message}\n${USAGE}`, EXIT.FAILURE)
 
@@ -39,6 +40,7 @@ export function parseCreateArgs(argv: string[], readFile: (path: string) => stri
     if (value === undefined) throw usageError(`у флага --${name} нет значения`)
     flags[name] = value
   }
+  if (switches.has('dry-run') && switches.has('no-dry-run')) throw usageError('--dry-run и --no-dry-run нельзя использовать вместе')
   const titlePath = flags['title-file']
   const bodyPath = flags['body-file']
   if (!titlePath) throw usageError('нужен --title-file')
@@ -48,7 +50,7 @@ export function parseCreateArgs(argv: string[], readFile: (path: string) => stri
   return {
     title,
     body: readInput(bodyPath, readFile).trimEnd(),
-    dryRun: switches.has('dry-run'),
+    dryRun: switches.has('dry-run') ? true : switches.has('no-dry-run') ? false : undefined,
     project: flags.project,
     type: flags.type,
     assignee: flags.assignee,

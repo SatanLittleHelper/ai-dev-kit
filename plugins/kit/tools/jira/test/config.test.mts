@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { issueUrl, loadConfig, resolveIssueType, resolveProject } from '../src/config.mts'
+import { issueUrl, loadConfig, resolveDryRun, resolveIssueType, resolveProject } from '../src/config.mts'
 import type { JiraConfig } from '../src/config.mts'
 import { CliError, EXIT } from '../src/errors.mts'
 
@@ -20,7 +20,7 @@ function project(content: string | null): string {
 
 const FULL = JSON.stringify({ ticketPrefix: 'ABC', jira: { baseUrl: 'https://jira.company.ru', defaultIssueType: 'Task' } })
 const failure = (pattern: RegExp) => (error: unknown) => error instanceof CliError && error.code === EXIT.FAILURE && pattern.test(error.message)
-const base: JiraConfig = { baseUrl: 'https://jira.company.ru', host: 'jira.company.ru', ticketPrefix: 'ABC', defaultIssueType: 'Task' }
+const base: JiraConfig = { baseUrl: 'https://jira.company.ru', host: 'jira.company.ru', ticketPrefix: 'ABC', defaultIssueType: 'Task', dryRun: undefined }
 
 test('U1: конфиг читается из dev-conventions.json', () => {
   assert.deepEqual(loadConfig(project(FULL), read), base)
@@ -67,4 +67,18 @@ test('U10: без флага тип берётся из defaultIssueType', () =>
 
 test('U11: нет ни флага, ни defaultIssueType — ошибка', () => {
   assert.throws(() => resolveIssueType(undefined, { ...base, defaultIssueType: undefined }), failure(/defaultIssueType|--type/))
+})
+
+test('U35: jira.dryRun читается из конфига только как булево значение', () => {
+  const withFlag = (value: unknown) => loadConfig(project(JSON.stringify({ jira: { baseUrl: 'https://jira.company.ru', dryRun: value } })), read).dryRun
+  assert.equal(withFlag(true), true)
+  assert.equal(withFlag(false), false)
+  assert.equal(withFlag('true'), undefined)
+})
+
+test('U36: флаг командной строки главнее jira.dryRun, без обоих — настоящее создание', () => {
+  assert.equal(resolveDryRun(undefined, { ...base, dryRun: true }), true)
+  assert.equal(resolveDryRun(false, { ...base, dryRun: true }), false)
+  assert.equal(resolveDryRun(true, { ...base, dryRun: false }), true)
+  assert.equal(resolveDryRun(undefined, base), false)
 })
