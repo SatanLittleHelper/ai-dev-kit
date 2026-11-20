@@ -10,7 +10,7 @@ Personal dev-conventions repo (`ai-dev-kit`), consumed by other projects three d
 - `rules/` — plain markdown, NOT skills, wired into a consuming project by adding it as a git submodule and importing one file from the project's own `CLAUDE.md`.
 - `mods/` — Claude Code plugins with UI and hooks (TypeScript), listed in `.claude-plugin/marketplace.json`; `setup.sh` enables them in a consuming project's `.claude/settings.json` via `mods/install-mods.sh`.
 - `defaults/` — kit-provided default values merged into a consuming project's `.claude/dev-conventions.json` (missing keys only, never overwriting, never secrets) by `defaults/install-dev-conventions.sh`, which `setup.sh` and the `update-ai-dev-kit` skill both call; currently the Codex backend profiles `codex` and `local`.
-- `tools/` — TypeScript tools with a CLI that skills call (no dependencies; Node 24 runs the `.mts` files directly). Currently `tools/forgejo/`: Forgejo/Gitea API and CLI for the `forgejo-pr-dashboard` and `forgejo-pr-feedback` skills. Skills ship as whole folders, so each carries its own copy of the CLI in `scripts/`.
+- `plugins/kit/tools/` — TypeScript tools with a CLI that skills call; one copy of each tool inside the `kit` plugin (no dependencies in the repo; Node 24 runs the `.mts` files directly). A skill calls a tool in place: `node <base>/../../tools/<name>/cli/main.mts`, where `<base>` is its «Base directory for this skill». Currently `forgejo/` (Forgejo/Gitea API and CLI for the `forgejo-pr-dashboard`, `forgejo-pr-feedback` and `roadmap` skills) and `jira/` (Playwright CLI `login` / `status` / `create` for `jira-writer`; `playwright-core` is installed at runtime into `~/.config/ai-dev-kit/jira/`, in the repo it is only a dev-dependency for the tests). The only extra copy is the Forgejo CLI inside the separate Codex plugin `plugins/pr-flow-codex/`, which cannot see the kit files.
 
 There is no application build or lint step here — the repo is markdown content, bash and Node scripts (`setup.sh`, `rules/build-agents-md.sh`, `rules/hooks/*`, `mods/*.sh`, `mods/*.js`, `defaults/install-dev-conventions.sh`) and the mods in `mods/`. The scripts have tests (`node --test`, see Commands). A mod's tests run with `claude plugin test mods/<name>`; validate with `claude plugin validate mods/<name>` and `claude plugin validate .` (marketplace).
 
@@ -41,10 +41,16 @@ node --test 'tests/*.test.mjs' 'mods/*.test.mjs' 'rules/hooks/*.test.mjs'
 claude plugin validate . && claude plugin validate plugins/kit
 ```
 
-Run the tests of the Forgejo tools, or re-copy the CLI into its skills after changing `tools/forgejo/src` or `tools/forgejo/cli`:
+Run the tests of the Forgejo tool, or re-copy its CLI into the Codex plugin after changing `plugins/kit/tools/forgejo/src` or `plugins/kit/tools/forgejo/cli`:
 ```bash
-node --test 'tools/forgejo/test/*.test.mts'
-bash tools/forgejo/sync-skills.sh
+node --test 'plugins/kit/tools/forgejo/test/*.test.mts'
+bash plugins/kit/tools/forgejo/sync-codex.sh
+```
+
+Run the tests of the Jira tool (needs Google Chrome and a one-time `npm install --prefix plugins/kit/tools/jira`); `create --dry-run` fills the form in a visible window without saving, for checking the scenario against a real Jira:
+```bash
+npm install --prefix plugins/kit/tools/jira
+node --test 'plugins/kit/tools/jira/test/*.test.mts'
 ```
 
 ## Project rules
@@ -52,4 +58,4 @@ bash tools/forgejo/sync-skills.sh
 - A new skill is just a folder in `plugins/kit/skills/` with a `SKILL.md` whose `name` equals the folder name (`tests/layout.test.mjs` checks it); there is nothing to register in `setup.sh`, the skill reaches the `kit` plugin by itself.
 - When adding a new mod under `mods/`, add it to `.claude-plugin/marketplace.json` (entry `name` equal to the mod's `plugin.json` name) and to the `BASE_PLUGINS` array in `setup.sh` — both lists are hardcoded, a forgotten entry silently excludes the mod. Never set `version` in a plugin manifest or marketplace entry: it freezes updates until the string changes.
 - Entries that Codex must see (`.agents/plugins/marketplace.json`, external entries in `.claude-plugin/marketplace.json`) use `./path`, `url` or `git-subdir` sources — never `github`, which Codex skips (`tests/layout.test.mjs` checks it). External plugins are pinned by full `sha`; bumping it is a deliberate change.
-- `tools/forgejo/` is the source of truth for the CLI bundled with the Forgejo dashboard, feedback and roadmap skills, and with the Codex PR-flow plugin (`plugins/pr-flow-codex/forgejo/`). After changing `src/` or `cli/`, run `bash tools/forgejo/sync-skills.sh` and keep the generated copies in the change. `sync.test.mts` checks that each package is in sync.
+- Every tool lives in `plugins/kit/tools/<name>/` and skills call it in place (`node <base>/../../tools/<name>/cli/main.mts`); never copy a tool into a skill's `scripts/`. The only exception is the Codex PR-flow plugin (`plugins/pr-flow-codex/forgejo/`), a separate plugin that cannot see the kit: after changing `plugins/kit/tools/forgejo/src` or `cli`, run `bash plugins/kit/tools/forgejo/sync-codex.sh` and keep the generated copy in the change; `plugins/kit/tools/forgejo/test/sync.test.mts` checks it.

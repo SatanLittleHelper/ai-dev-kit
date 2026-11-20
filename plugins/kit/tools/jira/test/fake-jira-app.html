@@ -1,0 +1,114 @@
+<!doctype html><meta charset="utf-8"><title>Fake Jira</title>
+<button id="open">Create</button>
+<div id="toast"></div>
+<script>
+var DATA = __DATA__;
+var dialog = null;
+var values = {};
+var mode = 'visual';
+function el(tag, attrs, text) {
+  var node = document.createElement(tag);
+  for (var name in attrs || {}) node.setAttribute(name, attrs[name]);
+  if (text) node.textContent = text;
+  return node;
+}
+function combo(id, label, search) {
+  var wrap = document.createElement('div');
+  wrap.appendChild(el('label', { 'for': id }, label));
+  var input = el('input', { id: id, role: 'combobox', autocomplete: 'off' });
+  input.addEventListener('input', function () {
+    var popup = dialog.querySelector('#popup');
+    popup.setAttribute('aria-busy', 'true');
+    popup.replaceChildren();
+    search(input.value.toLowerCase()).forEach(function (item) {
+      var option = el('li', { role: 'option' }, item.label);
+      option.onclick = function () { input.value = item.label; values[id] = item.value; popup.replaceChildren(); };
+      popup.appendChild(option);
+    });
+    popup.setAttribute('aria-busy', 'false');
+  });
+  wrap.appendChild(input);
+  return wrap;
+}
+function renderEditor() {
+  var holder = dialog.querySelector('#editor');
+  holder.replaceChildren();
+  if (mode === 'text') {
+    holder.appendChild(el('textarea', { 'aria-label': 'Description' }));
+  } else {
+    holder.appendChild(el('div', { id: 'ed', contenteditable: 'true', role: 'textbox', 'aria-label': 'Description' }));
+  }
+}
+function description() {
+  if (mode === 'text') return dialog.querySelector('textarea').value;
+  return dialog.querySelector('#ed').innerText.replace(/^h3\. /gm, '### ').replace(/^\* /gm, '• ');
+}
+function showAlert(message) {
+  document.body.appendChild(el('div', { role: 'alert' }, message));
+}
+function openDialog() {
+  dialog = el('div', { role: 'dialog', 'aria-label': 'Create Issue' });
+  dialog.appendChild(combo('f-project', 'Project', function (q) {
+    return DATA.projects.filter(function (p) { return p.key.toLowerCase().indexOf(q) === 0 || p.name.toLowerCase().indexOf(q) >= 0; })
+      .map(function (p) { return { label: p.name + ' (' + p.key + ')', value: p.key }; });
+  }));
+  var typeWrap = document.createElement('div');
+  typeWrap.appendChild(el('label', { 'for': 'f-type' }, 'Issue Type'));
+  var select = el('select', { id: 'f-type' });
+  DATA.types.forEach(function (t) { select.appendChild(el('option', {}, t)); });
+  typeWrap.appendChild(select);
+  dialog.appendChild(typeWrap);
+  var summaryWrap = document.createElement('div');
+  summaryWrap.appendChild(el('label', { 'for': 'f-summary' }, 'Summary'));
+  summaryWrap.appendChild(el('input', { id: 'f-summary' }));
+  dialog.appendChild(summaryWrap);
+  var tabs = el('div', { role: 'tablist' });
+  ['Visual', 'Text'].forEach(function (name) {
+    var tab = el('button', { role: 'tab', type: 'button' }, name);
+    tab.onclick = function () { mode = name.toLowerCase(); renderEditor(); };
+    tabs.appendChild(tab);
+  });
+  dialog.appendChild(tabs);
+  dialog.appendChild(el('div', { id: 'editor' }));
+  dialog.appendChild(combo('f-assignee', 'Assignee', function (q) {
+    return DATA.users.filter(function (u) { return u.login.indexOf(q) >= 0 || u.name.toLowerCase().indexOf(q) >= 0; })
+      .map(function (u) { return { label: u.name + ' (' + u.login + ')', value: u.login }; });
+  }));
+  var me = el('button', { type: 'button' }, 'Assign to me');
+  me.onclick = function () {
+    values['f-assignee'] = DATA.currentUser.login;
+    dialog.querySelector('#f-assignee').value = DATA.currentUser.name;
+  };
+  dialog.appendChild(me);
+  dialog.appendChild(combo('f-parent', 'Parent', function (q) {
+    return DATA.epics.filter(function (e) { return e.key.toLowerCase().indexOf(q) === 0; })
+      .map(function (e) { return { label: e.key + ' ' + e.title, value: e.key }; });
+  }));
+  dialog.appendChild(combo('f-sprint', 'Sprint', function (q) {
+    return DATA.sprints.filter(function (s) { return s.toLowerCase().indexOf(q) >= 0; })
+      .map(function (s) { return { label: s, value: s }; });
+  }));
+  dialog.appendChild(el('ul', { id: 'popup', role: 'listbox', 'aria-busy': 'false' }));
+  var submit = el('button', { type: 'button' }, 'Create');
+  submit.disabled = DATA.disableSubmit;
+  submit.onclick = async function () {
+    var response = await fetch('/api/issue', {
+      method: 'POST',
+      body: JSON.stringify({
+        project: values['f-project'], type: dialog.querySelector('#f-type').value,
+        summary: dialog.querySelector('#f-summary').value, description: description(),
+        assignee: values['f-assignee'], parent: values['f-parent'], sprint: values['f-sprint'],
+      }),
+    });
+    if (!response.ok) { showAlert('Ошибка Jira: ' + response.status); return; }
+    var created = await response.json();
+    var toast = document.getElementById('toast');
+    toast.setAttribute('role', 'status');
+    toast.replaceChildren(el('a', { href: '/browse/' + created.key }, created.key), document.createTextNode(' создана'));
+  };
+  dialog.appendChild(submit);
+  document.body.appendChild(dialog);
+  renderEditor();
+}
+document.getElementById('open').onclick = openDialog;
+</script>

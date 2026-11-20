@@ -10,7 +10,7 @@
 
 | Скилл | Что делает |
 |---|---|
-| `plugins/kit/skills/jira-writer` | Готовит русскоязычные черновики Jira-задач в Jira Wiki Markup (название, описание, критерии приёмки) для ручной вставки; черновик согласуется через Plannotator без Plan Mode |
+| `plugins/kit/skills/jira-writer` | Готовит русскоязычные черновики Jira-задач в Jira Wiki Markup (название, описание, критерии приёмки) для ручной вставки или создания задачи через `jira` CLI (Playwright, локальный профиль браузера, пробный запуск `--dry-run`); черновик согласуется через Plannotator без Plan Mode |
 | `plugins/kit/skills/roadmap` | Всё, что касается роадмапов — создание, продолжение, взятие чекпоинта, пакетная валидация шагов (см. `skills/roadmap/SKILL.md` и `skills/roadmap/references/`) |
 | `plugins/kit/skills/scaffolding-nestjs-app` | Скаффолдинг нового NestJS-приложения по личным конвенциям |
 | `plugins/kit/skills/testing-changes` | Ручное тестирование изменений ветки: анализ изменений и документов задачи, тест-план (пишется и сохраняется без согласования), запуск всех приложений проекта, тесты (`curl`, Playwright, веб-версия Max), остановка запущенного и отчёт через Plannotator; проектные настройки читаются из блока `testing` в `.claude/dev-conventions.json` |

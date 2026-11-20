@@ -4,11 +4,12 @@ description: >-
   Prepares concise Jira-ready Russian issue drafts (title, structured description,
   acceptance criteria). Use when the user asks for a Jira task, backlog item, bug,
   spike, technical task, acceptance criteria, or a paste-ready issue before implementation.
+  After approval it can also create the issue in Jira through the `jira` CLI of the kit.
 ---
 
 # Jira Writer
 
-Produces text for manual paste into Jira (no API). Convention mirrors a typical `jira-writer` agent role: short issue, verifiable acceptance criteria.
+Produces text for manual paste into Jira, or creates the issue itself through the `jira` CLI of the kit (Playwright over a local browser profile, no API token). Convention mirrors a typical `jira-writer` agent role: short issue, verifiable acceptance criteria.
 
 ## When to apply
 
@@ -124,4 +125,21 @@ Approval flow (no native Plan Mode; see `rules/skills/document-approval.md`):
 2. Open it with `plannotator annotate --gate --json` (version history on) and wait for the final decision.
 3. If annotation feedback comes back — revise the same file and reopen it.
 4. `dismissed` — stop, nothing is approved.
-5. Once approved as-is (no annotation feedback) — do NOT reprint the issue text in chat. The user already saw and approved the exact draft via Plannotator/the approval flow; repeating it in chat is a pure duplicate. Just move on to the next step (e.g. writing-plans).
+5. Once approved as-is (no annotation feedback) — do NOT reprint the issue text in chat. The user already saw and approved the exact draft via Plannotator/the approval flow; repeating it in chat is a pure duplicate. Next, offer to create the issue in Jira (see «Creating the issue in Jira»); if the user declines, or Jira is not configured, move on to the next step (e.g. writing-plans).
+
+## Creating the issue in Jira
+
+CLI: `node <base>/../../tools/jira/cli/main.mts <command>`, where `<base>` is this skill's «Base directory for this skill» (the tool lives in the same plugin, there is no copy in the skill). It reads `.claude/dev-conventions.json` of the current project: `jira.baseUrl` (required), `jira.defaultIssueType`, and `ticketPrefix` as the Jira project key. If `jira.baseUrl` is missing, ask the user for it once and save it under `jira.baseUrl`; never invent it.
+
+The browser profile with the user's Jira session lives in `~/.config/ai-dev-kit/jira/<host>/` and is shared by all projects of this developer. Nothing from it is committed.
+
+1. **Check the session:** `node <base>/../../tools/jira/cli/main.mts status`. Exit code `2` means the user must sign in once: tell them to run `! node <base>/../../tools/jira/cli/main.mts login` (it installs `playwright-core` on first use and opens Chrome; they sign in via SSO/2FA and close the window), then repeat `status`.
+2. **Ask before creating.** Creating an issue is visible to other people and cannot be undone by the CLI. Ask «Создать задачу в Jira сейчас?» (`AskUserQuestion`) and run `create` only after an explicit yes. Never create automatically after approval.
+3. **Split the approved draft into two files** under `tmp/drafts/`: the first fenced block (title) into `<issue-slug>.title.txt`, the second block (body, Jira Wiki Markup) into `<issue-slug>.body.txt`, without the fences.
+4. **Create:**
+   `node <base>/../../tools/jira/cli/main.mts create --title-file tmp/drafts/<issue-slug>.title.txt --body-file tmp/drafts/<issue-slug>.body.txt [--type <тип>] [--assignee me|<логин>] [--parent <KEY-N>] [--sprint "<имя>"] [--project <код>]`
+   Pass optional flags only when the user named the value. stdout is one line `{"key","url"}`; show the user the key and the link.
+5. **Exit codes:** `0` created; `1` configuration or usage error (read stderr, fix the input); `2` sign in required; `3` a field value was not found in Jira (the issue was NOT created: name the field and ask for another value); `4` the browser profile is busy with another run (wait and retry); `5` the state after pressing Create is unknown — **do not retry**, ask the user to check Jira for the issue before doing anything else.
+6. Delete the two temporary files after a successful run.
+
+**Dry run for debugging the scenario.** Add `--dry-run` to `create`: Chrome opens with a visible window, the form is filled in front of the user, Create is not pressed and nothing is saved; the command ends when the user closes the window and prints `{"dryRun":true,…}`. Use it when checking the CLI against a real project (or after a Jira update); never use it as a substitute for the explicit confirmation in step 2.

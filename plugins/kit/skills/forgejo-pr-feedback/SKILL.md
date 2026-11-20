@@ -29,19 +29,19 @@ Check these once, before the first CLI call. If one fails, tell the user in Russ
 
 ## The CLI
 
-`<base>` is the skill's base directory, shown as «Base directory for this skill» when this skill is loaded. All commands print JSON to stdout:
+`<base>` is the skill's base directory, shown as «Base directory for this skill» when this skill is loaded. The CLI lives in the same plugin (`<base>/../../tools/forgejo`), there is no copy in the skill. All commands print JSON to stdout:
 
 ```bash
-node <base>/scripts/cli/main.mts whoami
-node <base>/scripts/cli/main.mts pr route <N>
-node <base>/scripts/cli/main.mts pr merge <N> [--method merge|squash|rebase] [--confirm]
-node <base>/scripts/cli/main.mts pr get <N>
-node <base>/scripts/cli/main.mts pr feedback <N>
-node <base>/scripts/cli/main.mts pr ci <N>
-node <base>/scripts/cli/main.mts pr files <N>
-node <base>/scripts/cli/main.mts pr reviews <N>
-node <base>/scripts/cli/main.mts pr threads <N>
-node <base>/scripts/cli/main.mts pr reply <N> --file <replies.json> [--confirm]
+node <base>/../../tools/forgejo/cli/main.mts whoami
+node <base>/../../tools/forgejo/cli/main.mts pr route <N>
+node <base>/../../tools/forgejo/cli/main.mts pr merge <N> [--method merge|squash|rebase] [--confirm]
+node <base>/../../tools/forgejo/cli/main.mts pr get <N>
+node <base>/../../tools/forgejo/cli/main.mts pr feedback <N>
+node <base>/../../tools/forgejo/cli/main.mts pr ci <N>
+node <base>/../../tools/forgejo/cli/main.mts pr files <N>
+node <base>/../../tools/forgejo/cli/main.mts pr reviews <N>
+node <base>/../../tools/forgejo/cli/main.mts pr threads <N>
+node <base>/../../tools/forgejo/cli/main.mts pr reply <N> --file <replies.json> [--confirm]
 ```
 
 `pr reply` without `--confirm` is a dry run: it validates the file and prints the payload, posting nothing.
