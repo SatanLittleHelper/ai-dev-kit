@@ -174,7 +174,22 @@ function collectMessages(ctx) {
   return [checkSubmodule(ctx), pluginCheck(ctx), checkLegacy(ctx)].filter(Boolean);
 }
 
-module.exports = { checkSubmodule, checkClaudePlugins, checkCodexPlugins, checkLegacy, codexEnabledPlugins, collectMessages };
+// A bare systemMessage is a dim one-liner that is easy to miss. For Claude the message becomes a
+// framed banner, and the same text goes to the model as context so it opens its first reply with it.
+function renderOutput(agent, messages) {
+  if (agent === 'codex') return { systemMessage: messages.join('\n') };
+  const line = '━'.repeat(60);
+  const banner = [line, '⚠️  AI-DEV-KIT: ТРЕБУЕТСЯ ДЕЙСТВИЕ', line, ...messages.map((m) => `• ${m.replace(/^ai-dev-kit:\s*/, '')}`), line].join('\n');
+  return {
+    systemMessage: banner,
+    hookSpecificOutput: {
+      hookEventName: 'SessionStart',
+      additionalContext: `ai-dev-kit sync check found problems. Start your first reply to the user with a short, clearly visible warning (⚠️) listing them and the commands to fix, then continue with the user's request:\n${messages.join('\n')}`,
+    },
+  };
+}
+
+module.exports = { renderOutput, checkSubmodule, checkClaudePlugins, checkCodexPlugins, checkLegacy, codexEnabledPlugins, collectMessages };
 
 if (require.main === module) {
   try {
@@ -186,7 +201,7 @@ if (require.main === module) {
       agent, projectDir, claudeDir: process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude'), now: Date.now(), exec,
       cacheFile: path.join(home, '.cache', 'ai-dev-kit', 'kit-sync.json'),
     });
-    if (messages.length > 0) process.stdout.write(JSON.stringify({ systemMessage: messages.join('\n') }));
+    if (messages.length > 0) process.stdout.write(JSON.stringify(renderOutput(agent, messages)));
   } catch {
     // a broken check must never break the session start
   }
