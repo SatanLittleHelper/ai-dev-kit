@@ -15,6 +15,17 @@ Runs after the design is approved and before `rules/skills/writing-plans.md`. It
 
 "Every function has a test" applies only inside the layer table: every unit in scope is covered, and every exclusion is named with its reason. Do not widen the table from a generic TDD checklist.
 
+## Small task: one combined document
+
+When the implementation plan will consist of a **single task** (one `### Task N`, one item of the plan), do not run two approval cycles. Write **one** document, the implementation plan, with the test plan as its first part, and approve it once.
+
+- **Decide at the start of Stage A.** The task is small when the design (or the roadmap step) yields one plan item. If drafting shows more than one task, stop and fall back to the two-stage process below.
+- **Structure:** the plan's header sections (goal, architecture, file map) first, then `## Тест-кейсы` with the Stage A content (`## R*` requirement headings, case cards, «Не покрываем», «Сигналы дизайна»), then the single `### Task 1: …`, which references the case IDs, shows their test code before the implementation and follows TDD (`rules/skills/writing-plans.md`).
+- **The Stage A rules still apply to the `## Тест-кейсы` section:** behavior only, no code or mock setup inside the cards; test code lives only in the task.
+- **One draft, one review loop, one approval:** draft in `tmp/drafts/<feature>-plan.md`, review with `doc-review --type=plan` (3 iterations) and add to `--focus` the six-point test-plan check for the `## Тест-кейсы` section (spec coverage, layers, branches, tautology, behavior not implementation, anti-patterns). Approval per `rules/skills/document-approval.md`.
+- **Storage:** the plan path only (`docs/superpowers/plans/YYYY-MM-DD-<feature>.md`, or the step folder in a roadmap); no `-tests.md` file. Roadmap state: `testPlanPath` stays `null`.
+- **If the change has no test-worthy layer,** nothing changes: no `## Тест-кейсы` section, one line «План тестов не требуется: <причина>».
+
 ## Design order
 
 1. **Unit** — every in-scope unit from the layer table: services with branching, guards, validators, fallback and error-handling branches, frontend stores/services/helpers.

@@ -19,6 +19,8 @@ This file is Stage B of two-stage planning; Stage A is `rules/skills/writing-tes
 
 Start Stage B in a fresh draft file that does not contain the test plan: each document has its own approval cycle.
 
+**Exception — small task (a plan of a single task):** there is no separate test plan and no Stage B draft: the test cases are the first part of this plan (`## Тест-кейсы`), approved together with it. See `rules/skills/writing-test-plans.md` → "Small task: one combined document". The self-check and review `<inputs>` below then treat that section as the approved test plan for ID traceability (every ID in exactly one task — here, Task 1).
+
 ## Required plan
 
 Include: goal, architecture, file map, implementation tasks, constraints, and one final verification pass. Every task must show concrete before/after code (or the full new file), not only prose. Test cases are not redesigned here: each test-worthy task references test IDs from the approved test plan, shows their test code before the implementation, and follows TDD. Excluded layers from `rules/base/testing.md` need no test block.

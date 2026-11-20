@@ -7,7 +7,7 @@ This file is always in context through `rules/RULES.md`. It routes work to detai
 | Situation | Required action |
 |---|---|
 | Idea, new behavior, or architecture | Read `rules/skills/brainstorming.md`, then invoke `superpowers:brainstorming`; approval per `rules/skills/document-approval.md` |
-| Test plan before the implementation plan (test-worthy layers) | Read `rules/skills/writing-test-plans.md` and run its review loop (`doc-review --type=test-plan`, 3 iterations); approval per `rules/skills/document-approval.md` |
+| Test plan before the implementation plan (test-worthy layers) | Read `rules/skills/writing-test-plans.md` and run its review loop (`doc-review --type=test-plan`, 3 iterations); approval per `rules/skills/document-approval.md`; a small task (single-task plan) gets one combined document instead |
 | Multi-step plan before implementation | Read `rules/skills/writing-plans.md`, then invoke `superpowers:writing-plans`; validate the draft with `doc-review --type=plan` (3 iterations) before approval per `rules/skills/document-approval.md` |
 | Test scope, assertions, or coverage | Read `rules/base/testing.md` |
 | Test-worthy implementation or bug fix | Read `rules/base/testing.md` and `rules/base/test-execution-policy.md`, then invoke `superpowers:test-driven-development` |
