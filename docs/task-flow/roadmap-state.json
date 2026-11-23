@@ -1,7 +1,7 @@
 {
   "feature": "task-flow",
   "roadmapPath": "docs/task-flow/2026-11-23-task-flow-roadmap.md",
-  "updatedAt": "2026-11-23T12:29:37.768060+00:00",
+  "updatedAt": "2026-11-23T13:03:01.723762+00:00",
   "steps": [
     {
       "id": "A1",
@@ -42,105 +42,30 @@
           "min": 1,
           "max": 1.5
         },
-        "basis": "initial",
-        "actualDays": null
+        "basis": "plan-drafted",
+        "actualDays": 0.5
       },
-      "stepFolder": null,
-      "status": "not-started",
-      "specPath": null,
-      "testPlanPath": null,
-      "planPath": null
-    },
-    {
-      "id": "A3",
-      "title": "Skill task-flow (опциональный вход)",
-      "ticket": "TBD",
-      "dependsOn": [
-        "A2"
-      ],
-      "estimate": {
-        "manual": {
-          "min": 1,
-          "max": 2
-        },
-        "agent": {
-          "min": 0.5,
-          "max": 1
-        },
-        "basis": "initial",
-        "actualDays": null
-      },
-      "stepFolder": null,
-      "status": "not-started",
-      "specPath": null,
-      "testPlanPath": null,
-      "planPath": null
-    },
-    {
-      "id": "A4",
-      "title": "Устойчивость чтения состояния и CLI",
-      "ticket": "TBD",
-      "dependsOn": [
-        "A1"
-      ],
-      "estimate": {
-        "manual": {
-          "min": 0.5,
-          "max": 1
-        },
-        "agent": {
-          "min": 0.25,
-          "max": 0.5
-        },
-        "basis": "initial",
-        "actualDays": null
-      },
-      "stepFolder": null,
-      "status": "not-started",
+      "stepFolder": "docs/task-flow/steps/work-packages/",
+      "status": "closed",
       "specPath": null,
       "testPlanPath": null,
       "planPath": null
     },
     {
       "id": "B1",
-      "title": "Согласование через Plannotator: submit и wait",
+      "title": "Согласование через Plannotator: submit, wait и doc-review",
       "ticket": "TBD",
       "dependsOn": [
         "A2"
       ],
       "estimate": {
         "manual": {
-          "min": 2,
+          "min": 3.5,
+          "max": 6
+        },
+        "agent": {
+          "min": 1.75,
           "max": 3
-        },
-        "agent": {
-          "min": 1,
-          "max": 1.5
-        },
-        "basis": "initial",
-        "actualDays": null
-      },
-      "stepFolder": null,
-      "status": "not-started",
-      "specPath": null,
-      "testPlanPath": null,
-      "planPath": null
-    },
-    {
-      "id": "B2",
-      "title": "Цикл doc-review внутри flow",
-      "ticket": "TBD",
-      "dependsOn": [
-        "B1"
-      ],
-      "estimate": {
-        "manual": {
-          "min": 1,
-          "max": 2
-        },
-        "agent": {
-          "min": 0.5,
-          "max": 1
         },
         "basis": "initial",
         "actualDays": null
@@ -153,43 +78,19 @@
     },
     {
       "id": "C1",
-      "title": "Jira: команда transition",
-      "ticket": "TBD",
-      "dependsOn": [],
-      "estimate": {
-        "manual": {
-          "min": 1,
-          "max": 3
-        },
-        "agent": {
-          "min": 0.5,
-          "max": 1.5
-        },
-        "basis": "initial",
-        "actualDays": null
-      },
-      "stepFolder": null,
-      "status": "not-started",
-      "specPath": null,
-      "testPlanPath": null,
-      "planPath": null
-    },
-    {
-      "id": "C2",
-      "title": "Стадии ticket и in-progress",
+      "title": "Jira: transition и стадии ticket, in-progress",
       "ticket": "TBD",
       "dependsOn": [
-        "A1",
-        "C1"
+        "A1"
       ],
       "estimate": {
         "manual": {
-          "min": 0.5,
-          "max": 1
+          "min": 1.5,
+          "max": 4
         },
         "agent": {
-          "min": 0.25,
-          "max": 0.5
+          "min": 0.75,
+          "max": 2
         },
         "basis": "initial",
         "actualDays": null
@@ -224,98 +125,47 @@
       "planPath": null
     },
     {
-      "id": "E1",
-      "title": "Хуки Claude: мод task-flow",
-      "ticket": "TBD",
-      "dependsOn": [
-        "A3"
-      ],
-      "estimate": {
-        "manual": {
-          "min": 1,
-          "max": 3
-        },
-        "agent": {
-          "min": 0.5,
-          "max": 1.5
-        },
-        "basis": "initial",
-        "actualDays": null
-      },
-      "stepFolder": null,
-      "status": "not-started",
-      "specPath": null,
-      "testPlanPath": null,
-      "planPath": null
-    },
-    {
-      "id": "E2",
-      "title": "Хуки Codex",
-      "ticket": "TBD",
-      "dependsOn": [
-        "A3"
-      ],
-      "estimate": {
-        "manual": {
-          "min": 1,
-          "max": 2
-        },
-        "agent": {
-          "min": 0.5,
-          "max": 1
-        },
-        "basis": "initial",
-        "actualDays": null
-      },
-      "stepFolder": null,
-      "status": "not-started",
-      "specPath": null,
-      "testPlanPath": null,
-      "planPath": null
-    },
-    {
-      "id": "E3",
-      "title": "Git-хук pre-push",
-      "ticket": "TBD",
-      "dependsOn": [
-        "A1"
-      ],
-      "estimate": {
-        "manual": {
-          "min": 1,
-          "max": 2
-        },
-        "agent": {
-          "min": 0.5,
-          "max": 1
-        },
-        "basis": "initial",
-        "actualDays": null
-      },
-      "stepFolder": null,
-      "status": "not-started",
-      "specPath": null,
-      "testPlanPath": null,
-      "planPath": null
-    },
-    {
       "id": "F1",
-      "title": "Стадии implement, polish, local-test, review, pr",
+      "title": "Skill task-flow и стадии implement, polish, local-test, review, pr",
       "ticket": "TBD",
       "dependsOn": [
         "B1",
-        "B2",
-        "C2",
+        "C1",
         "D1"
       ],
       "estimate": {
         "manual": {
-          "min": 2,
-          "max": 3
+          "min": 3,
+          "max": 5
         },
         "agent": {
-          "min": 1,
-          "max": 1.5
+          "min": 1.5,
+          "max": 2.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "E1",
+      "title": "Хуки и git-хук: мод Claude, Codex, pre-push",
+      "ticket": "TBD",
+      "dependsOn": [
+        "F1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 3,
+          "max": 7
+        },
+        "agent": {
+          "min": 1.5,
+          "max": 3.5
         },
         "basis": "initial",
         "actualDays": null
