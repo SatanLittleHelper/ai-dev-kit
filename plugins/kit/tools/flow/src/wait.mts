@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, linkSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileHash, pathsAlias, repoRelative } from './evidence.mts'
-import { parseDecision } from './plannotator.mts'
+import { parseDecision, parseReviewDecision } from './plannotator.mts'
 import { blocked, currentStage } from './responses.mts'
 import { writeState } from './store.mts'
 import { loadTask, withTaskLock } from './task-access.mts'
@@ -60,7 +60,7 @@ function consumeDecision(root: string, id: string, resultFile: string): FlowResp
   } catch (error) {
     return blocked(`Не удалось прочитать результат Plannotator: ${(error as Error).message}`)
   }
-  const decision = parseDecision(raw)
+  const decision = session.stage === 'review' ? parseReviewDecision(raw) : parseDecision(raw)
   if (decision.kind !== 'approved' && session.status === 'open') {
     session.status = 'resolved'
     writeState(root, state)
@@ -87,6 +87,7 @@ function removeApprovedDraft(root: string, session: Session): void {
 }
 
 function finalize(root: string, state: TaskState, session: Session, feedback?: string): FlowResponse {
+  if (session.stage === 'review') return finalizeReview(root, state, session, feedback)
   const stage = state.stages.find(candidate => candidate.name === session.stage)
   if (!stage || currentStage(state) !== stage.name) return blocked(`Стадия ${session.stage} уже не ожидает согласования.`)
 
@@ -137,4 +138,17 @@ function finalize(root: string, state: TaskState, session: Session, feedback?: s
   } catch (error) {
     return blocked(`Не удалось сохранить согласование стадии ${stage.name}: ${(error as Error).message}`)
   }
+}
+
+function finalizeReview(root: string, state: TaskState, session: Session, feedback?: string): FlowResponse {
+  const stage = state.stages.find(candidate => candidate.name === 'review')
+  if (!stage || currentStage(state) !== 'review') return blocked('Стадия review уже не ожидает ревью кода.')
+
+  stage.status = 'done'
+  stage.evidence = session.target
+  session.status = 'closed'
+  if (feedback) session.feedback = feedback
+  writeState(root, state)
+
+  return approved(state.id, session)
 }

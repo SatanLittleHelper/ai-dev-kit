@@ -8,3 +8,13 @@ export const DOCUMENT_STAGES: ReadonlySet<StageName> = new Set<StageName>(['spec
 export type DocumentStageName = 'spec' | 'test-plan' | 'plan'
 
 export const isDocumentStage = (name: StageName): name is DocumentStageName => DOCUMENT_STAGES.has(name)
+
+export const AGENT_STAGES: ReadonlySet<StageName> = new Set<StageName>(['implement', 'simplify', 'check', 'local-test'])
+
+export type AgentStageName = 'implement' | 'simplify' | 'check' | 'local-test'
+
+export const isAgentStage = (name: StageName): name is AgentStageName => AGENT_STAGES.has(name)
+
+export const IMPLEMENT_METHODS = ['inline', 'subagent-driven-development', 'codex-implement'] as const
+
+export type ImplementMethod = (typeof IMPLEMENT_METHODS)[number]

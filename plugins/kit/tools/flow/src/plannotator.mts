@@ -33,3 +33,27 @@ export function parseDecision(raw: string): Decision {
 
   return { kind: 'invalid' }
 }
+
+export function plannotatorReviewCommand(): { command: string; args: string[]; env: Record<string, string> } {
+  return { command: 'plannotator', args: ['review', '--gate', '--json'], env: {} }
+}
+
+export function parseReviewDecision(raw: string): Decision {
+  let json: unknown
+  try {
+    json = JSON.parse(raw)
+  } catch {
+    return { kind: 'invalid' }
+  }
+  if (!json || typeof json !== 'object') return { kind: 'invalid' }
+
+  const { error, decision, message, nothingToSend } = json as Record<string, unknown>
+  if (typeof error === 'string') return { kind: 'invalid', error }
+  if (nothingToSend === true) return { kind: 'nothing-to-send' }
+  const text = typeof message === 'string' ? message : ''
+  if (decision === 'approved') return { kind: 'approved', ...(text ? { feedback: text } : {}) }
+  if (decision === 'dismissed') return { kind: 'dismissed' }
+  if (decision === 'annotated') return { kind: 'annotated', feedback: text }
+
+  return { kind: 'invalid' }
+}

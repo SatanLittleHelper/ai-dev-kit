@@ -121,16 +121,16 @@ test('spec: инструкции называют skill brainstorming', () => {
   assert.equal(pack.instructions.some(line => line.includes('superpowers:brainstorming')), true)
 })
 
-test('недокументная стадия: отказ с указанием на прежние правила', () => {
+test('стадия implement: запрос выбора метода', () => {
   const root = tempRoot()
   seedRules(root)
   begin(root, 'A2')
   closeThrough(root, 'A2', 'plan')
 
-  const response = expectBlocked(nextPackage({ root, now: NOW }))
+  const response = expectNeedsInput(nextPackage({ root, now: NOW }))
 
-  assert.match(response.reason, /implement/)
-  assert.match(response.reason, /прежн/)
+  assert.match(response.question, /flow next --method/)
+  assert.deepEqual(response.options, ['inline', 'subagent-driven-development', 'codex-implement'])
 })
 
 test('без правил кита: отказ с причиной, а не исключение', () => {

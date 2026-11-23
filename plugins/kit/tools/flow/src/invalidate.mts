@@ -14,6 +14,7 @@ export function invalidate(root: string, state: TaskState): ResetNotice | undefi
     const reset = state.stages.slice(index)
     if (state.session && reset.some(target => target.name === state.session?.stage)) delete state.session
     for (const target of reset) {
+      if (target.name === 'implement') delete state.method
       if (isDocumentStage(target.name) && state.reviews) delete state.reviews[target.name]
       if (target.hash !== undefined && target.evidence !== undefined) {
         const hash = target === stage ? current : fileHash(root, target.evidence)

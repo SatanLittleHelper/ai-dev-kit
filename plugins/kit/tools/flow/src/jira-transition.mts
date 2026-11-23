@@ -12,12 +12,13 @@ interface JiraOutput {
   stderr: string
 }
 
-export type JiraTransition = (root: string, key: string, noDryRun: boolean, instance?: string) => JiraOutput
+export type JiraTransition = (root: string, key: string, noDryRun: boolean, instance?: string, target?: 'review') => JiraOutput
 
 const CLI = fileURLToPath(new URL('../../jira/cli/main.mts', import.meta.url))
 
-export const runJiraTransition: JiraTransition = (root, key, noDryRun, instance) => {
+export const runJiraTransition: JiraTransition = (root, key, noDryRun, instance, target) => {
   const args = [CLI, 'transition', key]
+  if (target === 'review') args.push('--to', 'review')
   if (noDryRun) args.push('--no-dry-run')
   const run = spawnSync(process.execPath, args, {
     cwd: root,
@@ -36,7 +37,7 @@ export const runJiraTransition: JiraTransition = (root, key, noDryRun, instance)
   }
 }
 
-function verifiedIssueUrl(reply: JiraOutput, key: string, instance?: string): string | BlockedResponse {
+export function verifiedIssueUrl(reply: JiraOutput, key: string, instance?: string, target?: 'review'): string | BlockedResponse {
   if (reply.code !== 0) return blocked(reply.stderr.trim() || `Не удалось выполнить переход в Jira для ${key}.`)
 
   let value: unknown
@@ -48,9 +49,11 @@ function verifiedIssueUrl(reply: JiraOutput, key: string, instance?: string): st
   const result = value as { key?: unknown; status?: unknown; issueStatus?: unknown; url?: unknown } | null
   if (result?.key !== key) return blocked(`Ответ Jira CLI не подтверждает задачу ${key}.`)
   if (result.status === 'dry-run') {
-    return blocked(`Переход ${key} проверен в пробном режиме. Для фактического перехода выполните flow next --task ${key} --no-dry-run.`)
+const again = target === 'review' ? `flow done pr --task ${key} --evidence <URL PR> --no-dry-run` : `flow next --task ${key} --no-dry-run`
+    return blocked(`Переход ${key} проверен в пробном режиме. Для фактического перехода выполните ${again}.`)
   }
-  if ((result.status !== 'transitioned' && result.status !== 'already-in-progress') ||
+  const done = target === 'review' ? 'already-in-review' : 'already-in-progress'
+  if ((result.status !== 'transitioned' && result.status !== done) ||
       typeof result.issueStatus !== 'string' || !result.issueStatus.trim()) {
     return blocked(`Ответ Jira CLI не подтверждает статус задачи ${key}.`)
   }
@@ -108,4 +111,15 @@ export function advanceJiraStage({
     stage.evidence = url
     return save(root, state) ?? ok(state, reset ?? priorReset)
   })
+}
+
+export function transitionToReview({ root, state, run, noDryRun }: { root: string; state: TaskState; run: JiraTransition; noDryRun: boolean }): BlockedResponse | undefined {
+  if (state.tracker !== 'jira' || !isIssueKey(state.id)) return undefined
+
+  if (state.jiraInstance) {
+    const problem = checkJiraInstance(root, state.jiraInstance)
+    if (problem) return problem
+  }
+  const url = verifiedIssueUrl(run(root, state.id, noDryRun, state.jiraInstance, 'review'), state.id, state.jiraInstance, 'review')
+  return typeof url === 'string' ? undefined : url
 }

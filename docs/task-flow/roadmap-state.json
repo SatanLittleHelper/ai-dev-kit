@@ -1,7 +1,7 @@
 {
   "feature": "task-flow",
   "roadmapPath": "docs/task-flow/2026-11-23-task-flow-roadmap.md",
-  "updatedAt": "2026-11-23T15:22:06.949Z",
+  "updatedAt": "2026-11-23T16:45:39.000Z",
   "steps": [
     {
       "id": "A1",
@@ -168,11 +168,11 @@
           "min": 1.5,
           "max": 2.5
         },
-        "basis": "initial",
-        "actualDays": null
+        "basis": "plan-drafted",
+        "actualDays": 1
       },
-      "stepFolder": null,
-      "status": "not-started",
+      "stepFolder": "docs/task-flow/steps/task-flow-skill/",
+      "status": "closed",
       "specPath": null,
       "testPlanPath": null,
       "planPath": null

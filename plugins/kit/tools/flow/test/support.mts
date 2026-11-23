@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { closeStage, startTask } from '../src/flow.mts'
 import { DOCUMENT_STAGES, STAGE_NAMES } from '../src/stages.mts'
 import type { StageName } from '../src/stages.mts'
-import type { BlockedResponse, FlowResponse, NeedsInputResponse, OkResponse, PackageResponse, Stage, TaskState } from '../src/types.mts'
+import type { AgentPackageResponse, BlockedResponse, FlowResponse, NeedsInputResponse, OkResponse, PackageResponse, Stage, TaskState } from '../src/types.mts'
 
 export const tempRoot = (): string => realpathSync(mkdtempSync(join(tmpdir(), 'flow-')))
 
@@ -74,4 +74,23 @@ export function initTestRepository(root: string): void {
   mkdirSync(join(gitDir, 'objects'), { recursive: true })
   mkdirSync(join(gitDir, 'refs', 'heads'), { recursive: true })
   writeFileSync(join(gitDir, 'HEAD'), 'ref: refs/heads/main\n')
+}
+
+export function expectAgentPackage(response: FlowResponse): AgentPackageResponse {
+  if (response.result !== 'ok' || !('agentPackage' in response)) assert.fail(`ожидался пакет стадии, получен ${JSON.stringify(response)}`)
+  return response as AgentPackageResponse
+}
+
+// Подводит задачу к стадии: закрывает все ожидающие стадии перед ней.
+export function reach(root: string, id: string, stage: StageName): void {
+  const index = STAGE_NAMES.indexOf(stage)
+  if (index > 0) closeThrough(root, id, STAGE_NAMES[index - 1])
+}
+
+// Пишет файл-доказательство стадии и возвращает путь от корня репозитория.
+export function writeEvidence(root: string, id: string, stage: string, text = 'итог'): string {
+  const rel = `tmp/flow/${id}/${stage}.md`
+  mkdirSync(join(root, 'tmp', 'flow', id), { recursive: true })
+  writeFileSync(join(root, rel), text)
+  return rel
 }
