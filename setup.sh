@@ -17,7 +17,7 @@ IMPORT_LINE="@${SUBMODULE_PATH}/rules/RULES.md"
 BASE_PLUGINS=(kit polish pr-flow)
 STACK_PLUGINS=()
 # Files that a submodule pinned before the plugin delivery was introduced does not have yet.
-REQUIRED_KIT_FILES=(mods/install-mods.sh mods/install-codex-plugins.sh mods/migrate-legacy-skills.sh rules/hooks/install-kit-sync.sh rules/hooks/kit-sync.js dependencies/install.sh defaults/install-dev-conventions.sh)
+REQUIRED_KIT_FILES=(mods/install-mods.sh mods/install-codex-plugins.sh mods/migrate-legacy-skills.sh rules/hooks/install-kit-sync.sh rules/hooks/kit-sync.js rules/hooks/install-flow-guard.sh rules/hooks/install-pre-push.sh rules/hooks/flow-guard.js dependencies/install.sh defaults/install-dev-conventions.sh)
 
 log() { echo "-- $*"; }
 die() { echo "Error: $*" >&2; exit 1; }
@@ -89,6 +89,10 @@ log "registering commit-rules hook"
 bash "$SUBMODULE_PATH/rules/hooks/install-hook.sh"
 log "registering kit-sync hook"
 bash "$SUBMODULE_PATH/rules/hooks/install-kit-sync.sh"
+log "registering task-flow hooks"
+bash "$SUBMODULE_PATH/rules/hooks/install-flow-guard.sh"
+log "installing the pre-push guard"
+bash "$SUBMODULE_PATH/rules/hooks/install-pre-push.sh"
 
 # 3c. Old delivery channel: skills installed earlier by `npx skills` are removed before the plugins
 # are enabled, so nothing shows up twice.
@@ -142,6 +146,7 @@ case "$CODEX_ANSWER" in
     CODEX_PLUGINS=(kit ${STACK_PLUGINS[@]+"${STACK_PLUGINS[@]}"})
     log "installing kit plugins for Codex: ${CODEX_PLUGINS[*]}"
     bash "$SUBMODULE_PATH/mods/install-codex-plugins.sh" "${CODEX_PLUGINS[@]}"
+    bash "$SUBMODULE_PATH/rules/hooks/install-flow-guard.sh" --codex
     ;;
   *)
     log "skipping Codex — rerun the two commands above anytime to add it later"

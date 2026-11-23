@@ -57,9 +57,9 @@
   - После создания и проверки PR стадия `pr` переводит связанный тикет Jira в «Ревью» (`JIRA_STATUS.REVIEW`).
   - Готово, когда: задача проходит все 11 стадий на тестовом сценарии, для задачи с Jira стадия `pr` закрывается после сохранения URL PR и подтверждения статуса «Ревью», закрытие стадии без доказательства невозможно, skill проходит `tests/layout.test.mjs`, прежние маршруты не нарушены.
 
-- [ ] E1 — Хуки и git-хук: мод Claude, Codex, pre-push (Jira: TBD) (est: 3–7д / agent: 1.5–3.5д) (depends: F1)
-  - Объём: мод `mods/task-flow/` с `SessionStart` (печатает `flow status`), `Stop` (не даёт закончить ход посреди стадии без вопроса) и `PreToolUse` на `git push` и создание PR; запись в `marketplace.json` и `BASE_PLUGINS`. Те же проверки в хуках Codex рядом с `plugins/pr-flow-codex/` с сохранением совместимости с существующим `hooks.json`. Git-хук `pre-push` в `rules/hooks/`, ставится `setup.sh`: отказывает, пока не закрыты `polish`, `local-test`, `review`; `pre-commit` не затрагивается.
-  - Готово, когда: тесты мода и `claude plugin validate` проходят, хуки Codex проверены на тестах, установка `pre-push` идемпотентна и не ломает существующие хуки, отказ даёт понятное сообщение с `flow status`, при отсутствии `flow`-состояния хуки ничего не блокируют, работа без хуков не нарушена.
+- [x] E1 — Хуки и git-хук: мод Claude, Codex, pre-push (Jira: TBD) (est: 3–7д / agent: 1.5–3.5д) (depends: F1)
+  - Объём: команда `flow guard` (события `session-start`, `stop`, `push`, `pr`; задача определяется по имени ветки), скрипт `rules/hooks/flow-guard.js` для Claude Code и Codex (`SessionStart`, `Stop` с одним блоком и исключениями, `PreToolUse` на `git push` и создание PR) и установщик `install-flow-guard.sh` (`.claude/settings.json`, с `--codex` — `.codex/hooks.json`) по образцу `kit-sync`, подключённый в `setup.sh` и `update-ai-dev-kit`; git-хук `pre-push` (`install-pre-push.sh`, маркерный блок, учитывает `core.hooksPath`), отказывает, пока не закрыты `simplify`, `check`, `local-test`, `review`; `pre-commit` не затрагивается. Мод Claude не нужен: API модов не умеет блокировать завершение хода.
+  - Готово, когда: тесты `flow guard`, обёртки и установщиков проходят, установка `pre-push` и хуков идемпотентна и не ломает существующие хуки, настоящий `git push` блокируется до закрытия стадий и затем проходит, отказ даёт понятное сообщение с `flow status`, при отсутствии состояния `flow`, чужой ветке или сбое `flow` хуки ничего не блокируют, работа без хуков не нарушена.
 
 - [ ] F2 — Переключение правил и роадмапа на flow (Jira: TBD) (est: 2–3д / agent: 1–1.5д) (depends: F1)
   - Объём: сжатие `rules/core.md` и `rules/orchestrator.md` до ссылки на `task-flow`, сокращение `document-approval.md`, `brainstorming.md`, `writing-test-plans.md`, `writing-plans.md` до правил содержания, шаги 4–5 `executing-checkpoints.md` на `flow start`, обновление `roadmap-state.json` из `flow`, блок в `AGENTS.md` через `build-agents-md.sh`.
@@ -71,7 +71,7 @@
 |---|---|---|
 | Сумма по шагам | 18–33д | 9–16.5д |
 | Критический путь (depends) | 12.5–24д | 6.25–12д |
-| Осталось (незакрытые шаги) | 5–10д | 2.5–5д |
+| Осталось (незакрытые шаги) | 2–3д | 1–1.5д |
 
 Критический путь проходит через A1 → A2 → B1 → F1 → E1. Допущения: исполнитель знает репозиторий и тестовую обвязку кита, Jira-сценарии C1 проверяются на реальном экземпляре, ожидание согласований не учтено.
 

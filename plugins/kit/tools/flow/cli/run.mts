@@ -1,3 +1,5 @@
+import { guard, GUARD_EVENTS } from '../src/guard.mts'
+import type { GuardEvent } from '../src/guard.mts'
 import { doneStage } from '../src/done.mts'
 import type { PrLookup } from '../src/pr.mts'
 import { exitCode, renderJson, renderText } from '../src/format.mts'
@@ -25,7 +27,7 @@ export interface Io {
   sleep?(ms: number): void
 }
 
-const COMMANDS = ['start', 'status', 'skip', 'next', 'validate', 'submit', 'wait', 'done']
+const COMMANDS = ['start', 'status', 'skip', 'next', 'validate', 'submit', 'wait', 'done', 'guard']
 
 function execute(args: ParsedArgs, io: Io, now: Date): FlowResponse {
   const { cwd } = io
@@ -34,7 +36,7 @@ if (args.confirmJira && args.command !== 'next') return blocked('Флаг --conf
   if (args.noDryRun && args.command !== 'next' && args.command !== 'done') return blocked('Флаг --no-dry-run поддерживается только командами next и done.')
   if (args.confirmJira && !args.task) return blocked('Для --confirm-jira укажите явный ключ через --task.')
 
-  const maxPositional = args.command === 'start' || args.command === 'skip' || args.command === 'done' ? 1 : 0
+  const maxPositional = args.command === 'start' || args.command === 'skip' || args.command === 'done' || args.command === 'guard' ? 1 : 0
   if (args.positional.length > maxPositional) return blocked(`Лишний аргумент «${args.positional[maxPositional]}».`)
 
   if (!args.command || !COMMANDS.includes(args.command)) return blocked(`Неизвестная команда «${args.command ?? ''}». Доступны: ${COMMANDS.join(', ')}.`)
@@ -54,6 +56,11 @@ if (args.confirmJira && args.command !== 'next') return blocked('Флаг --conf
   if (args.command === 'validate') return validateDraft({ root, id: args.task, draft: args.draft, cwd })
 
   if (args.command === 'done') return doneStage({ root, cwd, id: args.task, stage: first ?? '', evidence: args.evidence, prLookup: io.prLookup, jiraTransition: io.jiraTransition, noDryRun: args.noDryRun })
+
+  if (args.command === 'guard') {
+    if (!first || !(GUARD_EVENTS as readonly string[]).includes(first)) return blocked(`Укажите событие: ${GUARD_EVENTS.join(', ')}.`)
+    return guard({ root, event: first as GuardEvent, branch: args.branch, stopActive: args.stopActive })
+  }
 
   if (args.command === 'submit') return submitDraft({ root, cwd, id: args.task, draft: args.draft, runners: io.runners ?? defaultRunners, now })
   if (args.command === 'wait') return waitForDecision({ root, id: args.task, timeoutMs: timeoutMs, sleep: io.sleep })

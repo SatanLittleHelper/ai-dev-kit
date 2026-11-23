@@ -98,7 +98,13 @@ export interface AgentPackageResponse {
   reset?: ResetNotice
 }
 
-export type FlowResponse = OkResponse | AgentPackageResponse | PackageResponse | ValidResponse | BlockedResponse | NeedsInputResponse | PendingResponse | DecisionResponse | ReviewFeedbackResponse
+export interface GuardResponse {
+  result: 'guard'
+  decision: 'allow' | 'deny'
+  message?: string
+}
+
+export type FlowResponse = GuardResponse | OkResponse | AgentPackageResponse | PackageResponse | ValidResponse | BlockedResponse | NeedsInputResponse | PendingResponse | DecisionResponse | ReviewFeedbackResponse
 
 export interface Session {
   stage: SessionStage

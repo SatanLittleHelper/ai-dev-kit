@@ -2,6 +2,8 @@ export interface ParsedArgs {
   positional: string[]
   noTracker: boolean
   text: boolean
+  stopActive?: boolean
+  branch?: string
   confirmJira?: boolean
   noDryRun?: boolean
   command?: string
@@ -16,7 +18,7 @@ export interface ParsedArgs {
   error?: string
 }
 
-const VALUE_FLAGS = { '--method': 'method', '--agent': 'agent', '--evidence': 'evidence', '--task': 'task', '--reason': 'reason', '--step-dir': 'stepDir', '--draft': 'draft', '--timeout': 'timeout' } as const
+const VALUE_FLAGS = { '--branch': 'branch', '--method': 'method', '--agent': 'agent', '--evidence': 'evidence', '--task': 'task', '--reason': 'reason', '--step-dir': 'stepDir', '--draft': 'draft', '--timeout': 'timeout' } as const
 
 export function parseArgs(argv: string[]): ParsedArgs {
   const parsed: ParsedArgs = { positional: [], noTracker: false, text: false }
@@ -25,6 +27,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     const arg = argv[index]
     if (arg === '--no-tracker') parsed.noTracker = true
     else if (arg === '--text') parsed.text = true
+    else if (arg === '--stop-active') parsed.stopActive = true
     else if (arg === '--confirm-jira') parsed.confirmJira = true
     else if (arg === '--no-dry-run') parsed.noDryRun = true
     else if (Object.hasOwn(VALUE_FLAGS, arg)) {
