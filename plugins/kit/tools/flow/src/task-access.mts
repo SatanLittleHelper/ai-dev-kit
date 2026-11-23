@@ -1,7 +1,8 @@
+import { mkdirSync, rmdirSync } from 'node:fs'
 import { invalidate } from './invalidate.mts'
 import { blocked, currentStage } from './responses.mts'
-import { CorruptedState, listStates, readState, writeState } from './store.mts'
-import type { BlockedResponse, NeedsInputResponse, ResetNotice, TaskState } from './types.mts'
+import { CorruptedState, listStates, readState, statePath, writeState } from './store.mts'
+import type { BlockedResponse, FlowResponse, NeedsInputResponse, ResetNotice, TaskState } from './types.mts'
 
 export type Loaded = { state: TaskState; reset?: ResetNotice } | { response: BlockedResponse | NeedsInputResponse }
 
@@ -31,7 +32,22 @@ export function loadTask({ root, id }: { root: string; id?: string }): Loaded {
 
     return { state: selected.state, reset }
   } catch (error) {
-    if (error instanceof CorruptedState) return { response: blocked(error.message) }
+    if (error instanceof CorruptedState) return { response: blocked(id === undefined ? `${error.message}. Укажите --task <id>, чтобы работать с исправной задачей.` : error.message) }
     throw error
+  }
+}
+
+export function withTaskLock(root: string, id: string, operation: () => FlowResponse): FlowResponse {
+  const lock = `${statePath(root, id)}.lock`
+  try {
+    mkdirSync(lock)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') return blocked(`Задача ${id} уже обрабатывается. Повторите команду после завершения операции. Если процесс был прерван, проверьте блокировку ${lock}.`)
+    throw error
+  }
+  try {
+    return operation()
+  } finally {
+    rmdirSync(lock)
   }
 }

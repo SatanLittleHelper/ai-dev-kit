@@ -7,9 +7,12 @@ export interface ParsedArgs {
   reason?: string
   stepDir?: string
   draft?: string
+  timeout?: string
+  error?: string
 }
 
-// TODO: неизвестные флаги и лишние позиционные аргументы не отклоняются, а `--task` без значения не задаёт задачу; ужесточить вместе с тест-кейсами, добавленными в тест-план.
+const VALUE_FLAGS = { '--task': 'task', '--reason': 'reason', '--step-dir': 'stepDir', '--draft': 'draft', '--timeout': 'timeout' } as const
+
 export function parseArgs(argv: string[]): ParsedArgs {
   const parsed: ParsedArgs = { positional: [], noTracker: false, text: false }
 
@@ -17,10 +20,13 @@ export function parseArgs(argv: string[]): ParsedArgs {
     const arg = argv[index]
     if (arg === '--no-tracker') parsed.noTracker = true
     else if (arg === '--text') parsed.text = true
-    else if (arg === '--task') parsed.task = argv[++index]
-    else if (arg === '--reason') parsed.reason = argv[++index]
-    else if (arg === '--step-dir') parsed.stepDir = argv[++index]
-    else if (arg === '--draft') parsed.draft = argv[++index]
+    else if (Object.hasOwn(VALUE_FLAGS, arg)) {
+      const value = argv[index + 1]
+      if (value === undefined || value.startsWith('--')) return { ...parsed, error: `Флаг ${arg} требует значение.` }
+
+      parsed[VALUE_FLAGS[arg as keyof typeof VALUE_FLAGS]] = value
+      index += 1
+    } else if (arg.startsWith('--')) return { ...parsed, error: `Неизвестный флаг ${arg}.` }
     else if (parsed.command === undefined) parsed.command = arg
     else parsed.positional.push(arg)
   }

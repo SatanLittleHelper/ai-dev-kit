@@ -16,6 +16,9 @@ export interface TaskState {
   id: string
   stepDir?: string
   stages: Stage[]
+  session?: Session
+  reviews?: Partial<Record<DocumentStageName, ReviewProgress>>
+  superseded?: { path: string; hash: string }[]
 }
 
 export interface ResetNotice {
@@ -75,4 +78,61 @@ export interface ValidResponse {
   reset?: ResetNotice
 }
 
-export type FlowResponse = OkResponse | PackageResponse | ValidResponse | BlockedResponse | NeedsInputResponse
+export type FlowResponse = OkResponse | PackageResponse | ValidResponse | BlockedResponse | NeedsInputResponse | PendingResponse | DecisionResponse | ReviewFeedbackResponse
+
+export interface Session {
+  stage: DocumentStageName
+  draft: string
+  target: string
+  resultFile: string
+  draftHash: string
+  status: 'open' | 'resolved' | 'stale' | 'closed'
+  startedAt: string
+  feedback?: string
+}
+
+export interface PendingResponse {
+  result: 'pending'
+  task: string
+  stage: DocumentStageName
+  draft: string
+  review?: ReviewSummary
+  reset?: ResetNotice
+}
+
+export type ReviewProgress = { draft: string } & (
+  | { status: 'running' | 'done' | 'exhausted' }
+  | { status: 'finishing'; summary: ReviewSummary; reason: 'converged' | 'cap-hit' }
+)
+
+export interface ReviewSummary {
+  iter: number
+  max: number
+  verdict: string
+  converged: boolean
+  blocking: number
+  reportPath: string
+}
+
+interface DecisionContext {
+  task: string
+  stage: DocumentStageName
+}
+
+export type DecisionResponse = DecisionContext & (
+  | { result: 'approved'; target: string; feedback?: string }
+  | { result: 'annotated'; feedback: string; annotationCount?: number }
+  | { result: 'dismissed' }
+)
+
+export interface ReviewFeedbackResponse {
+  result: 'review-feedback'
+  task: string
+  stage: DocumentStageName
+  iter: number
+  max: number
+  verdict: string
+  blocking: number
+  reportPath: string
+  instruction: string
+}

@@ -1,11 +1,11 @@
 import { isAbsolute } from 'node:path'
-import { fileHash } from './evidence.mts'
+import { fileHash, repoRelative } from './evidence.mts'
 import { blocked, currentStage, ok } from './responses.mts'
 import { DOCUMENT_STAGES, STAGE_NAMES } from './stages.mts'
 import type { StageName } from './stages.mts'
 import { CorruptedState, isValidId, readState, writeState } from './store.mts'
-import { loadTask } from './task-access.mts'
-import type { BlockedResponse, FlowResponse, Stage, TaskState } from './types.mts'
+import { loadTask, withTaskLock } from './task-access.mts'
+import type { BlockedResponse, FlowResponse, ResetNotice, Stage, TaskState } from './types.mts'
 
 const isValidStepDir = (dir: string): boolean => dir !== '' && !isAbsolute(dir) && !dir.split(/[\\/]/).includes('..')
 
@@ -57,7 +57,7 @@ function selectStage(state: TaskState, stage: string): Stage | BlockedResponse {
   return target
 }
 
-export function closeStage({ root, id, stage, evidence }: { root: string; stage: string; id?: string; evidence?: string }): FlowResponse {
+export function closeStage({ root, id, stage, evidence, cwd }: { root: string; stage: string; id?: string; evidence?: string; cwd?: string }): FlowResponse {
   const loaded = loadTask({ root, id })
   if (!('state' in loaded)) return loaded.response
 
@@ -68,15 +68,18 @@ export function closeStage({ root, id, stage, evidence }: { root: string; stage:
   const proof = evidence?.trim()
   if (!proof) return blocked(`Для закрытия стадии ${target.name} нужно доказательство.`)
 
+  const stored = cwd === undefined ? proof : repoRelative(root, cwd, proof)
+  if (stored === null) return blocked(`Путь доказательства вне репозитория: ${proof}.`)
+
   if (DOCUMENT_STAGES.has(target.name)) {
-    const hash = fileHash(root, proof)
+    const hash = fileHash(root, stored)
     if (hash === null) return blocked(`Файл не найден: ${proof}.`)
 
     target.hash = hash
   }
 
   target.status = 'done'
-  target.evidence = proof
+  target.evidence = stored
   writeState(root, state)
 
   return ok(state, reset)
@@ -84,6 +87,14 @@ export function closeStage({ root, id, stage, evidence }: { root: string; stage:
 
 
 export function skipStage({ root, id, stage, reason }: { root: string; stage: string; id?: string; reason?: string }): FlowResponse {
+  const loaded = loadTask({ root, id })
+  if (!('state' in loaded)) return loaded.response
+
+  const task = loaded.state.id
+  return withTaskLock(root, task, () => skip(root, task, stage, reason, loaded.reset))
+}
+
+function skip(root: string, id: string, stage: string, reason?: string, priorReset?: ResetNotice): FlowResponse {
   const loaded = loadTask({ root, id })
   if (!('state' in loaded)) return loaded.response
 
@@ -96,7 +107,8 @@ export function skipStage({ root, id, stage, reason }: { root: string; stage: st
 
   target.status = 'skipped'
   target.reason = why
+  if (target.name === state.session?.stage) delete state.session
   writeState(root, state)
 
-  return ok(state, reset)
+  return ok(state, reset ?? priorReset)
 }

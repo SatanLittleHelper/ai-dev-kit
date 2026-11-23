@@ -1,6 +1,6 @@
 import type { FlowResponse, PackageResponse, Stage } from './types.mts'
 
-const EXIT_CODES = { ok: 0, blocked: 1, 'needs-input': 2 } as const
+const EXIT_CODES = { ok: 0, pending: 0, approved: 0, blocked: 1, dismissed: 1, 'needs-input': 2, annotated: 2, 'review-feedback': 2 } as const
 
 const MARKS = { pending: '[ ]', done: '[x]', skipped: '[-]' } as const
 
@@ -16,6 +16,12 @@ function stageLine(stage: Stage): string {
 export function renderText(response: FlowResponse): string {
   if (response.result === 'blocked') return `Отказ: ${response.reason}`
   if (response.result === 'needs-input') return [response.question, ...response.options.map((option, index) => `${index + 1}. ${option}`)].join('\n')
+
+  if (response.result === 'pending') return `Документ стадии ${response.stage} ждёт решения в Plannotator: ${response.draft}.`
+  if (response.result === 'approved') return `Согласовано: ${response.target}.${response.feedback ? `\n${response.feedback}` : ''}`
+  if (response.result === 'annotated') return `Замечания${response.annotationCount === undefined ? '' : ` (${response.annotationCount})`}: ${response.feedback}`
+  if (response.result === 'dismissed') return 'Согласование отклонено.'
+  if (response.result === 'review-feedback') return `Ревью, итерация ${response.iter} из ${response.max}: ${response.verdict}, отчёт ${response.reportPath}. ${response.instruction}`
 
   if ('package' in response) return renderPackage(response)
   if ('valid' in response) return `Документ стадии ${response.stage} прошёл проверку.${response.taskCount === undefined ? '' : ` Задач в плане: ${response.taskCount}.`}`
