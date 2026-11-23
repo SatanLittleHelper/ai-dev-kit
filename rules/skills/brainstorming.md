@@ -6,13 +6,11 @@
 
 Use this for ideas, new behavior, architecture, or any request equivalent to «давай подумаем» / “let's think about this”. Explore project context, ask one question at a time, compare 2–3 approaches, present the design, and get approval before implementation.
 
-After design approval, hand off to `rules/skills/writing-test-plans.md` when the change touches test-worthy layers, otherwise to `rules/skills/writing-plans.md`; do not invoke `superpowers:writing-plans` directly. The hand-off is automatic: right after the spec is saved, start the next stage (new draft file) in the same turn, without asking «продолжить?» or offering the next step as an option. Do not implement before the design is agreed when the task requires an architectural choice.
+Inside a task the next document starts by the flow's stage order (`task-flow`). Outside a task, after design approval continue with `rules/skills/writing-test-plans.md` when the change touches test-worthy layers, otherwise `rules/skills/writing-plans.md`; do not invoke `superpowers:writing-plans` directly. Do not implement before the design is agreed when the task requires an architectural choice.
 
 ## Approval and artifacts
 
-- Draft the design spec in `tmp/drafts/<topic>-design.md` and approve it per `rules/skills/document-approval.md`. Clarifying questions during design go through `AskUserQuestion` or plain text; Plan Mode is not used.
-- Each document has its own approval cycle. Do not append a new draft to an already-approved draft file.
-- Save the design spec only after approval, at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`.
+- Inside a task the draft path and the target path come from `flow next` and the approval is run by `flow submit` / `flow wait`. Outside a task draft in `tmp/drafts/<topic>-design.md`, approve per `rules/skills/document-approval.md` and save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` only after `approved`. Clarifying questions go through `AskUserQuestion` or plain text; Plan Mode is not used.
 - If a plan follows, delete the temporary design spec unless the user asks to keep it.
 - If the user explicitly requests visual annotation, save the current design and use the annotation UI; otherwise use text.
 - **Write the design spec in Russian** — see `rules/base/workflow-and-misc.md` → "Documentation Language". Applies even inside the draft, not only the saved file; only code blocks/identifiers stay as-is.

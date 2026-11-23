@@ -17,6 +17,7 @@ export function testPlanMode(state: TaskState): TestPlanMode {
   const stage = state.stages.find(candidate => candidate.name === 'test-plan')
   if (stage?.status === 'done' && stage.evidence) return { mode: 'separate', path: stage.evidence }
   if (stage?.status === 'skipped' && stage.reason?.startsWith('combined')) return { mode: 'combined' }
+  if (stage?.status === 'skipped' && stage.evidence && stage.reason?.startsWith('approved:')) return { mode: 'separate', path: stage.evidence }
 
   return { mode: 'none' }
 }

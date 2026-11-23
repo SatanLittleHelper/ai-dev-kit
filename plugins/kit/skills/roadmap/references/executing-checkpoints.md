@@ -45,27 +45,29 @@ Read the roadmap top to bottom and collect every unchecked `- [ ] <TICKET> <name
 6. Isolate the branch: run `references/sync-and-isolate.md` section C so only this roadmap's `docs/<slug>/` remains in the working tree.
 7. Go straight to step 4 and start the first planning document (the test plan, or the implementation plan if the step has no test-worthy layer) without asking for confirmation. Branch setup and isolation are not a checkpoint: the document goes through its own Plannotator approval anyway. Report branch, ticket and isolation in the same turn as the first planning action, not as a separate "start?" question.
 
-### 4. Agree on implementation mode
+### 4. Hand over to task-flow
 
-If `docs/<slug>/roadmap-state.json` exists (`roadmap/SKILL.md` → `## State File`), read this checkpoint's entry first — its `status` and `specPath` tell you what's already there without needing to probe the filesystem.
+From here the checkpoint is a task. If `docs/<slug>/roadmap-state.json` exists and this checkpoint's `stepFolder` is empty, first set it to `docs/<slug>/steps/<step-slug>/` and refresh `updatedAt` (never overwrite a folder that is already set; the flow finds the entry by this folder, matching by id is only a fallback). Without the state file continue without it: the flow then simply does not sync. Then start the flow and follow the `task-flow` skill.
 
-Before writing code, confirm this checkpoint has its own step folder `docs/<slug>/steps/<step-slug>/` (`roadmap/SKILL.md` naming; derive `<step-slug>` from the checkpoint's own heading — ask the user if it's ambiguous, don't silently invent one) containing an implementation plan (`superpowers:writing-plans`) — write it if missing, using the step's design doc as input when one exists. Planning is two-stage: if the step has test-worthy layers, first write and get approved the test plan (`rules/skills/writing-test-plans.md`, `YYYY-MM-DD-<ticket>-<name>-tests.md` in the same folder, reviewer loop included) and, if `roadmap-state.json` exists, set `testPlanPath` to its path; then write the implementation plan, which references the test plan's IDs. Exception: a small step (the plan is a single task) gets one combined document — the test cases as the plan's `## Тест-кейсы` section (`rules/skills/writing-test-plans.md` → "Small task"), no `-tests.md` file and `testPlanPath` stays `null`. Once the implementation plan is written, if `roadmap-state.json` exists, set this checkpoint's `status` to `"plan-drafted"` and `planPath` to the new file's path. Then re-check the checkpoint's estimate against the now-detailed plan (`roadmap/SKILL.md` → `## Estimates`): update `estimate` (+ `basis: "plan-drafted"`) and the `(est: ...)` tag, and recompute the roadmap's `## Оценка`. If `manual.max` now exceeds 3д, tell the user the step should be split before implementing.
+```
+node <base>/../../tools/flow/cli/main.mts start <id> --step-dir docs/<slug>/steps/<step-slug> [--no-tracker]
+```
 
-A design doc in that folder (from `brainstorming`, written at roadmap-authoring time) is optional and only present if the step needed its own architectural decision — carry it forward as-is, don't regenerate it. Skip the plan requirement only if the user explicitly says the checkpoint is trivial enough to go straight to code.
+- `<id>` is the checkpoint's real ticket key, or the checkpoint id (`A1`, `F2`) while its ticket is `TBD`; add `--no-tracker` when `<id>` is not a Jira key. `<step-slug>` comes from the checkpoint's own heading — ask the user if it is ambiguous, never invent one silently.
+- Existing approved documents are registered, not rewritten: if the step's `status` is `spec-validated` and `specPath` exists, run `flow skip spec --reason "approved: <specPath>"`; if it is `plan-drafted` (the documents were approved earlier, a saved file is the proof), do the same for `spec`, then `flow skip test-plan --reason "approved: <testPlanPath>"` when `testPlanPath` is set (otherwise `combined: …`) and `flow skip plan --reason "approved: <planPath>"`, and continue from the method question. The registered file's path and hash become the stage's evidence, so a later edit resets the stages. A `spec-drafted` design is not an approval: write the spec through the flow instead. A step that is `implemented` goes straight to close-out.
+- The flow then carries the order: spec, test plan (skipped as `combined` for a single-task plan), plan, the method question and implementation, simplify, check, local test, review, PR. It runs the document approvals and keeps this checkpoint's entry in `roadmap-state.json` up to date: `stepFolder`, `specPath`, `testPlanPath`, `planPath` and `status` up to `implemented`; it never lowers a status and never touches a `closed` step.
+- Once the plan is written, re-check the step's estimate against it (`roadmap/SKILL.md` → `## Estimates`): update `estimate` (+ `basis: "plan-drafted"`) and the `(est: ...)` tag, recompute the roadmap's `## Оценка`. If `manual.max` now exceeds 3д, tell the user the step should be split before implementing.
+- A design doc in the step folder (from `brainstorming`, written at roadmap-authoring time) is carried forward as-is, never regenerated. Skip the plan requirement only if the user explicitly says the checkpoint is trivial enough to go straight to code.
 
-Then ask **one** `AskUserQuestion` call to decide the method (never fold this into freeform prose):
+### 5. Let the flow finish the work
 
-- **method:** inline (no subagents) / subagent-driven development (`rules/skills/subagent-driven-development.md`, or `rules/skills/executing-plans.md` if the plan already exists) / `codex-implement`.
-
-### 5. Implement
-
-Drive the chosen combination of skills/rules. This reference does not itself write code — it hands off to the mode chosen in step 4 and waits for that mode's own final verification to pass before moving on.
+Do not drive the stages by hand here: `flow status` shows where the checkpoint is, and the `task-flow` skill says what to do next. The checkpoint is ready for close-out when the `review` stage is closed and the flow is at `pr`.
 
 ### 6. Close out the checkpoint
 
-Only after the implementation's own final verification step has passed:
+Run it after the `review` stage is closed and before the `pr` stage, so the close-out lands in the same commit as the PR:
 
-1. If `docs/<slug>/roadmap-state.json` exists, set this checkpoint's `status` to `"implemented"`.
+1. If the flow did not already set `status` to `"implemented"` in `docs/<slug>/roadmap-state.json`, set it now.
 2. Edit the roadmap file: flip this checkpoint's `- [ ]` to `- [x]`. Touch only this line.
 3. Delete only the checkpoint's implementation plan file (`docs/<slug>/steps/<step-slug>/YYYY-MM-DD-<ticket>-<name>.md`) and its test plan file (`...-<name>-tests.md`, if one was written) — they are mechanical execution artifacts, same as any other plan. Leave the step's design doc (if any) in that folder in place: like the roadmap itself, they're kept as permanent history, not deleted after implementation. If the plan files were the only files in the step folder, delete the now-empty folder too.
 4. If `roadmap-state.json` exists, set this checkpoint's `status` to `"closed"`, `planPath` to `null`, and `testPlanPath` to `null` (the plan files were just deleted in the previous step). Also record `estimate.actualDays` (real elapsed working days; ask via `AskUserQuestion` if it isn't obvious from the branch dates — never invent it) and recompute the roadmap's `## Оценка` "Осталось" row. Skip both if the step has no `estimate`.
@@ -83,7 +85,7 @@ Only after the implementation's own final verification step has passed:
 | Cutting a stackable checkpoint from `origin/<default>` or the current branch | Base is the blocker PR's `headRef`; otherwise the blocker's code is missing from the branch |
 | Guessing branch relation from the ticket's topic/description | Only the ticket-ID-substring-in-branch-name check counts |
 | Deleting other roadmaps' folders in the work branch | Hide them with `git sparse-checkout` only — never a commit that removes them |
-| Asking the implementation-mode question as free prose | Always a single `AskUserQuestion` call for the method |
+| Driving the stages by hand instead of through `task-flow` | Run `flow start --step-dir …` and follow the `task-flow` skill |
 | Leaving a fully-checked roadmap file in place | Delete it (and the empty folder) once the last checkbox is ticked |
 | Committing the checkbox/deletion changes automatically | Never — explicit request only |
 | Deleting the whole `steps/<step-slug>/` folder (design included) on checkpoint close-out | Delete only the plan file — the design stays as permanent history, same as the roadmap itself |
