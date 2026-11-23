@@ -1,4 +1,4 @@
-export const STAGE_NAMES = ['ticket', 'in-progress', 'spec', 'test-plan', 'plan', 'implement', 'polish', 'local-test', 'review', 'pr'] as const
+export const STAGE_NAMES = ['ticket', 'in-progress', 'spec', 'test-plan', 'plan', 'implement', 'simplify', 'check', 'local-test', 'review', 'pr'] as const
 
 export type StageName = (typeof STAGE_NAMES)[number]
 

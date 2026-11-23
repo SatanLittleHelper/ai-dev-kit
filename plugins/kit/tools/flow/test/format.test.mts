@@ -9,7 +9,7 @@ test('U31: каждый ответ несёт одно из трёх значе�
   begin(root, 'A1')
   closeThrough(root, 'A1', 'implement')
   const okResponse = getStatus({ root, id: 'A1' })
-  const blockedResponse = skipStage({ root, id: 'A1', stage: 'polish' })
+  const blockedResponse = skipStage({ root, id: 'A1', stage: 'simplify' })
   begin(root, 'A2')
   const needsInput = getStatus({ root })
 
@@ -31,9 +31,9 @@ test('U32: режим text выводит русский читаемый тек
   begin(root, 'A1')
   closeThrough(root, 'A1', 'implement')
 
-  const text = renderText(skipStage({ root, id: 'A1', stage: 'polish' }))
+  const text = renderText(skipStage({ root, id: 'A1', stage: 'simplify' }))
 
   assert.throws(() => JSON.parse(text))
   assert.match(text, /нужна причина/)
-  assert.ok(text.includes('polish'))
+  assert.ok(text.includes('simplify'))
 })

@@ -8,12 +8,12 @@ test('U15: skip текущей стадии с причиной', () => {
   begin(root)
   closeThrough(root, 'A1', 'implement')
 
-  const response = expectOk(skipStage({ root, id: 'A1', stage: 'polish', reason: 'правки только в Markdown' }))
+  const response = expectOk(skipStage({ root, id: 'A1', stage: 'simplify', reason: 'правки только в Markdown' }))
 
-  const polish = stageOf(readStateFile(root, 'A1'), 'polish')
-  assert.equal(polish?.status, 'skipped')
-  assert.equal(polish?.reason, 'правки только в Markdown')
-  assert.equal(response.current, 'local-test')
+  const simplify = stageOf(readStateFile(root, 'A1'), 'simplify')
+  assert.equal(simplify?.status, 'skipped')
+  assert.equal(simplify?.reason, 'правки только в Markdown')
+  assert.equal(response.current, 'check')
 })
 
 test('U16: skip без причины отклоняется', () => {
@@ -22,12 +22,12 @@ test('U16: skip без причины отклоняется', () => {
   closeThrough(root, 'A1', 'implement')
 
   for (const reason of [undefined, '   ']) {
-    const response = expectBlocked(skipStage({ root, id: 'A1', stage: 'polish', reason }))
+    const response = expectBlocked(skipStage({ root, id: 'A1', stage: 'simplify', reason }))
     assert.match(response.reason, /нужна причина/)
-    assert.ok(response.reason.includes('polish'))
+    assert.ok(response.reason.includes('simplify'))
   }
 
-  assert.equal(stageOf(readStateFile(root, 'A1'), 'polish')?.status, 'pending')
+  assert.equal(stageOf(readStateFile(root, 'A1'), 'simplify')?.status, 'pending')
 })
 
 test('U17: skip не текущей стадии отклоняется', () => {

@@ -33,7 +33,7 @@ test('U19: status показывает стадии, текущую и прич�
 
   const response = expectOk(getStatus({ root, id: 'A1' }))
 
-  assert.equal(response.stages.length, 10)
+  assert.equal(response.stages.length, 11)
   assert.equal(response.current, 'test-plan')
   assert.equal(response.stages.find(stage => stage.name === 'in-progress')?.reason, 'no-tracker')
 })

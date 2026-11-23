@@ -17,13 +17,13 @@ function repository(branch: string, config?: object): string {
   return root
 }
 
-test('U1: start создаёт состояние с 10 стадиями', () => {
+test('U1: start создаёт состояние с 11 стадиями', () => {
   const root = repository('feature/ABC-7')
 
   const response = expectOk(startTask({ root, id: 'ABC-42' }))
 
   const state = readStateFile(root, 'ABC-42')
-  assert.deepEqual(state.stages.map(stage => stage.name), ['ticket', 'in-progress', 'spec', 'test-plan', 'plan', 'implement', 'polish', 'local-test', 'review', 'pr'])
+  assert.deepEqual(state.stages.map(stage => stage.name), ['ticket', 'in-progress', 'spec', 'test-plan', 'plan', 'implement', 'simplify', 'check', 'local-test', 'review', 'pr'])
   assert.equal(stageOf(state, 'ticket')?.status, 'done')
   assert.equal(stageOf(state, 'ticket')?.evidence, 'ABC-42')
   assert.equal(state.tracker, 'jira')

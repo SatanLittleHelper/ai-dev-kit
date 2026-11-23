@@ -4,7 +4,7 @@ import { rmSync, writeFileSync } from 'node:fs'
 import { getStatus, skipStage } from '../src/flow.mts'
 import { begin, closeThrough, docPath, expectOk, readStateFile, stageOf, tempRoot } from './support.mts'
 
-const FROM_SPEC = ['spec', 'test-plan', 'plan', 'implement', 'polish', 'local-test', 'review', 'pr']
+const FROM_SPEC = ['spec', 'test-plan', 'plan', 'implement', 'simplify', 'check', 'local-test', 'review', 'pr']
 
 test('U25: изменённый документ сбрасывает свою и последующие стадии', () => {
   const root = tempRoot()
@@ -48,14 +48,14 @@ test('U28: пропуски после сброшенной стадии тож�
   const root = tempRoot()
   begin(root)
   closeThrough(root, 'A1', 'implement')
-  expectOk(skipStage({ root, id: 'A1', stage: 'polish', reason: 'только Markdown' }))
+  expectOk(skipStage({ root, id: 'A1', stage: 'simplify', reason: 'только Markdown' }))
   writeFileSync(docPath(root, 'spec'), 'правка')
 
   expectOk(getStatus({ root, id: 'A1' }))
 
-  const polish = stageOf(readStateFile(root, 'A1'), 'polish')
-  assert.equal(polish?.status, 'pending')
-  assert.equal(polish?.reason, undefined)
+  const simplify = stageOf(readStateFile(root, 'A1'), 'simplify')
+  assert.equal(simplify?.status, 'pending')
+  assert.equal(simplify?.reason, undefined)
 })
 
 test('U29: изменение позднего документа не трогает ранние стадии', () => {
@@ -70,7 +70,7 @@ test('U29: изменение позднего документа не трог�
   const after = readStateFile(root, 'A1')
   assert.deepEqual(stageOf(after, 'spec'), stageOf(before, 'spec'))
   assert.deepEqual(stageOf(after, 'test-plan'), stageOf(before, 'test-plan'))
-  assert.deepEqual(response.reset?.stages, ['plan', 'implement', 'polish', 'local-test', 'review', 'pr'])
+  assert.deepEqual(response.reset?.stages, ['plan', 'implement', 'simplify', 'check', 'local-test', 'review', 'pr'])
   assert.equal(response.current, 'plan')
 })
 
