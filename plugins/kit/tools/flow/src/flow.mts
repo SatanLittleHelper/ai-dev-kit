@@ -1,3 +1,4 @@
+import { isAbsolute } from 'node:path'
 import { fileHash } from './evidence.mts'
 import { blocked, currentStage, ok } from './responses.mts'
 import { DOCUMENT_STAGES, STAGE_NAMES } from './stages.mts'
@@ -6,10 +7,15 @@ import { CorruptedState, isValidId, readState, writeState } from './store.mts'
 import { loadTask } from './task-access.mts'
 import type { BlockedResponse, FlowResponse, Stage, TaskState } from './types.mts'
 
-export function startTask({ root, id, noTracker = false }: { root: string; id?: string; noTracker?: boolean }): FlowResponse {
+const isValidStepDir = (dir: string): boolean => dir !== '' && !isAbsolute(dir) && !dir.split(/[\\/]/).includes('..')
+
+export function startTask({ root, id, noTracker = false, stepDir }: { root: string; id?: string; noTracker?: boolean; stepDir?: string }): FlowResponse {
   const taskId = id?.trim()
   if (!taskId) return blocked('id не указан. Использование: flow start <id>.')
   if (!isValidId(taskId)) return blocked(`Недопустимый id «${taskId}»: допустимы латинские буквы, цифры, точка, дефис и подчёркивание.`)
+
+  const dir = stepDir?.trim().replace(/\/+$/, '')
+  if (dir !== undefined && !isValidStepDir(dir)) return blocked(`Недопустимый --step-dir «${stepDir}»: нужен относительный путь внутри репозитория.`)
 
   try {
     if (readState(root, taskId)) return blocked(`Задача ${taskId} уже начата.`)
@@ -25,7 +31,7 @@ export function startTask({ root, id, noTracker = false }: { root: string; id?: 
     return { name, status: 'pending' }
   }
 
-  const state: TaskState = { id: taskId, stages: STAGE_NAMES.map(initial) }
+  const state: TaskState = { id: taskId, ...(dir ? { stepDir: dir } : {}), stages: STAGE_NAMES.map(initial) }
   writeState(root, state)
 
   return ok(state)

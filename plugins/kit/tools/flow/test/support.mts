@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { closeStage, startTask } from '../src/flow.mts'
 import { DOCUMENT_STAGES, STAGE_NAMES } from '../src/stages.mts'
 import type { StageName } from '../src/stages.mts'
-import type { BlockedResponse, FlowResponse, NeedsInputResponse, OkResponse, Stage, TaskState } from '../src/types.mts'
+import type { BlockedResponse, FlowResponse, NeedsInputResponse, OkResponse, PackageResponse, Stage, TaskState } from '../src/types.mts'
 
 export const tempRoot = (): string => realpathSync(mkdtempSync(join(tmpdir(), 'flow-')))
 
@@ -39,7 +39,12 @@ export function begin(root: string, id = 'A1'): void {
 
 export function expectOk(response: FlowResponse): OkResponse {
   if (response.result !== 'ok') assert.fail(`ожидался ok, получен ${JSON.stringify(response)}`)
-  return response
+  return response as OkResponse
+}
+
+export function expectPackage(response: FlowResponse): PackageResponse {
+  if (response.result !== 'ok' || !('package' in response)) assert.fail(`ожидался пакет, получен ${JSON.stringify(response)}`)
+  return response as PackageResponse
 }
 
 export function expectBlocked(response: FlowResponse): BlockedResponse {
@@ -61,4 +66,12 @@ export function closeThrough(root: string, id: string, last: StageName): void {
     expectOk(closeStage({ root, id, stage: stage.name, evidence }))
     if (stage.name === last) return
   }
+}
+
+// Создаёт минимальные метаданные временного репозитория без изменяющих Git-команд.
+export function initTestRepository(root: string): void {
+  const gitDir = join(root, '.git')
+  mkdirSync(join(gitDir, 'objects'), { recursive: true })
+  mkdirSync(join(gitDir, 'refs', 'heads'), { recursive: true })
+  writeFileSync(join(gitDir, 'HEAD'), 'ref: refs/heads/main\n')
 }

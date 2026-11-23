@@ -1,4 +1,4 @@
-import type { FlowResponse, Stage } from './types.mts'
+import type { FlowResponse, PackageResponse, Stage } from './types.mts'
 
 const EXIT_CODES = { ok: 0, blocked: 1, 'needs-input': 2 } as const
 
@@ -17,9 +17,29 @@ export function renderText(response: FlowResponse): string {
   if (response.result === 'blocked') return `Отказ: ${response.reason}`
   if (response.result === 'needs-input') return [response.question, ...response.options.map((option, index) => `${index + 1}. ${option}`)].join('\n')
 
+  if ('package' in response) return renderPackage(response)
+  if ('valid' in response) return `Документ стадии ${response.stage} прошёл проверку.${response.taskCount === undefined ? '' : ` Задач в плане: ${response.taskCount}.`}`
+
   const lines = [`Задача ${response.task}`, ...response.stages.map(stageLine)]
   if (response.reset) lines.push(`Сброшены стадии ${response.reset.stages.join(', ')}: файл ${response.reset.file} ${response.reset.reason === 'deleted' ? 'удалён' : 'изменён'}.`)
   lines.push(response.completed ? 'Задача завершена.' : `Текущая стадия: ${response.current}`)
+
+  return lines.join('\n')
+}
+
+function renderPackage(response: PackageResponse): string {
+  const pack = response.package
+  const lines = [
+    `Задача ${response.task}`,
+    `Стадия: ${pack.stage}`,
+    `Черновик: ${pack.draftPath}`,
+    `Цель: ${pack.targetPath}`,
+    `Папка правил: ${pack.rulesDir}`,
+    ...(pack.stacks.length ? [`Стеки: ${pack.stacks.join(', ')}`] : []),
+    '',
+    ...pack.instructions.map(line => `- ${line}`),
+  ]
+  for (const rule of pack.rules) lines.push('', `--- ${rule.name} ---`, rule.text)
 
   return lines.join('\n')
 }

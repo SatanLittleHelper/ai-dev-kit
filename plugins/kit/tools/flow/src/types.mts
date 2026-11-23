@@ -1,4 +1,6 @@
-import type { StageName } from './stages.mts'
+import type { DocumentStageName, StageName } from './stages.mts'
+import type { RuleText } from './rules.mts'
+import type { Stack } from './stack.mts'
 
 export type StageStatus = 'pending' | 'done' | 'skipped'
 
@@ -12,6 +14,7 @@ export interface Stage {
 
 export interface TaskState {
   id: string
+  stepDir?: string
   stages: Stage[]
 }
 
@@ -41,4 +44,35 @@ export interface NeedsInputResponse {
   options: string[]
 }
 
-export type FlowResponse = OkResponse | BlockedResponse | NeedsInputResponse
+export type TestPlanMode = { mode: 'separate'; path: string } | { mode: 'combined' } | { mode: 'none' }
+
+export interface WorkPackage {
+  stage: DocumentStageName
+  draftPath: string
+  targetPath: string
+  language: 'ru'
+  stacks: Stack[]
+  testPlan?: TestPlanMode
+  rulesDir: string
+  rules: RuleText[]
+  instructions: string[]
+}
+
+export interface PackageResponse {
+  result: 'ok'
+  task: string
+  stage: DocumentStageName
+  package: WorkPackage
+  reset?: ResetNotice
+}
+
+export interface ValidResponse {
+  result: 'ok'
+  task: string
+  stage: DocumentStageName
+  valid: true
+  taskCount?: number
+  reset?: ResetNotice
+}
+
+export type FlowResponse = OkResponse | PackageResponse | ValidResponse | BlockedResponse | NeedsInputResponse
