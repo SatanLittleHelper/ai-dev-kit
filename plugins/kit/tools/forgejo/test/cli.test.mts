@@ -48,11 +48,24 @@ test('U49: команды чтения печатают JSON в stdout и зав
   assert.deepEqual(h.err, [])
 })
 
-test('U50: pr dashboard группирует PR на «требует действия» и «ждёт других»', async () => {
+test('U50: pr dashboard --format json группирует PR на «требует действия» и «ждёт других»', async () => {
   const h = harness({ pulls: [pull({ number: 1 }), pull({ number: 2 })], reviews: { 2: [review()] } })
-  assert.equal(await h.exec('pr', 'dashboard'), 0)
+  assert.equal(await h.exec('pr', 'dashboard', '--format', 'json'), 0)
   const result = JSON.parse(h.out.join('\n'))
   assert.deepEqual([result.due.map((row: { number: number }) => row.number), result.waiting.map((row: { number: number }) => row.number), result.truncated], [[1], [2], false])
+})
+
+test('U50a: pr dashboard по умолчанию печатает готовый markdown с двумя группами', async () => {
+  const h = harness({ pulls: [pull({ number: 1 }), pull({ number: 2 })], reviews: { 2: [review()] } })
+  assert.equal(await h.exec('pr', 'dashboard'), 0)
+  const text = h.out.join('\n')
+  assert.match(text, /^Требует вашего действия \(1\)\n\n\| PR \|/)
+  assert.match(text, /\n\nЖдёт других \(1\)\n/)
+})
+
+test('U50b: pr dashboard --format xml — ошибка использования', async () => {
+  const h = harness({ pulls: [] })
+  assert.equal(await h.exec('pr', 'dashboard', '--format', 'xml'), 2)
 })
 
 test('U51: pr feedback N печатает замечания; без замечаний — пустой список', async () => {

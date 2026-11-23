@@ -1,6 +1,7 @@
 import { resolveConfig, TOKEN_ENV } from '../src/config.mts'
 import type { Config } from '../src/config.mts'
 import { groupRows, intakeItems, loadPr, pullRows, routeOf } from '../src/status.mts'
+import { renderDashboard } from '../src/dashboard.mts'
 import { PublishUnknownError } from '../src/types.mts'
 import type { ForgeProvider, PullDraft, MergeMethod } from '../src/types.mts'
 import { CliError, parseDraft, parsePullDraft, parseReplies } from './draft.mts'
@@ -10,7 +11,7 @@ const UNKNOWN_STATUS_CODE = 3
 const FAILURE_CODE = 1
 const MERGE_METHODS: readonly MergeMethod[] = ['merge', 'squash', 'rebase']
 const isMergeMethod = (value: unknown): value is MergeMethod => MERGE_METHODS.includes(value as MergeMethod)
-const VALUE_FLAGS: readonly string[] = ['file', 'host', 'owner', 'repo', 'state', 'head', 'method']
+const VALUE_FLAGS: readonly string[] = ['file', 'host', 'owner', 'repo', 'state', 'head', 'method', 'format']
 const BOOLEAN_FLAGS: readonly string[] = ['confirm']
 const USAGE = `Использование:
   whoami
@@ -19,7 +20,7 @@ const USAGE = `Использование:
   pr create --file draft.json [--confirm]
   pr files <N>
   pr get <N> | pr ci <N> | pr reviews <N> | pr threads <N> | pr feedback <N>
-  pr dashboard
+  pr dashboard [--format markdown|json]
   pr route <N>
   pr merge <N> [--method merge|squash|rebase] [--confirm]
   pr review <N> --file draft.json [--confirm]
@@ -127,7 +128,10 @@ async function execute(argv: string[], io: Io): Promise<void> {
   if (command === 'feedback') return print(io, intakeItems(await loadPr(provider, number)))
   if (command === 'dashboard') {
     const { rows, truncated } = await pullRows(provider)
-    return print(io, { ...groupRows(rows), truncated })
+    const result = { ...groupRows(rows), truncated }
+    const format = args.flags.format ?? 'markdown'
+    if (format !== 'markdown' && format !== 'json') throw usageError('--format: markdown или json')
+    return format === 'json' ? print(io, result) : io.out(renderDashboard(result))
   }
   if (command === 'route') return print(io, await routeOf(provider, number))
   if (command === 'merge') {
