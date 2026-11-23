@@ -2,6 +2,8 @@ export interface ParsedArgs {
   positional: string[]
   noTracker: boolean
   text: boolean
+  confirmJira?: boolean
+  noDryRun?: boolean
   command?: string
   task?: string
   reason?: string
@@ -20,6 +22,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
     const arg = argv[index]
     if (arg === '--no-tracker') parsed.noTracker = true
     else if (arg === '--text') parsed.text = true
+    else if (arg === '--confirm-jira') parsed.confirmJira = true
+    else if (arg === '--no-dry-run') parsed.noDryRun = true
     else if (Object.hasOwn(VALUE_FLAGS, arg)) {
       const value = argv[index + 1]
       if (value === undefined || value.startsWith('--')) return { ...parsed, error: `Флаг ${arg} требует значение.` }

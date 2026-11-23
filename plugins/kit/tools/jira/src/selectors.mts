@@ -1,6 +1,6 @@
 import type { Locator, Page } from 'playwright-core'
 
-// Все селекторы диалога Create в одном месте: при обновлении Jira правится только этот файл.
+// Селекторы диалога Create.
 // Поиск не зависит от языка интерфейса: у Jira Server берутся id и атрибуты разметки, а английские подписи нужны для Cloud-подобной разметки (её имитирует тестовая Jira). Локаторы объединены через or().
 const FIELD_IDS: Record<string, string> = {
   Project: '#project-field',
@@ -8,6 +8,20 @@ const FIELD_IDS: Record<string, string> = {
   Summary: '#summary',
   Description: '#description',
   Assignee: '#assignee-field',
+}
+
+const transitionAction = 'a.issueaction-workflow-transition, button.issueaction-workflow-transition'
+
+export const transitionSel = {
+  issueKey: (page: Page, key: string): Locator => page.locator('#key-val').or(sel.issueHeading(page, key)),
+  classicStatus: (page: Page): Locator => page.locator('#status-val'),
+  statusMenuTrigger: (page: Page): Locator => page.locator('#opsbar-transitions_more'),
+  classicActions: (page: Page): Locator => page.locator('#opsbar-opsbar-transitions').locator(transitionAction),
+  menu: (page: Page, id: string): Locator => page.locator(`[id=${JSON.stringify(id)}]`),
+  menuActions: (menu: Locator): Locator => menu.getByRole('menuitem').or(menu.locator(transitionAction)),
+  menuActionLabel: '.transition-label > .workflow-cell:first-child > span',
+  menuActionStatus: '.transition-label .jira-issue-status-lozenge',
+  error: (page: Page): Locator => page.locator('.aui-message-error, [role="alert"][data-type="error"]').first(),
 }
 const TAB_SELECTORS: Record<string, string> = { Text: '[data-mode="source"] button' }
 

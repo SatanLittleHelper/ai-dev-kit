@@ -5,7 +5,8 @@ import { launch, openJira, whenClosed, withSession } from '../src/browser.mts'
 import { ensurePlaywright, jiraHome, loadPlaywright, npmInstall, profilePath, withLock } from '../src/profile.mts'
 import type { PlaywrightModule } from '../src/profile.mts'
 import { createIssue } from '../src/scenarios/create-issue.mts'
-import { parseCreateArgs, usageError } from './args.mts'
+import { transitionIssue } from '../src/scenarios/transition-issue.mts'
+import { parseCreateArgs, parseTransitionArgs, usageError } from './args.mts'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
@@ -77,10 +78,37 @@ async function create(rest: string[], io: Io): Promise<number> {
   })
 }
 
+async function transition(rest: string[], io: Io): Promise<number> {
+  const args = parseTransitionArgs(rest)
+  const config = loadConfig(io.cwd, io.readFile)
+  const expectedInstance = io.env.JIRA_EXPECTED_INSTANCE
+  if (expectedInstance && config.baseUrl !== expectedInstance) {
+    throw new CliError(`Настройка jira.baseUrl не указывает на ожидаемый экземпляр Jira: ${expectedInstance}.`, EXIT.FAILURE)
+  }
+  const dryRun = resolveDryRun(args.dryRun, config)
+  const headed = io.env.JIRA_HEADLESS === '0' || (dryRun && io.env.JIRA_HEADLESS !== '1')
+  if (dryRun && args.dryRun === undefined) {
+    io.err('Пробный запуск включён настройкой jira.dryRun. Для реального перехода добавьте --no-dry-run.')
+  }
+  return withProfile(io, config, (pw, home) => withSession(pw, profilePath(home, config.host), !headed, async page => {
+    const closed = headed && dryRun ? whenClosed(page.context()) : undefined
+    const result = await transitionIssue(page, {
+      key: args.key,
+      config,
+      dryRun,
+      timeoutMs: timeoutMs(io),
+      pause: closed ? () => closed : undefined,
+    })
+    io.out(JSON.stringify(result))
+    return 0
+  }))
+}
+
 export async function run(argv: string[], io: Io): Promise<number> {
   try {
     const [command, ...rest] = argv
     if (command === 'create') return await create(rest, io)
+    if (command === 'transition') return await transition(rest, io)
     if (command === 'status') return await status(rest, io)
     if (command === 'login') return await login(rest, io)
     throw usageError('Неизвестная команда.')

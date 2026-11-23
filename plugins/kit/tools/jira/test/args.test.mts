@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { parseCreateArgs } from '../cli/args.mts'
+import { parseCreateArgs, parseTransitionArgs } from '../cli/args.mts'
+import { run } from '../cli/run.mts'
 import { CliError, EXIT } from '../src/errors.mts'
 
 const dir = mkdtempSync(join(tmpdir(), 'jira-args-'))
@@ -13,6 +14,26 @@ writeFileSync(join(dir, 'empty.txt'), '  \n')
 const read = (path: string) => readFileSync(path, 'utf8')
 const file = (name: string) => join(dir, name)
 const usage = (error: unknown) => error instanceof CliError && error.code === EXIT.FAILURE && /Использование/.test(error.message)
+test('C1 U9: переход отклоняет неверный ключ, позиционные аргументы и флаги', () => {
+  for (const args of [[], ['no-key'], ['ABC-42', 'ABC-43'], ['ABC-42', '--unknown'], ['ABC-42', '--dry-run', '--no-dry-run']]) {
+    assert.throws(() => parseTransitionArgs(args), usage)
+  }
+})
+
+test('C1 I1: дочерняя команда сверяет экземпляр до открытия карточки', async () => {
+  let output = ''
+  let diagnosis = ''
+  const code = await run(['transition', 'ABC-42'], {
+    cwd: dir,
+    env: { JIRA_HOME: dir, JIRA_EXPECTED_INSTANCE: 'https://jira.example.com/team' },
+    readFile: () => JSON.stringify({ jira: { baseUrl: 'https://other.example.com' } }),
+    out: text => { output = text },
+    err: text => { diagnosis = text },
+  })
+  assert.equal(code, EXIT.FAILURE)
+  assert.match(diagnosis, /экземпляр Jira/)
+  assert.equal(output, '')
+})
 
 test('U18: полный набор флагов разбирается', () => {
   const args = parseCreateArgs([

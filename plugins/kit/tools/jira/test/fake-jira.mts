@@ -13,6 +13,7 @@ interface FakeIssue {
   assignee?: string
   parent?: string
   sprint?: string
+  status?: string
 }
 export interface FakeState {
   loggedIn: boolean
@@ -29,6 +30,12 @@ export interface FakeState {
   serverVisualEditor: boolean
   issues: FakeIssue[]
   submits: number
+  transitionLayout: 'classic' | 'classic-overflow' | 'menu'
+  transitionOptions: { label: string; destination: string }[]
+  transitionMode: 'success' | 'rejected' | 'unchanged' | 'redirect-after'
+  redirectIssue: boolean
+  transitions: number
+  issueReads: number
 }
 export interface FakeJira {
   url: string
@@ -54,10 +61,17 @@ const defaultState = (): FakeState => ({
   serverVisualEditor: false,
   issues: [],
   submits: 0,
+  transitionLayout: 'menu',
+  transitionOptions: [{ label: 'In Progress', destination: 'In Progress' }],
+  transitionMode: 'success',
+  redirectIssue: false,
+  transitions: 0,
+  issueReads: 0,
 })
 
 const APP_HTML = readFileSync(new URL('./fake-jira-app.html', import.meta.url), 'utf8')
 const SERVER_APP_HTML = readFileSync(new URL('./fake-jira-server-app.html', import.meta.url), 'utf8')
+const ISSUE_HTML = readFileSync(new URL('./fake-jira-issue.html', import.meta.url), 'utf8')
 
 const readBody = (req: IncomingMessage): Promise<string> => new Promise(resolve => {
   let data = ''
@@ -74,12 +88,12 @@ export async function startFakeJira(): Promise<FakeJira> {
   const state = defaultState()
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://fake')
+    if (req.method === 'GET' && !state.loggedIn && (url.pathname === '/' || url.pathname.startsWith('/browse/'))) {
+      res.writeHead(302, { location: '/login' })
+      res.end()
+      return
+    }
     if (req.method === 'GET' && url.pathname === '/') {
-      if (!state.loggedIn) {
-        res.writeHead(302, { location: '/login' })
-        res.end()
-        return
-      }
       const data = JSON.stringify(state).replace(/</g, '\\u003c')
       send(res, 200, 'text/html', (state.flavor === 'server' ? SERVER_APP_HTML : APP_HTML).replace('__DATA__', () => data))
       return
@@ -102,8 +116,36 @@ export async function startFakeJira(): Promise<FakeJira> {
       return
     }
     const browse = url.pathname.match(/^\/browse\/([A-Z0-9_]+-\d+)$/)
-    if (req.method === 'GET' && browse && !state.hideBrowse && state.issues.some(issue => issue.key === browse[1])) {
-      send(res, 200, 'text/html', `<!doctype html><meta charset="utf-8"><h1>${browse[1]}</h1>`)
+    if (req.method === 'GET' && browse && !state.hideBrowse) {
+      const issue = state.issues.find(candidate => candidate.key === browse[1])
+      if (issue) {
+        state.issueReads++
+        if (issue.key === 'ABC-42' && (state.redirectIssue || (state.transitionMode === 'redirect-after' && state.transitions > 0))) {
+          res.writeHead(302, { location: '/browse/ABC-43' })
+          res.end()
+          return
+        }
+        const data = JSON.stringify({
+          key: issue.key,
+          status: issue.status ?? 'Open',
+          options: state.transitionOptions,
+          layout: state.transitionLayout,
+        }).replace(/</g, '\\u003c')
+        send(res, 200, 'text/html', ISSUE_HTML.replace('__DATA__', () => data))
+        return
+      }
+    }
+    if (req.method === 'POST' && browse) {
+      const issue = state.issues.find(candidate => candidate.key === browse[1])
+      const { option } = JSON.parse(await readBody(req))
+      const action = state.transitionOptions[option]
+      state.transitions++
+      if (!issue || !action || state.transitionMode === 'rejected') {
+        send(res, 409, 'application/json', '{"error":"Jira отклонила переход"}')
+        return
+      }
+      if (state.transitionMode !== 'unchanged') issue.status = action.destination
+      send(res, 200, 'application/json', JSON.stringify({ status: issue.status }))
       return
     }
     send(res, 404, 'text/html', '<!doctype html><meta charset="utf-8"><h1>Issue Does Not Exist</h1>')

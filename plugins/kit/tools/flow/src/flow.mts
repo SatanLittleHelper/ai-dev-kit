@@ -5,12 +5,15 @@ import { DOCUMENT_STAGES, STAGE_NAMES } from './stages.mts'
 import type { StageName } from './stages.mts'
 import { CorruptedState, isValidId, readState, writeState } from './store.mts'
 import { loadTask, withTaskLock } from './task-access.mts'
+import { resolveTrackedTicket } from './ticket.mts'
 import type { BlockedResponse, FlowResponse, ResetNotice, Stage, TaskState } from './types.mts'
 
 const isValidStepDir = (dir: string): boolean => dir !== '' && !isAbsolute(dir) && !dir.split(/[\\/]/).includes('..')
 
 export function startTask({ root, id, noTracker = false, stepDir }: { root: string; id?: string; noTracker?: boolean; stepDir?: string }): FlowResponse {
-  const taskId = id?.trim()
+  const selected = noTracker ? { key: id?.trim(), jiraInstance: undefined } : resolveTrackedTicket(root, id)
+  if ('result' in selected) return selected
+  const { key: taskId, jiraInstance } = selected
   if (!taskId) return blocked('id не указан. Использование: flow start <id>.')
   if (!isValidId(taskId)) return blocked(`Недопустимый id «${taskId}»: допустимы латинские буквы, цифры, точка, дефис и подчёркивание.`)
 
@@ -31,7 +34,13 @@ export function startTask({ root, id, noTracker = false, stepDir }: { root: stri
     return { name, status: 'pending' }
   }
 
-  const state: TaskState = { id: taskId, ...(dir ? { stepDir: dir } : {}), stages: STAGE_NAMES.map(initial) }
+  const state: TaskState = {
+    id: taskId,
+    ...(!noTracker ? { tracker: 'jira' as const } : {}),
+    ...(jiraInstance ? { jiraInstance } : {}),
+    ...(dir ? { stepDir: dir } : {}),
+    stages: STAGE_NAMES.map(initial),
+  }
   writeState(root, state)
 
   return ok(state)

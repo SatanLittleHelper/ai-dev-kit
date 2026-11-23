@@ -14,6 +14,8 @@ export interface Stage {
 
 export interface TaskState {
   id: string
+  tracker?: 'jira'
+  jiraInstance?: string
   stepDir?: string
   stages: Stage[]
   session?: Session
