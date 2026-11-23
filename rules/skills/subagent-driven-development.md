@@ -13,7 +13,7 @@
 - **Implementer subagents never commit** — explicitly forbid `git commit` in the prompt; changes stay uncommitted (see `rules/base/git-and-commits.md`).
 - **The implementer subagent writes its task's test itself, test-first**, when the task falls in `rules/base/testing.md`'s test-worthy scope — per TDD, the same pass that writes the code writes its test, before the code exists. State this explicitly in the subagent's prompt (alongside which stack-convention rules apply) rather than assuming it infers it; don't route test-writing to a separate role by default (see `rules/base/testing.md`).
 - **Give each implementer its test IDs and their test-plan entries**, when the plan has a test plan: the IDs of the task, each case's Дано / Когда / Тогда and what it catches («Ловит»). The implementer writes tests only for those IDs; a case that looks wrong is reported back, not changed. Dispatch tasks in the plan's layer order (unit → integration → e2e).
-- **One final whole-branch review, not per-task.** After all implementation tasks are done, run a single final review. Don't run a task-by-task review unless there's an explicit risk, blocker, or user request.
+- **No review inside this skill.** After all implementation tasks are done, run the final verification pass only; the code review is a separate step after implementation (the `check` stage of the task flow). Don't run a task-by-task review unless there's an explicit risk, blocker, or user request.
 
 ## Common Mistakes
 
@@ -23,4 +23,4 @@
 | Dispatching a subagent with only "implement X" and no explicit constraints/rules list | Build the full context packet first — the subagent has no other way to see it |
 | Using a large/expensive model for a mechanical implementation task | Default to mini/cheap unless the user asked for something else |
 | An implementer subagent runs `git commit` after finishing its task | Forbid it explicitly in the prompt |
-| Reviewing after every single task | Batch into one final whole-branch review |
+| Reviewing after every single task | Don't: verification only, the review is the separate `check` step |
