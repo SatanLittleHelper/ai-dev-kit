@@ -106,7 +106,7 @@ function openDialog() {
     if (!response.ok) { showFlag(el('div', { role: 'alert', 'class': 'aui-message-error' }, 'Ошибка Jira: ' + response.status)); return; }
     var created = await response.json();
     var flag = el('div', { 'class': 'aui-flag', role: 'alert' });
-    flag.appendChild(el('a', { 'class': 'issue-created-key', href: '/browse/' + created.key }, created.key));
+    flag.appendChild(el('a', { 'class': 'issue-created-key', href: '/browse/' + created.key }, created.key + ' - ' + created.summary));
     flag.appendChild(document.createTextNode(' создана'));
     showFlag(flag);
   };

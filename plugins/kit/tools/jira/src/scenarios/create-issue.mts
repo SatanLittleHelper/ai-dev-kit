@@ -88,7 +88,9 @@ async function submit(page: Page, dialog: Locator, context: CreateContext): Prom
     if (await sel.createdLink(page).count() === 0 && await sel.errorAlert(page).count() > 0) {
       throw unknownState(`Jira показала ошибку после Create: ${(await sel.errorAlert(page).first().innerText()).trim()}.`)
     }
-    const key = (await sel.createdLink(page).innerText()).trim()
+    // В Jira Server текст ссылки — «KEY-1 - заголовок», поэтому ключ берём только из начала.
+    const key = (await sel.createdLink(page).innerText()).trim().match(/^[A-Z][A-Z0-9_]*-\d+/)?.[0]
+    if (!key) throw unknownState('Не удалось выделить ключ созданной задачи.')
     const url = issueUrl(context.baseUrl, key)
     const response = await page.goto(url)
     if (!response?.ok() || !(await sel.issueHeading(page, key).isVisible())) throw unknownState(`Задача ${key} не открывается по ${url}.`)
