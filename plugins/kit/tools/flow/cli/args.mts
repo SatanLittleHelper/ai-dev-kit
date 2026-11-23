@@ -9,11 +9,14 @@ export interface ParsedArgs {
   reason?: string
   stepDir?: string
   draft?: string
+  method?: string
+  agent?: string
+  evidence?: string
   timeout?: string
   error?: string
 }
 
-const VALUE_FLAGS = { '--task': 'task', '--reason': 'reason', '--step-dir': 'stepDir', '--draft': 'draft', '--timeout': 'timeout' } as const
+const VALUE_FLAGS = { '--method': 'method', '--agent': 'agent', '--evidence': 'evidence', '--task': 'task', '--reason': 'reason', '--step-dir': 'stepDir', '--draft': 'draft', '--timeout': 'timeout' } as const
 
 export function parseArgs(argv: string[]): ParsedArgs {
   const parsed: ParsedArgs = { positional: [], noTracker: false, text: false }

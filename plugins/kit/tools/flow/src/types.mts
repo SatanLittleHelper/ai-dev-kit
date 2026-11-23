@@ -1,4 +1,4 @@
-import type { DocumentStageName, StageName } from './stages.mts'
+import type { AgentStageName, DocumentStageName, ImplementMethod, StageName } from './stages.mts'
 import type { RuleText } from './rules.mts'
 import type { Stack } from './stack.mts'
 
@@ -14,6 +14,7 @@ export interface Stage {
 
 export interface TaskState {
   id: string
+  method?: ImplementMethod
   tracker?: 'jira'
   jiraInstance?: string
   stepDir?: string
@@ -80,10 +81,27 @@ export interface ValidResponse {
   reset?: ResetNotice
 }
 
-export type FlowResponse = OkResponse | PackageResponse | ValidResponse | BlockedResponse | NeedsInputResponse | PendingResponse | DecisionResponse | ReviewFeedbackResponse
+export type SessionStage = DocumentStageName | 'review'
+
+export interface AgentPackage {
+  stage: AgentStageName | 'review' | 'pr'
+  evidencePath?: string
+  method?: ImplementMethod
+  instructions: string[]
+}
+
+export interface AgentPackageResponse {
+  result: 'ok'
+  task: string
+  stage: AgentStageName | 'review' | 'pr'
+  agentPackage: AgentPackage
+  reset?: ResetNotice
+}
+
+export type FlowResponse = OkResponse | AgentPackageResponse | PackageResponse | ValidResponse | BlockedResponse | NeedsInputResponse | PendingResponse | DecisionResponse | ReviewFeedbackResponse
 
 export interface Session {
-  stage: DocumentStageName
+  stage: SessionStage
   draft: string
   target: string
   resultFile: string
@@ -96,7 +114,7 @@ export interface Session {
 export interface PendingResponse {
   result: 'pending'
   task: string
-  stage: DocumentStageName
+  stage: SessionStage
   draft: string
   review?: ReviewSummary
   reset?: ResetNotice
@@ -118,7 +136,7 @@ export interface ReviewSummary {
 
 interface DecisionContext {
   task: string
-  stage: DocumentStageName
+  stage: SessionStage
 }
 
 export type DecisionResponse = DecisionContext & (

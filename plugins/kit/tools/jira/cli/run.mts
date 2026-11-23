@@ -94,6 +94,7 @@ async function transition(rest: string[], io: Io): Promise<number> {
     const closed = headed && dryRun ? whenClosed(page.context()) : undefined
     const result = await transitionIssue(page, {
       key: args.key,
+      target: args.target,
       config,
       dryRun,
       timeoutMs: timeoutMs(io),

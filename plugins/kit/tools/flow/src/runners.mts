@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { renameSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { plannotatorCommand } from './plannotator.mts'
+import { plannotatorCommand, plannotatorReviewCommand } from './plannotator.mts'
 
 export interface StartOptions {
   draft: string
@@ -31,7 +31,7 @@ export interface ReviewOutcome {
 export class ReviewUnavailable extends Error {}
 
 export interface Runners {
-  plannotator: { start(options: StartOptions): void }
+  plannotator: { start(options: StartOptions): void; startReview(options: { resultFile: string; cwd: string }): void }
   review: { run(options: ReviewOptions): ReviewOutcome; reset(options: { draft: string; cwd: string }): void; finish(options: { draft: string; cwd: string; reason: 'converged' | 'cap-hit' }): void }
 }
 
@@ -52,8 +52,13 @@ function docReview(cwd: string, args: string[]): string {
 const WATCHER = `
 const { spawnSync } = require('node:child_process')
 const { existsSync, renameSync, writeFileSync } = require('node:fs')
-const [resultFile, command, ...args] = process.argv.slice(1)
-const run = spawnSync(command, args, { stdio: ['ignore', 'ignore', 'pipe'], encoding: 'utf8' })
+const [mode, resultFile, command, ...args] = process.argv.slice(1)
+const run = spawnSync(command, args, { stdio: ['ignore', mode === 'stdout' ? 'pipe' : 'ignore', 'pipe'], encoding: 'utf8' })
+if (mode === 'stdout' && run.status === 0 && run.stdout) {
+  const temporary = resultFile + '.tmp'
+  writeFileSync(temporary, run.stdout)
+  renameSync(temporary, resultFile)
+}
 if (!existsSync(resultFile)) {
   const temporary = resultFile + '.tmp'
   const error = run.error?.message || run.stderr?.trim() || 'код ' + (run.signal || run.status)
@@ -73,7 +78,14 @@ export const defaultRunners: Runners = {
     start({ draft, resultFile, cwd }) {
       const { command, args, env } = plannotatorCommand(draft, resultFile)
       // Отдельный процесс-наблюдатель переживает `flow submit`: он запускает plannotator и, если результата нет, записывает причину.
-      const watcher = spawn(process.execPath, ['-e', WATCHER, resultFile, command, ...args], { cwd, env: { ...process.env, ...env }, detached: true, stdio: 'ignore' })
+      const watcher = spawn(process.execPath, ['-e', WATCHER, 'file', resultFile, command, ...args], { cwd, env: { ...process.env, ...env }, detached: true, stdio: 'ignore' })
+      watcher.on('error', error => publishLaunchError(resultFile, error))
+      watcher.unref()
+    },
+
+    startReview({ resultFile, cwd }) {
+      const { command, args, env } = plannotatorReviewCommand()
+      const watcher = spawn(process.execPath, ['-e', WATCHER, 'stdout', resultFile, command, ...args], { cwd, env: { ...process.env, ...env }, detached: true, stdio: 'ignore' })
       watcher.on('error', error => publishLaunchError(resultFile, error))
       watcher.unref()
     },

@@ -54,7 +54,7 @@ export function getStatus({ root, id }: { root: string; id?: string }): FlowResp
 }
 
 // Общая проверка для закрытия и пропуска: стадия существует, ожидает и является текущей.
-function selectStage(state: TaskState, stage: string): Stage | BlockedResponse {
+export function selectStage(state: TaskState, stage: string): Stage | BlockedResponse {
   const target = state.stages.find(candidate => candidate.name === stage)
   if (!target) return blocked(`Неизвестная стадия «${stage}». Допустимые: ${STAGE_NAMES.join(', ')}.`)
 

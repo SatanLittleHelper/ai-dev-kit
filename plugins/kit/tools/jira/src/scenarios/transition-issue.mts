@@ -6,11 +6,13 @@ import { CliError, EXIT, firstLine } from '../errors.mts'
 import { transitionSel as sel } from '../selectors.mts'
 import { JIRA_STATUS } from '../statuses.mts'
 
+const REVIEW_NAMES = [JIRA_STATUS.REVIEW, 'Review']
 const STATUS_NAMES = [JIRA_STATUS.IN_PROGRESS, 'In Progress']
 const normalize = (value: string): string => value.trim().replace(/\s+/g, ' ').toLowerCase()
 const matches = (value: string, names: readonly string[]): boolean => names.some(name => normalize(value) === normalize(name))
 
 interface Request {
+  target?: 'in-progress' | 'review'
   key: string
   config: JiraConfig
   dryRun: boolean
@@ -21,7 +23,7 @@ interface Request {
 interface TransitionResult {
   key: string
   url: string
-  status: 'transitioned' | 'already-in-progress' | 'dry-run'
+  status: 'transitioned' | 'already-in-progress' | 'already-in-review' | 'dry-run'
   issueStatus: string
 }
 
@@ -76,7 +78,7 @@ function describeAction(action: Action) {
 async function chooseAction(page: Page, request: Request, statusNames: string[]) {
   const actions = await (await availableActions(page)).elementHandles()
   const labels = await Promise.all(actions.map(describeAction))
-  const preferred = request.config.inProgressTransition
+  const preferred = request.target === 'review' ? undefined : request.config.inProgressTransition
   const found = labels.flatMap(({ label, destination }, index) => {
     const targetMatches = destination !== '' && matches(destination, statusNames)
     if (destination && !targetMatches) return []
@@ -95,7 +97,8 @@ async function chooseAction(page: Page, request: Request, statusNames: string[])
 export async function transitionIssue(page: Page, request: Request): Promise<TransitionResult> {
   const { key, config, dryRun, pause, timeoutMs } = request
   const url = issueUrl(config.baseUrl, key)
-  const names = config.inProgressStatus ? [config.inProgressStatus] : STATUS_NAMES
+  const review = request.target === 'review'
+  const names = review ? REVIEW_NAMES : config.inProgressStatus ? [config.inProgressStatus] : STATUS_NAMES
   page.setDefaultTimeout(timeoutMs)
   page.setDefaultNavigationTimeout(timeoutMs)
 
@@ -106,7 +109,7 @@ export async function transitionIssue(page: Page, request: Request): Promise<Tra
     await pause?.()
     return { key, url, status: 'dry-run', issueStatus: initial.status }
   }
-  if (!selected) return { key, url, status: 'already-in-progress', issueStatus: initial.status }
+  if (!selected) return { key, url, status: review ? 'already-in-review' : 'already-in-progress', issueStatus: initial.status }
 
   await assertIssue(page, url, key)
   const { action, expected } = selected

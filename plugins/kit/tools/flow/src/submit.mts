@@ -9,7 +9,7 @@ import type { Runners } from './runners.mts'
 import { writeState } from './store.mts'
 import { loadTask, withTaskLock } from './task-access.mts'
 import { validateDraft } from './validate.mts'
-import type { FlowResponse, ReviewSummary } from './types.mts'
+import type { FlowResponse, ReviewSummary, Session, TaskState } from './types.mts'
 
 interface SubmitOptions {
   root: string
@@ -38,6 +38,8 @@ function submit({ root, cwd, id, draft, runners, now }: SubmitOptions & { id: st
   if (session?.status === 'open' && session.stage === currentStage(state)) {
     return { result: 'pending', task: state.id, stage: session.stage, draft: session.draft }
   }
+
+  if (currentStage(state) === 'review') return submitCodeReview({ root, state, runners, now, previous: session })
 
   const checked = validateDraft({ root, id: state.id, draft, cwd })
   if (!('valid' in checked)) return checked
@@ -83,4 +85,29 @@ function submit({ root, cwd, id, draft, runners, now }: SubmitOptions & { id: st
   }
 
   return { result: 'pending', task: state.id, stage, draft: draftFile, ...(review ? { review } : {}) }
+}
+
+function submitCodeReview({ root, state, runners, now, previous }: { root: string; state: TaskState; runners: Runners; now: Date; previous?: Session }): FlowResponse {
+  const resultFile = join(root, 'tmp', 'flow-results', `${state.id}.review.${randomUUID()}.json`)
+  if (repoRelative(root, root, resultFile) === null) return blocked(`Путь результата вне репозитория: ${resultFile}.`)
+  const target = repoRelative(root, root, resultFile) as string
+
+  try {
+    mkdirSync(dirname(resultFile), { recursive: true })
+    state.session = { stage: 'review', draft: '', target, resultFile, draftHash: '', status: 'open', startedAt: now.toISOString() }
+    writeState(root, state)
+    try {
+      runners.plannotator.startReview({ resultFile, cwd: root })
+    } catch (error) {
+      if (previous) state.session = previous
+      else delete state.session
+      writeState(root, state)
+      throw error
+    }
+    if (previous && repoRelative(root, root, previous.resultFile) !== null) rmSync(previous.resultFile, { force: true })
+  } catch (error) {
+    return blocked(`Не удалось запустить ревью кода в Plannotator: ${(error as Error).message}`)
+  }
+
+  return { result: 'pending', task: state.id, stage: 'review', draft: '' }
 }

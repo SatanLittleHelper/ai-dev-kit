@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
-import { STAGE_NAMES } from './stages.mts'
+import { IMPLEMENT_METHODS, STAGE_NAMES } from './stages.mts'
 import type { TaskState } from './types.mts'
 
 export class CorruptedState extends Error {
@@ -50,6 +50,8 @@ function parse(path: string): TaskState {
   if (candidate.jiraInstance !== undefined && (typeof candidate.jiraInstance !== 'string' || candidate.tracker !== 'jira')) {
     throw new CorruptedState(path, 'недопустимый экземпляр Jira')
   }
+
+  if (candidate.method !== undefined && !(IMPLEMENT_METHODS as readonly unknown[]).includes(candidate.method)) throw new CorruptedState(path, 'недопустимый метод реализации')
 
   const problem = stagesProblem(candidate.stages)
   if (problem) throw new CorruptedState(path, problem)
