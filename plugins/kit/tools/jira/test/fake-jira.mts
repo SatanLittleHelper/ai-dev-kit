@@ -112,7 +112,7 @@ export async function startFakeJira(): Promise<FakeJira> {
       }
       const key = `${body.project}-${state.issues.length + 1}`
       state.issues.push({ key, project: body.project, type: body.type, summary: body.summary, description: body.description, assignee: body.assignee, parent: body.parent, sprint: body.sprint })
-      send(res, 200, 'application/json', JSON.stringify({ key }))
+      send(res, 200, 'application/json', JSON.stringify({ key, summary: body.summary }))
       return
     }
     const browse = url.pathname.match(/^\/browse\/([A-Z0-9_]+-\d+)$/)
