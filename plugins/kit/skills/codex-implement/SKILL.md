@@ -24,14 +24,14 @@ FOR CLAUDE CODE ONLY. Hand a finished, approved implementation plan to Codex and
 
 ## Sidecar CLI
 
-The sidecar lives at `${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs` — invoke via `node`.
+The sidecar lives at `${CLAUDE_PLUGIN_ROOT}/skills/codex-implement/scripts/codex-implement.mjs` — invoke via `node`.
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs" status  <plan-path>
-node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs" start   <plan-path> [--max-checkpoints=N] [--timeout=<minutes>] [--profile=<name>] [--effort=medium] [--model=<name>]
-node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs" resume  <plan-path> [--result-file=<path>] [--timeout=<minutes>]
-node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs" finish  <plan-path> --reason=complete|blocked|checkpoint-cap|aborted
-node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-implement.mjs" reset   <plan-path>
+node "${CLAUDE_PLUGIN_ROOT}/skills/codex-implement/scripts/codex-implement.mjs" status  <plan-path>
+node "${CLAUDE_PLUGIN_ROOT}/skills/codex-implement/scripts/codex-implement.mjs" start   <plan-path> [--max-checkpoints=N] [--timeout=<minutes>] [--profile=<name>] [--effort=medium] [--model=<name>]
+node "${CLAUDE_PLUGIN_ROOT}/skills/codex-implement/scripts/codex-implement.mjs" resume  <plan-path> [--result-file=<path>] [--timeout=<minutes>]
+node "${CLAUDE_PLUGIN_ROOT}/skills/codex-implement/scripts/codex-implement.mjs" finish  <plan-path> --reason=complete|blocked|checkpoint-cap|aborted
+node "${CLAUDE_PLUGIN_ROOT}/skills/codex-implement/scripts/codex-implement.mjs" reset   <plan-path>
 ```
 
 **`${CLAUDE_PLUGIN_ROOT}` is often empty in the Bash session** (the template path then resolves to `/scripts/codex-implement.mjs` and fails with `MODULE_NOT_FOUND`). Always call the sidecar by the absolute path of `scripts/codex-implement.mjs` inside this skill's own directory (the "Base directory" shown when the skill loads), in double quotes, without `find` and without `${CLAUDE_PLUGIN_ROOT}`: `node "<skill-base-dir>/scripts/codex-implement.mjs" <subcommand> ...`. An allowlist entry is matched against the command literally, quotes included, so use the same quoted path for every subcommand (`start`/`resume`/`finish`/`reset`/`status`) to avoid extra permission prompts.

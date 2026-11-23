@@ -3,5 +3,6 @@
 .codex-implement/
 .claude/skills/
 .agents/
+/tmp/
 skills-lock.json
 plugins/kit/tools/jira/node_modules/

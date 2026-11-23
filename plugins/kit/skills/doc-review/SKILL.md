@@ -90,14 +90,14 @@ Full field reference (`provider`, `modelProvider`, `codexProfile`, `envKey` rule
 
 ## Sidecar CLI
 
-The sidecar lives at `${CLAUDE_PLUGIN_ROOT}/scripts/doc-review.mjs` — invoke it via `node`. It is pure plumbing: it owns the Codex process lifecycle, session-id capture, prompt substitution, and state persistence. It does **not** reason about findings — that's this skill's job — and it does **not** touch git.
+The sidecar lives at `${CLAUDE_PLUGIN_ROOT}/skills/doc-review/scripts/doc-review.mjs` — invoke it via `node`. It is pure plumbing: it owns the Codex process lifecycle, session-id capture, prompt substitution, and state persistence. It does **not** reason about findings — that's this skill's job — and it does **not** touch git.
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/doc-review.mjs" status            <doc-path>
-node "${CLAUDE_PLUGIN_ROOT}/scripts/doc-review.mjs" next              <doc-path> [--type=plan|design|test-plan] [--max=N] [--timeout=<minutes>] [--profile=<name>] [--effort=medium] [--model=<name>] [--focus="..."]
-node "${CLAUDE_PLUGIN_ROOT}/scripts/doc-review.mjs" record-iteration  <doc-path> --note="<one-line summary>" [--no-changes]
-node "${CLAUDE_PLUGIN_ROOT}/scripts/doc-review.mjs" finish            <doc-path> --reason=converged|cap-hit|aborted
-node "${CLAUDE_PLUGIN_ROOT}/scripts/doc-review.mjs" reset             <doc-path>
+node "${CLAUDE_PLUGIN_ROOT}/skills/doc-review/scripts/doc-review.mjs" status            <doc-path>
+node "${CLAUDE_PLUGIN_ROOT}/skills/doc-review/scripts/doc-review.mjs" next              <doc-path> [--type=plan|design|test-plan] [--max=N] [--timeout=<minutes>] [--profile=<name>] [--effort=medium] [--model=<name>] [--focus="..."]
+node "${CLAUDE_PLUGIN_ROOT}/skills/doc-review/scripts/doc-review.mjs" record-iteration  <doc-path> --note="<one-line summary>" [--no-changes]
+node "${CLAUDE_PLUGIN_ROOT}/skills/doc-review/scripts/doc-review.mjs" finish            <doc-path> --reason=converged|cap-hit|aborted
+node "${CLAUDE_PLUGIN_ROOT}/skills/doc-review/scripts/doc-review.mjs" reset             <doc-path>
 ```
 
 `next` prints a single JSON line on stdout with the fields `{iter, report_path, status_path, converged, blocking_count, total_count, verdict}`. Parse it and act on `verdict` / `converged`. Exit code is non-zero if Codex errored — read the printed hint (e.g., "run `codex login`") and stop.
@@ -132,7 +132,7 @@ Repeat until a stop condition fires. For each iteration:
 #### 2a. Call the sidecar to run Codex
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/doc-review.mjs" next <doc-path> [--max=N] [--focus="..."]
+node "${CLAUDE_PLUGIN_ROOT}/skills/doc-review/scripts/doc-review.mjs" next <doc-path> [--max=N] [--focus="..."]
 ```
 
 - Iteration 1: the sidecar runs `codex exec --json --output-last-message iter-1-report.md -m <model> -c model_reasoning_effort=<effort> "<initial-prompt>"` and captures the session id from the JSONL event stream.
@@ -185,7 +185,7 @@ If a finding is clearly wrong (e.g., names a function that doesn't exist and the
 #### 2f. Record the iteration
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/doc-review.mjs" record-iteration <doc-path> --note="<2-line summary of what changed this round>"
+node "${CLAUDE_PLUGIN_ROOT}/skills/doc-review/scripts/doc-review.mjs" record-iteration <doc-path> --note="<2-line summary of what changed this round>"
 ```
 
 The sidecar writes `iter-N-applied.md` with the note and appends the note to `state.iter_notes`. **No staging, no commit, no git interaction.**
@@ -209,7 +209,7 @@ One compact line:
 ### Step 3 — Finalize sidecar state
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/doc-review.mjs" finish <doc-path> --reason=converged|cap-hit|aborted
+node "${CLAUDE_PLUGIN_ROOT}/skills/doc-review/scripts/doc-review.mjs" finish <doc-path> --reason=converged|cap-hit|aborted
 ```
 
 The sidecar writes `.doc-review/<slug>/final-summary.md` aggregating: doc path, iterations run, terminal reason, per-iteration applied notes, last Codex verdict, any remaining medium/low findings worth considering.
