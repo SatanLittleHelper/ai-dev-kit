@@ -138,7 +138,13 @@ The browser profile with the user's Jira session lives in `~/.config/ai-dev-kit/
 3. **Split the approved draft into two files** under `tmp/drafts/`: the first fenced block (title) into `<issue-slug>.title.txt`, the second block (body, Jira Wiki Markup) into `<issue-slug>.body.txt`, without the fences.
 4. **Create:**
    `node <base>/../../tools/jira/cli/main.mts create --title-file tmp/drafts/<issue-slug>.title.txt --body-file tmp/drafts/<issue-slug>.body.txt [--type <тип>] [--assignee me|<логин>] [--parent <KEY-N>] [--sprint "<имя>"] [--project <код>]`
-   Pass optional flags only when the user named the value. stdout is one line `{"key","url"}`; show the user the key and the link.
+   Pass optional flags only when the user named the value — except `--assignee`, which depends on the context of the call (see «Assignee by context» below). stdout is one line `{"key","url"}`; show the user the key and the link.
+**Assignee by context.** Decide who the issue is assigned to from the situation the skill was called in, before running `create`:
+
+- **Work on one concrete task** (the user is about to implement it, or is describing the work they are doing now: a bug found while working, a follow-up, «заведи задачу на то, что делаем») → add `--assignee me`, unless the user named another assignee (then pass that login) or said not to assign.
+- **Batch creation from a roadmap** (the issues are checkpoints of a roadmap, drafted several at a time, the `roadmap` skill or `references/writing.md` is in play) → do NOT pass `--assignee`: the issues stay unassigned until someone picks them up. Pass it only if the user explicitly named an assignee.
+- **Unclear which of the two it is** → ask once (`AskUserQuestion`) together with the confirmation of step 2.
+
 5. **Exit codes:** `0` created; `1` configuration or usage error (read stderr, fix the input); `2` sign in required; `3` a field value was not found in Jira (the issue was NOT created: name the field and ask for another value); `4` the browser profile is busy with another run (wait and retry); `5` the state after pressing Create is unknown — **do not retry**, ask the user to check Jira for the issue before doing anything else.
 6. Delete the two temporary files after a successful run.
 
