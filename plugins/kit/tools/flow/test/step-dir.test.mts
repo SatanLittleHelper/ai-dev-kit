@@ -25,7 +25,7 @@ test('start без --step-dir не пишет поле stepDir', () => {
 test('start отклоняет абсолютный каталог шага', () => {
   const root = tempRoot()
 
-  const response = expectBlocked(startTask({ root, id: 'A2', stepDir: '/etc/steps' }))
+  const response = expectBlocked(startTask({ root, id: 'ABC-2', stepDir: '/etc/steps' }))
 
   assert.match(response.reason, /--step-dir/)
 })
@@ -33,7 +33,7 @@ test('start отклоняет абсолютный каталог шага', ()
 test('start отклоняет каталог шага с выходом наверх', () => {
   const root = tempRoot()
 
-  expectBlocked(startTask({ root, id: 'A2', stepDir: 'docs/../../outside' }))
+  expectBlocked(startTask({ root, id: 'ABC-2', stepDir: 'docs/../../outside' }))
 })
 
 test('parseArgs читает --step-dir и --draft', () => {

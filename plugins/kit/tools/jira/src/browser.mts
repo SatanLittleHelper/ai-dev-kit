@@ -18,6 +18,10 @@ export async function launch(pw: PlaywrightModule, profileDir: string, headless:
 
 export async function openJira(page: Page, baseUrl: string): Promise<void> {
   await page.goto(baseUrl)
+  assertJiraSession(page, baseUrl)
+}
+
+export function assertJiraSession(page: Page, baseUrl: string): void {
   if (!isAppPage(page.url(), baseUrl)) throw new CliError('Сессия Jira не активна: выполните jira login.', EXIT.LOGIN)
 }
 

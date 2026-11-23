@@ -1,7 +1,7 @@
 {
   "feature": "task-flow",
   "roadmapPath": "docs/task-flow/2026-11-23-task-flow-roadmap.md",
-  "updatedAt": "2026-11-23T13:33:17.321Z",
+  "updatedAt": "2026-11-23T14:24:42Z",
   "steps": [
     {
       "id": "A1",
@@ -85,19 +85,19 @@
       ],
       "estimate": {
         "manual": {
-          "min": 1.5,
-          "max": 4
+          "min": 2,
+          "max": 3
         },
         "agent": {
-          "min": 0.75,
-          "max": 2
+          "min": 1,
+          "max": 1.5
         },
-        "basis": "initial",
-        "actualDays": null
+        "basis": "plan-drafted",
+        "actualDays": 0.11
       },
-      "stepFolder": null,
-      "status": "not-started",
-      "specPath": null,
+      "stepFolder": "docs/task-flow/steps/jira-transition/",
+      "status": "closed",
+      "specPath": "docs/task-flow/steps/jira-transition/2026-11-23-jira-transition-design.md",
       "testPlanPath": null,
       "planPath": null
     },

@@ -1,0 +1,60 @@
+<!doctype html>
+<meta charset="utf-8">
+<h1 id="key-val"></h1>
+<div id="opsbar-opsbar-transitions"></div>
+<script>
+  const { key, status, options, layout } = __DATA__
+  const toolbar = document.querySelector('#opsbar-opsbar-transitions')
+  document.querySelector('#key-val').textContent = key
+
+  const newElement = (tag, options, parent) => {
+    const element = Object.assign(document.createElement(tag), options)
+    parent.append(element)
+    return element
+  }
+
+  const trigger = layout === 'classic' ? null : newElement('a', {
+    id: 'opsbar-transitions_more', href: '#', textContent: layout === 'menu' ? status : 'Workflow',
+  }, toolbar)
+  const statusNode = layout === 'menu'
+    ? trigger
+    : newElement('span', { id: 'status-val', textContent: status }, document.body)
+  const menu = trigger
+    ? newElement('div', { id: 'opsbar-transitions_more_drop', hidden: true }, toolbar)
+    : toolbar
+  if (trigger) {
+    trigger.setAttribute(layout === 'menu' ? 'aria-controls' : 'aria-owns', menu.id)
+    trigger.addEventListener('click', event => {
+      event.preventDefault()
+      menu.hidden = false
+    })
+  }
+
+  options.forEach(({ label, destination }, option) => {
+    const item = layout === 'menu' ? newElement('div', { className: 'issueaction-workflow-transition' }, menu) : menu
+    const action = newElement('a', { href: '#', className: layout !== 'menu' ? 'issueaction-workflow-transition' : '' }, item)
+    if (layout === 'menu') {
+      action.setAttribute('role', 'menuitem')
+      const itemLabel = newElement('div', { className: 'transition-label' }, action)
+      const labelCell = newElement('div', { className: 'workflow-cell' }, itemLabel)
+      newElement('span', { textContent: label }, labelCell)
+      const destinationCell = newElement('div', { className: 'workflow-cell' }, itemLabel)
+      newElement('span', { className: 'jira-issue-status-lozenge', textContent: destination }, destinationCell)
+    } else {
+      action.textContent = label
+    }
+    action.addEventListener('click', async event => {
+      event.preventDefault()
+      const result = await fetch(location.pathname, { method: 'POST', body: JSON.stringify({ option }) })
+      const data = await result.json()
+      if (!result.ok) {
+        newElement('div', { className: 'aui-message-error', textContent: data.error }, document.body).setAttribute('role', 'alert')
+      } else {
+        statusNode.textContent = data.status
+      }
+    })
+  })
+  if (trigger) {
+    newElement('a', { href: '#', textContent: 'View workflow' }, menu).setAttribute('role', 'menuitem')
+  }
+</script>

@@ -46,6 +46,10 @@ function parse(path: string): TaskState {
 
   const candidate = json as Partial<TaskState> | null
   if (!candidate || typeof candidate.id !== 'string' || !isValidId(candidate.id) || candidate.id !== basename(path, '.json') || !Array.isArray(candidate.stages)) throw new CorruptedState(path)
+  if (candidate.tracker !== undefined && candidate.tracker !== 'jira') throw new CorruptedState(path, 'недопустимый трекер задачи')
+  if (candidate.jiraInstance !== undefined && (typeof candidate.jiraInstance !== 'string' || candidate.tracker !== 'jira')) {
+    throw new CorruptedState(path, 'недопустимый экземпляр Jira')
+  }
 
   const problem = stagesProblem(candidate.stages)
   if (problem) throw new CorruptedState(path, problem)

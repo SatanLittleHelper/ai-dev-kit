@@ -12,15 +12,15 @@ const completed = (): Stage[] => STAGE_NAMES.map((name): Stage => ({ name, statu
 test('U6: повреждённый файл состояния не перезаписывается', () => {
   const root = tempRoot()
   mkdirSync(stateDir(root), { recursive: true })
-  writeFileSync(statePath(root, 'A1'), '{не json')
+  writeFileSync(statePath(root, 'ABC-1'), '{не json')
 
-  const status = expectBlocked(getStatus({ root, id: 'A1' }))
-  const start = expectBlocked(startTask({ root, id: 'A1' }))
+  const status = expectBlocked(getStatus({ root, id: 'ABC-1' }))
+  const start = expectBlocked(startTask({ root, id: 'ABC-1' }))
 
   assert.match(status.reason, /повреждено/)
-  assert.ok(status.reason.includes(statePath(root, 'A1')))
+  assert.ok(status.reason.includes(statePath(root, 'ABC-1')))
   assert.match(start.reason, /повреждено/)
-  assert.equal(readFileSync(statePath(root, 'A1'), 'utf8'), '{не json')
+  assert.equal(readFileSync(statePath(root, 'ABC-1'), 'utf8'), '{не json')
 })
 
 test('U19: status показывает стадии, текущую и причины пропусков', () => {

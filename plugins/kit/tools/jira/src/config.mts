@@ -7,6 +7,8 @@ export interface JiraConfig {
   ticketPrefix?: string
   defaultIssueType?: string
   dryRun?: boolean
+  inProgressTransition?: string
+  inProgressStatus?: string
 }
 
 const CONFIG_FILE = join('.claude', 'dev-conventions.json')
@@ -22,7 +24,13 @@ export function loadConfig(cwd: string, readFile: (path: string) => string): Jir
   } catch {
     throw new CliError(`Не найден ${path}: запустите команду из корня проекта.`, EXIT.FAILURE)
   }
-  let json: { ticketPrefix?: unknown; jira?: { baseUrl?: unknown; defaultIssueType?: unknown; dryRun?: unknown } }
+  let json: { ticketPrefix?: unknown; jira?: {
+    baseUrl?: unknown
+    defaultIssueType?: unknown
+    dryRun?: unknown
+    inProgressTransition?: unknown
+    inProgressStatus?: unknown
+  } }
   try {
     json = JSON.parse(raw)
   } catch {
@@ -36,12 +44,16 @@ export function loadConfig(cwd: string, readFile: (path: string) => string): Jir
   } catch {
     throw new CliError(`jira.baseUrl «${baseUrl}» не похож на URL.`, EXIT.FAILURE)
   }
+  const inProgressTransition = text(json.jira?.inProgressTransition)
+  const inProgressStatus = text(json.jira?.inProgressStatus)
   return {
     baseUrl: url.origin + url.pathname.replace(/\/+$/, ''),
     host: url.host,
     ticketPrefix: text(json.ticketPrefix),
     defaultIssueType: text(json.jira?.defaultIssueType),
     dryRun: flag(json.jira?.dryRun),
+    ...(inProgressTransition ? { inProgressTransition } : {}),
+    ...(inProgressStatus ? { inProgressStatus } : {}),
   }
 }
 

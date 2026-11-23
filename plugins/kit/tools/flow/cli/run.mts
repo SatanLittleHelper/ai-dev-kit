@@ -1,6 +1,7 @@
 import { exitCode, renderJson, renderText } from '../src/format.mts'
 import { getStatus, skipStage, startTask } from '../src/flow.mts'
 import { nextPackage } from '../src/next.mts'
+import type { JiraTransition } from '../src/jira-transition.mts'
 import { validateDraft } from '../src/validate.mts'
 import { defaultRunners } from '../src/runners.mts'
 import type { Runners } from '../src/runners.mts'
@@ -17,6 +18,7 @@ export interface Io {
   now?(): Date
   out(text: string): void
   runners?: Runners
+  jiraTransition?: JiraTransition
   sleep?(ms: number): void
 }
 
@@ -25,6 +27,8 @@ const COMMANDS = ['start', 'status', 'skip', 'next', 'validate', 'submit', 'wait
 function execute(args: ParsedArgs, io: Io, now: Date): FlowResponse {
   const { cwd } = io
   if (args.error) return blocked(args.error)
+  if ((args.confirmJira || args.noDryRun) && args.command !== 'next') return blocked('Флаги --confirm-jira и --no-dry-run поддерживаются только командой next.')
+  if (args.confirmJira && !args.task) return blocked('Для --confirm-jira укажите явный ключ через --task.')
 
   const maxPositional = args.command === 'start' || args.command === 'skip' ? 1 : 0
   if (args.positional.length > maxPositional) return blocked(`Лишний аргумент «${args.positional[maxPositional]}».`)
@@ -40,7 +44,9 @@ function execute(args: ParsedArgs, io: Io, now: Date): FlowResponse {
   const [first] = args.positional
   if (args.command === 'start') return startTask({ root, id: first, noTracker: args.noTracker, stepDir: args.stepDir })
   if (args.command === 'skip') return skipStage({ root, id: args.task, stage: first ?? '', reason: args.reason })
-  if (args.command === 'next') return nextPackage({ root, id: args.task, now })
+  if (args.command === 'next') return nextPackage({
+    root, id: args.task, now, jiraTransition: io.jiraTransition, confirmJira: args.confirmJira, noDryRun: args.noDryRun,
+  })
   if (args.command === 'validate') return validateDraft({ root, id: args.task, draft: args.draft, cwd })
 
   if (args.command === 'submit') return submitDraft({ root, cwd, id: args.task, draft: args.draft, runners: io.runners ?? defaultRunners, now })
