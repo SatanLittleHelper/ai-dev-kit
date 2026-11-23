@@ -1,0 +1,355 @@
+{
+  "feature": "task-flow",
+  "roadmapPath": "docs/task-flow/2026-11-23-task-flow-roadmap.md",
+  "updatedAt": "2026-11-23T12:29:37.768060+00:00",
+  "steps": [
+    {
+      "id": "A1",
+      "title": "Ядро состояния и стадий",
+      "ticket": "TBD",
+      "dependsOn": [],
+      "estimate": {
+        "manual": {
+          "min": 1,
+          "max": 3
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1.5
+        },
+        "basis": "plan-drafted",
+        "actualDays": 0.5
+      },
+      "stepFolder": null,
+      "status": "closed",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "A2",
+      "title": "Рабочие пакеты и валидаторы",
+      "ticket": "TBD",
+      "dependsOn": [
+        "A1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 2,
+          "max": 3
+        },
+        "agent": {
+          "min": 1,
+          "max": 1.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "A3",
+      "title": "Skill task-flow (опциональный вход)",
+      "ticket": "TBD",
+      "dependsOn": [
+        "A2"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 1,
+          "max": 2
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "A4",
+      "title": "Устойчивость чтения состояния и CLI",
+      "ticket": "TBD",
+      "dependsOn": [
+        "A1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 0.5,
+          "max": 1
+        },
+        "agent": {
+          "min": 0.25,
+          "max": 0.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "B1",
+      "title": "Согласование через Plannotator: submit и wait",
+      "ticket": "TBD",
+      "dependsOn": [
+        "A2"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 2,
+          "max": 3
+        },
+        "agent": {
+          "min": 1,
+          "max": 1.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "B2",
+      "title": "Цикл doc-review внутри flow",
+      "ticket": "TBD",
+      "dependsOn": [
+        "B1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 1,
+          "max": 2
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "C1",
+      "title": "Jira: команда transition",
+      "ticket": "TBD",
+      "dependsOn": [],
+      "estimate": {
+        "manual": {
+          "min": 1,
+          "max": 3
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "C2",
+      "title": "Стадии ticket и in-progress",
+      "ticket": "TBD",
+      "dependsOn": [
+        "A1",
+        "C1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 0.5,
+          "max": 1
+        },
+        "agent": {
+          "min": 0.25,
+          "max": 0.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "D1",
+      "title": "Skill polish",
+      "ticket": "TBD",
+      "dependsOn": [],
+      "estimate": {
+        "manual": {
+          "min": 1,
+          "max": 2
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "E1",
+      "title": "Хуки Claude: мод task-flow",
+      "ticket": "TBD",
+      "dependsOn": [
+        "A3"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 1,
+          "max": 3
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "E2",
+      "title": "Хуки Codex",
+      "ticket": "TBD",
+      "dependsOn": [
+        "A3"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 1,
+          "max": 2
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "E3",
+      "title": "Git-хук pre-push",
+      "ticket": "TBD",
+      "dependsOn": [
+        "A1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 1,
+          "max": 2
+        },
+        "agent": {
+          "min": 0.5,
+          "max": 1
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "F1",
+      "title": "Стадии implement, polish, local-test, review, pr",
+      "ticket": "TBD",
+      "dependsOn": [
+        "B1",
+        "B2",
+        "C2",
+        "D1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 2,
+          "max": 3
+        },
+        "agent": {
+          "min": 1,
+          "max": 1.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    },
+    {
+      "id": "F2",
+      "title": "Переключение правил и роадмапа на flow",
+      "ticket": "TBD",
+      "dependsOn": [
+        "F1"
+      ],
+      "estimate": {
+        "manual": {
+          "min": 2,
+          "max": 3
+        },
+        "agent": {
+          "min": 1,
+          "max": 1.5
+        },
+        "basis": "initial",
+        "actualDays": null
+      },
+      "stepFolder": null,
+      "status": "not-started",
+      "specPath": null,
+      "testPlanPath": null,
+      "planPath": null
+    }
+  ]
+}
