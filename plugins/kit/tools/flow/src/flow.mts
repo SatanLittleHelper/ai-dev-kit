@@ -114,6 +114,16 @@ function skip(root: string, id: string, stage: string, reason?: string, priorRes
   const why = reason?.trim()
   if (!why) return blocked(`Для пропуска стадии ${target.name} нужна причина.`)
 
+  // Ранее согласованный документ остаётся защищённым от последующих изменений.
+  const approved = DOCUMENT_STAGES.has(target.name) ? /^approved:\s*(\S+)/.exec(why)?.[1] : undefined
+  if (approved !== undefined) {
+    const rel = repoRelative(root, root, approved)
+    const hash = rel === null ? null : fileHash(root, rel)
+    if (rel === null || hash === null) return blocked(`Файл согласованного документа не найден: ${approved}.`)
+    target.evidence = rel
+    target.hash = hash
+  }
+
   target.status = 'skipped'
   target.reason = why
   if (target.name === state.session?.stage) delete state.session

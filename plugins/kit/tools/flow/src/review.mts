@@ -24,7 +24,13 @@ export function reviewProfile(root: string): string {
 export function reviewFocus(root: string, state: TaskState, stage: 'test-plan' | 'plan'): string {
   const testPlan = testPlanMode(state)
   const spec = state.stages.find(candidate => candidate.name === 'spec')
-  const specLine = spec?.status === 'done' && spec.evidence ? `Согласованная спека: ${spec.evidence}.` : 'Спеки нет (стадия пропущена).'
+  const specLine = spec?.status === 'done' && spec.evidence
+    ? `Согласованная спека: ${spec.evidence}.`
+    : spec?.status === 'skipped' && spec.evidence ? `Согласованная спека (согласована ранее): ${spec.evidence}.` : 'Спеки нет (стадия пропущена).'
+  const combined = stage === 'plan' && testPlan.mode === 'combined'
+  const combinedLine = combined
+    ? ' Секция «## Тест-кейсы» — совмещённый тест-план: проверьте покрытие требований спеки, слои, ветви, тавтологичность кейсов, поведение вместо реализации и антипаттерны тестирования (правила — writing-test-plans.md).'
+    : ''
   const approved = stage === 'plan' && testPlan.mode === 'separate' ? ` Согласованный тест-план: ${testPlan.path}; каждый его ID должен встретиться ровно в одной задаче, новых тестов в плане быть не должно.` : ''
   const found = loadRules(root, stage, detectStacks(root))
   if ('reason' in found) throw new ReviewUnavailable(found.reason)
@@ -35,10 +41,15 @@ export function reviewFocus(root: string, state: TaskState, stage: 'test-plan' |
       if (!existsSync(path)) throw new ReviewUnavailable(`Не найден файл правил ${path}.`)
       paths.push(path)
     }
+    if (combined) {
+      const combinedRules = join(found.dir, 'skills/writing-test-plans.md')
+      if (!existsSync(combinedRules)) throw new ReviewUnavailable(`Не найден файл правил ${combinedRules}.`)
+      paths.push(combinedRules)
+    }
   }
   const rules = ` Прочитайте правила: ${paths.join(', ')}.`
 
-  return `${specLine}${approved}${rules} Отметьте лишние задачи и спекулятивные опции, зависимости, слои.`
+  return `${specLine}${approved}${combinedLine}${rules} Отметьте лишние задачи и спекулятивные опции, зависимости, слои.`
 }
 
 const REVIEW_MAX = 3

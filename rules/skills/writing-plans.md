@@ -2,22 +2,13 @@
 
 **Required sub-skill:** invoke `superpowers:writing-plans`. Before drafting tasks, load the conventions for every stack the plan touches so code blocks already comply.
 
-## Stack detection
+## Stacks
 
-| Plan touches | Required before drafting |
-|---|---|
-| NestJS | `nestjs-best-practices:nestjs-best-practices`, then `rules/nestjs/index.md` and relevant topics |
-| Angular | `angular-best-practices:angular-best-practices`, then `rules/angular/index.md` and relevant topics |
-| Both | Both pairs |
-| Neither | No stack rule |
-
-Detect stacks from the requested plan, not the repository's overall technology list. Read relevant rules before presenting tasks. If a referenced local rule is unavailable, continue with the best-practices skill and do not treat it as a blocker. Draft the plan in `tmp/drafts/<feature>-plan.md`, approve it per `rules/skills/document-approval.md` (no native Plan Mode), and save only after `approved`.
+Detect the stacks from the requested plan, not from the repository's technology list. Inside a task `flow next` puts the stack index and the best-practice skills to call into the work package. Outside a task: NestJS — `nestjs-best-practices:nestjs-best-practices`, then `rules/nestjs/index.md` and the relevant topics; Angular — `angular-best-practices:angular-best-practices`, then `rules/angular/index.md` and the relevant topics; neither — no stack rule. If a referenced local rule is unavailable, continue with the best-practices skill and do not treat it as a blocker. Read the rules before presenting tasks.
 
 ## Precondition: approved test plan (Stage B)
 
 This file is Stage B of two-stage planning; Stage A is `rules/skills/writing-test-plans.md`. For any task with a test-worthy layer, an approved test plan must exist before drafting. If it does not, go back to Stage A first. If the change has no test-worthy layer (Markdown-only, excluded layers), Stage A is skipped; write one line in the plan: «План тестов не требуется: <причина>».
-
-Start Stage B in a fresh draft file that does not contain the test plan: each document has its own approval cycle.
 
 **Exception — small task (a plan of a single task):** there is no separate test plan and no Stage B draft: the test cases are the first part of this plan (`## Тест-кейсы`), approved together with it. See `rules/skills/writing-test-plans.md` → "Small task: one combined document". The self-check and review `<inputs>` below then treat that section as the approved test plan for ID traceability (every ID in exactly one task — here, Task 1).
 
@@ -29,7 +20,7 @@ The final pass runs build, type-check, lint, and tests exactly once at the end. 
 
 The plan's `## Global Constraints` section lists `rules/base/minimal-change.md`, so the constraint reaches every implementer, including `codex-implement` and `executing-plans`.
 
-Store plans at `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`; delete them after implementation unless the user asks to keep them. Follow `rules/base/artifacts-and-tmp.md` for other artifacts.
+Inside a task the target path comes from `flow next`. Outside a task store plans at `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md` after approval (`rules/skills/document-approval.md`) and delete them after implementation unless the user asks to keep them. Follow `rules/base/artifacts-and-tmp.md` for other artifacts.
 
 **Write the plan document in Russian** — see `rules/base/workflow-and-misc.md` → "Documentation Language". This applies to the whole document (headings, task descriptions, prose) regardless of what language the request came in; only code blocks/identifiers stay as-is.
 
@@ -46,21 +37,7 @@ Everything else (plan title, goal, architecture, task and step descriptions, pro
 
 ## Review loop (before the user sees it)
 
-The plan is validated by Codex through the `kit:doc-review` skill before the user sees it; the user sees only the result, through Plannotator approval (`rules/skills/document-approval.md`).
-
-1. Draft the plan in `tmp/drafts/<feature>-plan.md`.
-2. **Self-check first**, silently: every task heading is `### Task N: <название>`; every test ID of the approved test plan appears in exactly one task; no tests outside the test plan; test-first steps carry code and the expected failure reason; no `git add` / `git commit` / PR steps.
-3. Invoke the `kit:doc-review` skill on the draft, **at most 3 iterations**:
-   ```
-   /doc-review tmp/drafts/<feature>-plan.md --type=plan --max=3 --profile=<P> --focus="<inputs>"
-   ```
-   - `<P>`: `codex.review.profile`, else `codex.profile`, else `codex`, read from `.claude/dev-conventions.json`. Pass it explicitly and **do not ask the user**.
-   - `<inputs>`: the approved design spec (path), the approved test plan (path; every ID in exactly one task, no new tests), the stack rules loaded for this plan, and the request to flag any task not required by the spec or test plan and any speculative option, layer, or dependency.
-   - The `doc-review` loop verifies the plan's claims against the actual code and applies fixes for critical/high findings; the draft lives in untracked `tmp/`, so its optional git steps are skipped.
-4. The loop ends at `VERDICT: NO_MAJOR_ISSUES` or after 3 iterations. With major findings still open, open the plan for approval anyway, with a «Не сошлись» block at the top (each finding, the reviewer's position, the author's position); the user is the tiebreaker.
-5. If `doc-review` or the `codex` CLI is unavailable, follow `rules/base/workflow-dependencies.md`; keep the step pending, do not skip it silently.
-
-Only after this loop open the draft in Plannotator.
+Inside a task `flow submit` runs the Codex review (`kit:doc-review`, `--type=plan`, 3 iterations, profile from `.claude/dev-conventions.json`) and `flow validate` checks the format (`### Task N:` headings, checkboxes, Test IDs, no commit or PR steps). Outside a task self-check first (every task heading is `### Task N: <название>`; every test ID of the approved test plan appears in exactly one task; no tests outside the test plan; test-first steps carry code and the expected failure reason; no `git add` / `git commit` / PR steps), then run `/doc-review <draft> --type=plan --max=3 --profile=<P> --focus="<inputs>"` with the approved design spec, the approved test plan, the stack rules and the request to flag any task not required by the spec or test plan. At the limit with open major findings add a «Не сошлись» block at the top. If `doc-review` or the `codex` CLI is unavailable, follow `rules/base/workflow-dependencies.md`. Approval: `rules/skills/document-approval.md`.
 
 ## Test part of every task
 

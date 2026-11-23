@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
+import { syncRoadmapState } from './roadmap-sync.mts'
 import { IMPLEMENT_METHODS, STAGE_NAMES } from './stages.mts'
 import type { TaskState } from './types.mts'
 
@@ -76,6 +77,7 @@ export function writeState(root: string, state: TaskState): void {
   } finally {
     rmSync(temporary, { force: true })
   }
+  syncRoadmapState(root, state)
 }
 
 export function listStates(root: string): TaskState[] {

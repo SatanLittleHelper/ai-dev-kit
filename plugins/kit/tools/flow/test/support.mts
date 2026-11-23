@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { closeStage, startTask } from '../src/flow.mts'
+import { closeStage, getStatus, startTask } from '../src/flow.mts'
 import { DOCUMENT_STAGES, STAGE_NAMES } from '../src/stages.mts'
 import type { StageName } from '../src/stages.mts'
 import type { AgentPackageResponse, BlockedResponse, FlowResponse, NeedsInputResponse, OkResponse, PackageResponse, Stage, TaskState } from '../src/types.mts'
@@ -21,6 +21,10 @@ export function writeDoc(root: string, name: string, content = 'черновик
 const statePath = (root: string, id: string): string => join(root, 'tmp', 'flow', `${id}.json`)
 
 export const readStateFile = (root: string, id: string): TaskState => JSON.parse(readFileSync(statePath(root, id), 'utf8'))
+
+export const getState = readStateFile
+
+export const getStatusOf = (root: string, id = 'A1') => getStatus({ root, id })
 
 export const stageOf = (state: TaskState, name: StageName): Stage | undefined => state.stages.find(stage => stage.name === name)
 

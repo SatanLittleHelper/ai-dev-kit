@@ -4,11 +4,13 @@ import type { ResetNotice, TaskState } from './types.mts'
 
 // Находит первую стадию, чей документ изменился или удалён после согласования, и возвращает в «ожидает» её и все последующие.
 export function invalidate(root: string, state: TaskState): ResetNotice | undefined {
+  const reviewed = state.stages.some(candidate => candidate.name === 'review' && candidate.status === 'done')
   for (const [index, stage] of state.stages.entries()) {
     if (stage.hash === undefined || stage.evidence === undefined) continue
 
     const current = fileHash(root, stage.evidence)
     if (current === stage.hash) continue
+    if (current === null && reviewed && (stage.name === 'plan' || stage.name === 'test-plan')) continue
 
     const file = stage.evidence
     const reset = state.stages.slice(index)
