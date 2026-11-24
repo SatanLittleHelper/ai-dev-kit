@@ -3,7 +3,7 @@
 <h1 id="key-val"></h1>
 <div id="opsbar-opsbar-transitions"></div>
 <script>
-  const { key, status, options, layout } = __DATA__
+  const { key, status, options, layout, users, assignee } = __DATA__
   const toolbar = document.querySelector('#opsbar-opsbar-transitions')
   document.querySelector('#key-val').textContent = key
 
@@ -57,4 +57,39 @@
   if (trigger) {
     newElement('a', { href: '#', textContent: 'View workflow' }, menu).setAttribute('role', 'menuitem')
   }
+  newElement('span', { id: 'assignee-val', textContent: assignee }, document.body)
+  newElement('a', { id: 'assign-issue', href: '#', textContent: 'Assign' }, document.body).addEventListener('click', event => {
+    event.preventDefault()
+    const dialog = newElement('div', { id: 'assign-dialog' }, document.body)
+    const input = newElement('input', { id: 'assignee-field', autocomplete: 'off' }, dialog)
+    input.setAttribute('role', 'combobox')
+    const list = newElement('ul', {}, dialog)
+    list.setAttribute('role', 'listbox')
+    list.setAttribute('aria-busy', 'false')
+    let chosen = ''
+    input.addEventListener('input', () => {
+      list.replaceChildren()
+      const query = input.value.toLowerCase()
+      if (!query) return
+      users.filter(user => `${user.login} ${user.name} ${user.email}`.toLowerCase().includes(query)).forEach(user => {
+        const option = newElement('li', { textContent: `${user.name} (${user.login}) - ${user.email}` }, list)
+        option.setAttribute('role', 'option')
+        option.addEventListener('click', () => {
+          chosen = user.login
+          input.value = user.name
+          list.replaceChildren()
+        })
+      })
+    })
+    newElement('button', { id: 'assign-issue-submit', textContent: 'Assign' }, dialog).addEventListener('click', async () => {
+      const result = await fetch(location.pathname, { method: 'POST', body: JSON.stringify({ assignee: chosen }) })
+      const data = await result.json()
+      if (!result.ok) {
+        newElement('div', { className: 'aui-message-error', textContent: data.error }, document.body).setAttribute('role', 'alert')
+        return
+      }
+      document.querySelector('#assignee-val').textContent = data.assignee
+      dialog.remove()
+    })
+  })
 </script>

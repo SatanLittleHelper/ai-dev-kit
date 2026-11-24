@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { run } from './run.mts'
 
@@ -7,6 +7,7 @@ export function main(argv = process.argv.slice(2)): Promise<number> {
     cwd: process.cwd(),
     env: process.env,
     readFile: path => readFileSync(path, 'utf8'),
+    writeFile: (path, content) => writeFileSync(path, content),
     out: text => process.stdout.write(`${text}\n`),
     err: text => process.stderr.write(`${text}\n`),
   })

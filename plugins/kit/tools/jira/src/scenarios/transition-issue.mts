@@ -5,14 +5,22 @@ import type { JiraConfig } from '../config.mts'
 import { CliError, EXIT, firstLine } from '../errors.mts'
 import { transitionSel as sel } from '../selectors.mts'
 import { JIRA_STATUS } from '../statuses.mts'
+import { assignIssue } from './assign-issue.mts'
 
-const REVIEW_NAMES = [JIRA_STATUS.REVIEW, 'Review']
-const STATUS_NAMES = [JIRA_STATUS.IN_PROGRESS, 'In Progress']
+type Target = 'in-progress' | 'review' | 'testing'
+type AlreadyThere = 'already-in-progress' | 'already-in-review' | 'already-in-testing'
+
+const TARGETS: Record<Target, { names: readonly string[]; already: AlreadyThere }> = {
+  'in-progress': { names: [JIRA_STATUS.IN_PROGRESS, 'In Progress'], already: 'already-in-progress' },
+  review: { names: [JIRA_STATUS.REVIEW, 'Review'], already: 'already-in-review' },
+  testing: { names: [JIRA_STATUS.TESTING, 'Testing'], already: 'already-in-testing' },
+}
 const normalize = (value: string): string => value.trim().replace(/\s+/g, ' ').toLowerCase()
 const matches = (value: string, names: readonly string[]): boolean => names.some(name => normalize(value) === normalize(name))
 
 interface Request {
-  target?: 'in-progress' | 'review'
+  target?: Target
+  assignee?: string
   key: string
   config: JiraConfig
   dryRun: boolean
@@ -23,8 +31,9 @@ interface Request {
 interface TransitionResult {
   key: string
   url: string
-  status: 'transitioned' | 'already-in-progress' | 'already-in-review' | 'dry-run'
+  status: 'transitioned' | AlreadyThere | 'dry-run'
   issueStatus: string
+  assignee?: string
 }
 
 async function assertIssue(page: Page, url: string, key: string, available = true): Promise<void> {
@@ -39,7 +48,7 @@ async function assertIssue(page: Page, url: string, key: string, available = tru
   }
 }
 
-async function readIssue(page: Page, url: string, key: string): Promise<{ status: string; locator: Locator }> {
+export async function readIssue(page: Page, url: string, key: string): Promise<{ status: string; locator: Locator }> {
   const response = await page.goto(url)
   await assertIssue(page, url, key, response?.ok() ?? false)
 
@@ -75,10 +84,10 @@ function describeAction(action: Action) {
   }), { label: sel.menuActionLabel, status: sel.menuActionStatus })
 }
 
-async function chooseAction(page: Page, request: Request, statusNames: string[]) {
+async function chooseAction(page: Page, request: Request, statusNames: readonly string[]) {
   const actions = await (await availableActions(page)).elementHandles()
   const labels = await Promise.all(actions.map(describeAction))
-  const preferred = request.target === 'review' ? undefined : request.config.inProgressTransition
+  const preferred = (request.target ?? 'in-progress') === 'in-progress' ? request.config.inProgressTransition : undefined
   const found = labels.flatMap(({ label, destination }, index) => {
     const targetMatches = destination !== '' && matches(destination, statusNames)
     if (destination && !targetMatches) return []
@@ -94,22 +103,37 @@ async function chooseAction(page: Page, request: Request, statusNames: string[])
   return { action, expected: labels[index] }
 }
 
+// Статус к этому моменту уже в целевом: при сбое назначения повторная команда сделает только его.
+async function assignAfterTransition(page: Page, request: Request, issueStatus: string): Promise<void> {
+  if (!request.assignee) return
+  try {
+    await assignIssue(page, request.assignee)
+  } catch (error) {
+    if (!(error instanceof CliError)) throw error
+    throw new CliError(`${error.message} Задача ${request.key} в статусе «${issueStatus}»; повторная команда только назначит исполнителя.`, error.code)
+  }
+}
+
 export async function transitionIssue(page: Page, request: Request): Promise<TransitionResult> {
-  const { key, config, dryRun, pause, timeoutMs } = request
+  const { key, config, dryRun, pause, timeoutMs, assignee } = request
+  const target = request.target ?? 'in-progress'
   const url = issueUrl(config.baseUrl, key)
-  const review = request.target === 'review'
-  const names = review ? REVIEW_NAMES : config.inProgressStatus ? [config.inProgressStatus] : STATUS_NAMES
+  const names = target === 'in-progress' && config.inProgressStatus ? [config.inProgressStatus] : TARGETS[target].names
+  const extra = assignee ? { assignee } : {}
   page.setDefaultTimeout(timeoutMs)
   page.setDefaultNavigationTimeout(timeoutMs)
 
   const initial = await readIssue(page, url, key)
-  const alreadyInProgress = matches(initial.status, names)
-  const selected = alreadyInProgress ? null : await chooseAction(page, request, names)
+  const alreadyThere = matches(initial.status, names)
+  const selected = alreadyThere ? null : await chooseAction(page, request, names)
   if (dryRun) {
     await pause?.()
-    return { key, url, status: 'dry-run', issueStatus: initial.status }
+    return { key, url, status: 'dry-run', issueStatus: initial.status, ...extra }
   }
-  if (!selected) return { key, url, status: review ? 'already-in-review' : 'already-in-progress', issueStatus: initial.status }
+  if (!selected) {
+    await assignAfterTransition(page, request, initial.status)
+    return { key, url, status: TARGETS[target].already, issueStatus: initial.status, ...extra }
+  }
 
   await assertIssue(page, url, key)
   const { action, expected } = selected
@@ -118,16 +142,19 @@ export async function transitionIssue(page: Page, request: Request): Promise<Tra
     throw new CliError(`Меню переходов задачи ${key} изменилось. Повторите команду.`, EXIT.FAILURE)
   }
 
+  let confirmedStatus: string
   try {
     await action.click()
     const escaped = names.map(name => name.trim().split(/\s+/).map(RegExp.escape).join('\\s+'))
-    const target = initial.locator.filter({ hasText: new RegExp(`^\\s*(?:${escaped.join('|')})\\s*$`, 'i') })
-    await target.or(sel.error(page)).first().waitFor().catch(() => undefined)
+    const finished = initial.locator.filter({ hasText: new RegExp(`^\\s*(?:${escaped.join('|')})\\s*$`, 'i') })
+    await finished.or(sel.error(page)).first().waitFor().catch(() => undefined)
     const failure = await sel.error(page).isVisible() ? (await sel.error(page).innerText()).trim() : ''
     const confirmed = await readIssue(page, url, key)
-    if (matches(confirmed.status, names)) return { key, url, status: 'transitioned', issueStatus: confirmed.status }
-    throw new Error(failure || `Jira показывает статус «${confirmed.status}».`)
+    if (!matches(confirmed.status, names)) throw new Error(failure || `Jira показывает статус «${confirmed.status}».`)
+    confirmedStatus = confirmed.status
   } catch (error) {
     throw new CliError(`Не удалось подтвердить переход задачи ${key}: ${firstLine(error)}`, EXIT.UNKNOWN)
   }
+  await assignAfterTransition(page, request, confirmedStatus)
+  return { key, url, status: 'transitioned', issueStatus: confirmedStatus, ...extra }
 }
