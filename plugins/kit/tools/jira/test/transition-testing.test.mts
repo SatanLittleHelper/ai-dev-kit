@@ -92,3 +92,21 @@ test('T2 I5: пробный запуск ничего не меняет, в от
   assert.equal(fake.state.transitions, 0)
   assert.equal(fake.state.assignments, 0)
 })
+
+test('T2 I3: назначение по точному email, а не по вхождению', async () => {
+  issue('Тестирование')
+  fake.state.users.unshift({ login: 'ivan.petrov', name: 'Иван Петров', email: `ivan.${TESTER}` })
+  const response = await transition('--assignee', TESTER, '--no-dry-run')
+
+  assert.equal(response.code, 0, response.stderr)
+  assert.equal(fake.state.issues[0].assignee, 'petrov')
+})
+
+test('T2 I4: нет пользователя с точно таким email — не найдено', async () => {
+  issue('Тестирование')
+  fake.state.users = [{ login: 'petrov', name: 'Пётр Петров', email: 'petrov@other.com' }]
+  const response = await transition('--assignee', TESTER, '--no-dry-run')
+
+  assert.equal(response.code, 3)
+  assert.equal(fake.state.assignments, 0)
+})
