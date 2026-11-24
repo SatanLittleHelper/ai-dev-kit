@@ -1,4 +1,5 @@
 import type { Locator, Page } from 'playwright-core'
+import { ISSUE_KEY } from './issue-key.mts'
 
 // Селекторы диалога Create.
 // Поиск не зависит от языка интерфейса: у Jira Server берутся id и атрибуты разметки, а английские подписи нужны для Cloud-подобной разметки (её имитирует тестовая Jira). Локаторы объединены через or().
@@ -22,6 +23,11 @@ export const transitionSel = {
   menuActionLabel: '.transition-label > .workflow-cell:first-child > span',
   menuActionStatus: '.transition-label .jira-issue-status-lozenge',
   error: (page: Page): Locator => page.locator('.aui-message-error, [role="alert"][data-type="error"]').first(),
+  assigneeValue: (page: Page): Locator => page.locator('#assignee-val'),
+  assignLink: (page: Page): Locator => page.locator('#assign-issue'),
+  assignDialog: (page: Page): Locator => page.locator('#assign-dialog'),
+  assignField: (page: Page): Locator => page.locator('#assign-dialog #assignee-field'),
+  assignSubmit: (page: Page): Locator => page.locator('#assign-dialog #assign-issue-submit'),
 }
 const TAB_SELECTORS: Record<string, string> = { Text: '[data-mode="source"] button' }
 
@@ -40,7 +46,7 @@ export const sel = {
   submitButton: (dialog: Locator): Locator => dialog.getByRole('button', { name: 'Create', exact: true }).or(dialog.locator('#create-issue-submit')),
   listboxReady: (page: Page): Locator => page.locator('[role="listbox"][aria-busy="false"]').or(page.locator('a.aui-list-item-link[role="option"]')).first(),
   options: (page: Page): Locator => page.getByRole('option').and(page.locator(':not(option)')),
-  createdLink: (page: Page): Locator => page.getByRole('status').getByRole('link', { name: /^[A-Z][A-Z0-9_]*-\d+$/ }).or(page.locator('a.issue-created-key')).first(),
+  createdLink: (page: Page): Locator => page.getByRole('status').getByRole('link', { name: ISSUE_KEY }).or(page.locator('a.issue-created-key')).first(),
   errorAlert: (page: Page): Locator => page.getByRole('alert'),
   issueHeading: (page: Page, key: string): Locator => page.getByRole('heading', { name: key, exact: true }),
 }

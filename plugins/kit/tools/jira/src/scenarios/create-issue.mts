@@ -3,6 +3,8 @@ import { openJira } from '../browser.mts'
 import { issueUrl } from '../config.mts'
 import { CliError, EXIT, firstLine } from '../errors.mts'
 import { sel } from '../selectors.mts'
+import { keyAtStart } from '../issue-key.mts'
+import { choose, notFound } from '../choose.mts'
 
 interface ResolvedRequest {
   project: string
@@ -33,18 +35,6 @@ interface CreateContext {
   progress(message: string): void
   // Вызывается в пробном запуске после заполнения формы: в видимом окне ждёт, пока пользователь его закроет.
   pause?(): Promise<void>
-}
-
-const notFound = (field: string, value: string): CliError => new CliError(`Поле «${field}»: значение «${value}» не найдено.`, EXIT.NOT_FOUND)
-
-async function choose(page: Page, field: Locator, value: string, accept: (label: string) => boolean, fieldName: string): Promise<void> {
-  await field.fill(value)
-  // У Jira Server при пустой выдаче варианты не появляются: таймаут ожидания значит «ничего не найдено», а не сбой.
-  await sel.listboxReady(page).waitFor({ state: 'attached' }).catch(() => undefined)
-  const labels = (await sel.options(page).allInnerTexts()).map(label => label.trim())
-  const index = labels.findIndex(accept)
-  if (index < 0) throw notFound(fieldName, value)
-  await sel.options(page).nth(index).click()
 }
 
 async function chooseType(page: Page, dialog: Locator, type: string): Promise<void> {
@@ -89,7 +79,7 @@ async function submit(page: Page, dialog: Locator, context: CreateContext): Prom
       throw unknownState(`Jira показала ошибку после Create: ${(await sel.errorAlert(page).first().innerText()).trim()}.`)
     }
     // В Jira Server текст ссылки — «KEY-1 - заголовок», поэтому ключ берём только из начала.
-    const key = (await sel.createdLink(page).innerText()).trim().match(/^[A-Z][A-Z0-9_]*-\d+/)?.[0]
+    const key = keyAtStart((await sel.createdLink(page).innerText()).trim())
     if (!key) throw unknownState('Не удалось выделить ключ созданной задачи.')
     const url = issueUrl(context.baseUrl, key)
     const response = await page.goto(url)

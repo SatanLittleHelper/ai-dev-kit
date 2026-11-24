@@ -1,3 +1,5 @@
+import { join } from 'node:path'
+import { planAfterMerge, withTesterEmail } from '../src/after-merge.mts'
 import { loadConfig, resolveDryRun, resolveIssueType, resolveProject } from '../src/config.mts'
 import type { JiraConfig } from '../src/config.mts'
 import { CliError, EXIT } from '../src/errors.mts'
@@ -6,7 +8,8 @@ import { ensurePlaywright, jiraHome, loadPlaywright, npmInstall, profilePath, wi
 import type { PlaywrightModule } from '../src/profile.mts'
 import { createIssue } from '../src/scenarios/create-issue.mts'
 import { transitionIssue } from '../src/scenarios/transition-issue.mts'
-import { parseCreateArgs, parseTransitionArgs, usageError } from './args.mts'
+import { getIssue } from '../src/scenarios/get-issue.mts'
+import { parseAfterMergeArgs, parseCreateArgs, parseTransitionArgs, parseGetArgs, usageError } from './args.mts'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
@@ -14,6 +17,7 @@ export interface Io {
   cwd: string
   env: NodeJS.ProcessEnv
   readFile(path: string): string
+  writeFile(path: string, content: string): void
   out(text: string): void
   err(text: string): void
 }
@@ -95,6 +99,7 @@ async function transition(rest: string[], io: Io): Promise<number> {
     const result = await transitionIssue(page, {
       key: args.key,
       target: args.target,
+      assignee: args.assignee,
       config,
       dryRun,
       timeoutMs: timeoutMs(io),
@@ -105,11 +110,54 @@ async function transition(rest: string[], io: Io): Promise<number> {
   }))
 }
 
+async function afterMerge(rest: string[], io: Io): Promise<number> {
+  const args = parseAfterMergeArgs(rest)
+  const path = join(io.cwd, '.claude', 'dev-conventions.json')
+  let raw = '{}'
+  try {
+    raw = io.readFile(path)
+  } catch {
+    // Нет файла настроек — проект без Jira, план вернёт skipped.
+  }
+  let json: Parameters<typeof planAfterMerge>[0]
+  try {
+    json = JSON.parse(raw)
+  } catch {
+    throw new CliError(`${path} — невалидный JSON.`, EXIT.FAILURE)
+  }
+  const plan = planAfterMerge(json, args)
+  if (plan.result !== 'ready') {
+    io.out(JSON.stringify(plan))
+    return 0
+  }
+  if (args.testerEmail) io.writeFile(path, withTesterEmail(raw, args.testerEmail))
+
+  const argv = [plan.key, '--to', 'testing']
+  if (plan.assignee) argv.push('--assignee', plan.assignee)
+  if (args.dryRun !== undefined) argv.push(args.dryRun ? '--dry-run' : '--no-dry-run')
+  let reply = ''
+  const code = await transition(argv, { ...io, out: text => { reply = text } })
+  if (code === 0) io.out(JSON.stringify({ result: 'done', ...JSON.parse(reply) }))
+  return code
+}
+
+async function get(rest: string[], io: Io): Promise<number> {
+  const args = parseGetArgs(rest)
+  const config = loadConfig(io.cwd, io.readFile)
+  return withProfile(io, config, (pw, home) => withSession(pw, profilePath(home, config.host), true, async page => {
+    const result = await getIssue(page, { key: args.key, config, timeoutMs: timeoutMs(io) })
+    io.out(JSON.stringify(result))
+    return 0
+  }))
+}
+
 export async function run(argv: string[], io: Io): Promise<number> {
   try {
     const [command, ...rest] = argv
     if (command === 'create') return await create(rest, io)
     if (command === 'transition') return await transition(rest, io)
+    if (command === 'after-merge') return await afterMerge(rest, io)
+    if (command === 'get') return await get(rest, io)
     if (command === 'status') return await status(rest, io)
     if (command === 'login') return await login(rest, io)
     throw usageError('Неизвестная команда.')

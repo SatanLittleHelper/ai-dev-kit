@@ -3,7 +3,7 @@ import { createServer } from 'node:http'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 
-interface FakeUser { login: string; name: string }
+interface FakeUser { login: string; name: string; email: string }
 interface FakeIssue {
   key: string
   project: string
@@ -35,6 +35,7 @@ export interface FakeState {
   transitionMode: 'success' | 'rejected' | 'unchanged' | 'redirect-after'
   redirectIssue: boolean
   transitions: number
+  assignments: number
   issueReads: number
 }
 export interface FakeJira {
@@ -44,12 +45,12 @@ export interface FakeJira {
   close(): Promise<void>
 }
 
-const ivanov: FakeUser = { login: 'ivanov', name: 'Иван Иванов' }
+const ivanov: FakeUser = { login: 'ivanov', name: 'Иван Иванов', email: 'ivanov@example.com' }
 
 const defaultState = (): FakeState => ({
   loggedIn: true,
   currentUser: ivanov,
-  users: [ivanov, { login: 'petrov', name: 'Пётр Петров' }],
+  users: [ivanov, { login: 'petrov', name: 'Пётр Петров', email: 'petrov@example.com' }],
   projects: [{ key: 'ABCD', name: 'Alpha D' }, { key: 'ABC', name: 'Alpha' }],
   epics: [{ key: 'ABC-12', title: 'Эпик' }],
   sprints: ['Спринт 5'],
@@ -66,6 +67,7 @@ const defaultState = (): FakeState => ({
   transitionMode: 'success',
   redirectIssue: false,
   transitions: 0,
+  assignments: 0,
   issueReads: 0,
 })
 
@@ -130,6 +132,8 @@ export async function startFakeJira(): Promise<FakeJira> {
           status: issue.status ?? 'Open',
           options: state.transitionOptions,
           layout: state.transitionLayout,
+          users: state.users,
+          assignee: issue.assignee ?? '',
         }).replace(/</g, '\\u003c')
         send(res, 200, 'text/html', ISSUE_HTML.replace('__DATA__', () => data))
         return
@@ -137,8 +141,19 @@ export async function startFakeJira(): Promise<FakeJira> {
     }
     if (req.method === 'POST' && browse) {
       const issue = state.issues.find(candidate => candidate.key === browse[1])
-      const { option } = JSON.parse(await readBody(req))
-      const action = state.transitionOptions[option]
+      const body = JSON.parse(await readBody(req))
+      if ('assignee' in body) {
+        const user = state.users.find(candidate => candidate.login === body.assignee)
+        state.assignments++
+        if (!issue || !user) {
+          send(res, 409, 'application/json', '{"error":"Jira не нашла пользователя"}')
+          return
+        }
+        issue.assignee = user.login
+        send(res, 200, 'application/json', JSON.stringify({ assignee: user.login }))
+        return
+      }
+      const action = state.transitionOptions[body.option]
       state.transitions++
       if (!issue || !action || state.transitionMode === 'rejected') {
         send(res, 409, 'application/json', '{"error":"Jira отклонила переход"}')

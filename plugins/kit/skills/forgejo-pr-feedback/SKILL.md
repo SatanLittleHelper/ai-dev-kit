@@ -55,7 +55,7 @@ node <base>/../../tools/forgejo/cli/main.mts pr reply <N> --file <replies.json> 
 
 | `action` | What to do |
 |---|---|
-| `merge` | Ask with AskUserQuestion «Влить #<N> в `<baseRef>`?»; when `ci` is `pending`, say in the question that CI is still running. Yes → `pr merge <N> --confirm`, report the result, then step 7; any other answer → stop. Never merge without the explicit yes. Exit code 3: do not retry, run `pr get <N>` and report the state. |
+| `merge` | Ask with AskUserQuestion «Влить #<N> в `<baseRef>`?»; when `ci` is `pending`, say in the question that CI is still running. Yes → `pr merge <N> --confirm`, report the result, then «After the merge», then step 7; any other answer → stop. Never merge without the explicit yes. Exit code 3: do not retry, run `pr get <N>` and report the state. |
 | `merge-blocked` | Tell that the PR is stacked on #`<stackParent>` and that one has to be merged first. Stop. |
 | `open-review` | Open `<url>/files` in the browser (`open "<url>/files"` on macOS, otherwise print the link), say in one line what was opened. Stop. |
 | `triage` | Own PR with comments, CI failure or conflict: continue with step 3 below and the steps 3–7 of this skill. |
@@ -218,6 +218,27 @@ Make the changes of items with `valid` (comments and CI items; and the `todo` it
 3. Confirmed → run the same command with `--confirm`.
 4. Exit code 3 means the post may or may not have gone through: do **not** retry. Run `pr threads <N>`, check which replies are already there and report it to the user.
 5. Delete the files in `tmp/drafts/` created by this skill, then step 7.
+
+## After the merge
+
+Runs after every successful `pr merge <N> --confirm`, wherever it was offered (the table of step 1 or of step 7), before step 7. It moves the Jira task to «Тестирование» and hands it to the tester. It never blocks the merge and never undoes it. All the logic (issue key, tester email, the move) lives in the `jira` CLI; this section only runs it and reports.
+
+1. `pr get <N>` → `headRef` and `title`.
+2. Run (quote the title for the shell as one argument):
+   ```bash
+   node <base>/../../tools/jira/cli/main.mts after-merge --head-ref <headRef> --title "<title>"
+   ```
+   It obeys `jira.dryRun`. stdout is one JSON line; branch by `result`:
+
+| `result` | What to do |
+|---|---|
+| `skipped`, `reason: no-jira` | The project does not use Jira. Say nothing, go to step 7. |
+| `skipped`, `reason: no-key` | Say «В PR нет ключа задачи Jira, перевод в «Тестирование» пропущен», go to step 7. |
+| `needs-tester-email` | Ask once with AskUserQuestion «Email тестировщика, которого назначить исполнителем?» with the option «Без смены исполнителя». An email → run the same command again with `--tester-email <email>` (the CLI saves it as `jira.testerEmail`). «Без смены исполнителя» → run it again with `--no-assignee`. |
+| `done`, `status: transitioned` or `already-in-testing` | Say «<key> → «Тестирование»» and, when the JSON has `assignee`, «исполнитель <assignee>». |
+| `done`, `status: dry-run` | Say that the move was only checked; ask with AskUserQuestion whether to repeat it with `--no-dry-run`; yes → run it again with that flag. |
+
+3. Non-zero exit code → show stderr and say that the PR is merged but Jira is not updated. Ask with AskUserQuestion whether to retry; yes → run the same command again (repeating is safe: when the status has already changed, it only assigns). Exit code 2 means the Jira session expired: tell the user to run `node <base>/../../tools/jira/cli/main.mts login`.
 
 ## 7. What next
 
