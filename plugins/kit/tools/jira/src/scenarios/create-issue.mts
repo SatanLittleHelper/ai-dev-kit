@@ -69,6 +69,15 @@ async function fillOptionalFields(page: Page, dialog: Locator, request: Resolved
 
 const unknownState = (reason: string): CliError => new CliError(`${reason} Состояние неизвестно, проверьте Jira.`, EXIT.UNKNOWN)
 
+async function verifyOpens(page: Page, key: string, url: string, context: CreateContext): Promise<void> {
+  try {
+    const response = await page.goto(url)
+    if (!response?.ok() || !(await sel.issueHeading(page, key).isVisible())) context.progress(`Предупреждение: задача ${key} создана, но страница ${url} не подтвердилась.`)
+  } catch (error) {
+    context.progress(`Предупреждение: задача ${key} создана, но страница ${url} не открылась (${firstLine(error)}).`)
+  }
+}
+
 async function submit(page: Page, dialog: Locator, context: CreateContext): Promise<CreatedIssue> {
   // Create необратим: с этого места ретраев нет, любая ошибка (в том числе сбой самого клика, который мог уже отправить форму) означает «состояние неизвестно».
   try {
@@ -82,8 +91,8 @@ async function submit(page: Page, dialog: Locator, context: CreateContext): Prom
     const key = keyAtStart((await sel.createdLink(page).innerText()).trim())
     if (!key) throw unknownState('Не удалось выделить ключ созданной задачи.')
     const url = issueUrl(context.baseUrl, key)
-    const response = await page.goto(url)
-    if (!response?.ok() || !(await sel.issueHeading(page, key).isVisible())) throw unknownState(`Задача ${key} не открывается по ${url}.`)
+    // Ключ уже получен — задача создана. Открытие страницы только дополнительная проверка: её сбой (например, таймаут медленной Jira) не должен выдавать успех за «состояние неизвестно».
+    await verifyOpens(page, key, url, context)
     return { key, url }
   } catch (error) {
     if (error instanceof CliError) throw error
