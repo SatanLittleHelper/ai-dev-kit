@@ -52,7 +52,7 @@ Run from the project root. A part whose prerequisite is missing is skipped, and 
    ```
    bash .claude/ai-dev-kit/dependencies/install.sh --update
    ```
-   Installs missing official Superpowers/Plannotator plugins, refreshes marketplaces and plugins, and installs/updates the Plannotator binary. Preserves explicitly disabled plugins and existing project settings. It manages only dependencies declared in `dependencies/plugins.json`. If the installer or Claude CLI is missing, report it and offer installation/repair per `rules/base/workflow-dependencies.md`.
+   Installs missing official Superpowers/Plannotator plugins and the Plannotator binary, and refreshes the Superpowers marketplace and plugin. Plannotator has its own update cycle: it is only checked for being installed, never refreshed here. Preserves explicitly disabled plugins and existing project settings. It manages only dependencies declared in `dependencies/plugins.json`. If the installer or Claude CLI is missing, report it and offer installation/repair per `rules/base/workflow-dependencies.md`.
 9. **Default dev-conventions:**
    ```
    bash .claude/ai-dev-kit/defaults/install-dev-conventions.sh

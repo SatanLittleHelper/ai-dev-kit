@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Install the kit's external Claude Code plugins and Plannotator CLI.
-# Run from a consuming project's git tree. --update also refreshes installed versions.
+# Run from a consuming project's git tree. --update also refreshes installed versions,
+# except Plannotator: it has its own update cycle (its marketplace is a ~400 MB repository,
+# re-cloned on every refresh), so the kit only makes sure it is installed.
 set -euo pipefail
 
 UPDATE=0
@@ -62,11 +64,11 @@ while IFS=$'\t' read -r PLUGIN MARKETPLACE REPO; do
   if [ "$REGISTERED" != yes ]; then
     claude plugin marketplace add "$REPO" --scope project
   fi
-  if [ "$UPDATE" -eq 1 ]; then
+  if [ "$UPDATE" -eq 1 ] && [ "$PLUGIN" != plannotator ]; then
     claude plugin marketplace update "$MARKETPLACE"
   fi
   claude plugin install "$PLUGIN@$MARKETPLACE" --scope project
-  if [ "$UPDATE" -eq 1 ]; then
+  if [ "$UPDATE" -eq 1 ] && [ "$PLUGIN" != plannotator ]; then
     claude plugin update "$PLUGIN@$MARKETPLACE" --scope project
   fi
 done <<< "$PLUGINS"
@@ -77,7 +79,7 @@ if [ "$PLANNOTATOR_ENABLED" -eq 1 ]; then
   if [ -z "$PLANNOTATOR_BIN" ] && [ -x "$HOME/.local/bin/plannotator" ]; then
     PLANNOTATOR_BIN="$HOME/.local/bin/plannotator"
   fi
-  if [ "$UPDATE" -eq 1 ] || [ -z "$PLANNOTATOR_BIN" ] || [ ! -x "$PLANNOTATOR_BIN" ]; then
+  if [ -z "$PLANNOTATOR_BIN" ] || [ ! -x "$PLANNOTATOR_BIN" ]; then
     command -v curl >/dev/null 2>&1 || die "curl is required to install Plannotator."
     INSTALLER="$(mktemp)"
     trap 'rm -f "$INSTALLER"' EXIT

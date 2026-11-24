@@ -74,13 +74,14 @@ test('installs a missing Plannotator binary with minimal integration', t => {
   assert.match(f.calls(), /plannotator --version/);
 });
 
-test('update refreshes marketplaces, plugins and CLI', t => {
+test('update refreshes Superpowers but leaves Plannotator to its own update cycle', t => {
   const f = fixture(t);
   const result = f.run(['--update']);
   assert.equal(result.status, 0, result.stderr);
   assert.match(f.calls(), /plugin marketplace update superpowers-marketplace/);
-  assert.match(f.calls(), /plugin update plannotator@plannotator --scope project/);
-  assert.match(f.calls(), /installer --minimal/);
+  assert.doesNotMatch(f.calls(), /plugin marketplace update plannotator/);
+  assert.doesNotMatch(f.calls(), /plugin update plannotator@plannotator/);
+  assert.doesNotMatch(f.calls(), /installer --minimal/);
 });
 
 test('plugin failures are visible and return failure', t => {
