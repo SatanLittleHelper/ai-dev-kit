@@ -81,7 +81,7 @@
         })
       })
     })
-    newElement('button', { id: 'assign-issue-submit', textContent: 'Assign' }, dialog).addEventListener('click', async () => {
+    newElement('button', { id: 'assign-issue-form-submit', textContent: 'Assign' }, dialog).addEventListener('click', async () => {
       const result = await fetch(location.pathname, { method: 'POST', body: JSON.stringify({ assignee: chosen }) })
       const data = await result.json()
       if (!result.ok) {
