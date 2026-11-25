@@ -27,7 +27,7 @@ export const transitionSel = {
   assignLink: (page: Page): Locator => page.locator('#assign-issue'),
   assignDialog: (page: Page): Locator => page.locator('#assign-dialog'),
   assignField: (page: Page): Locator => page.locator('#assign-dialog #assignee-field'),
-  assignSubmit: (page: Page): Locator => page.locator('#assign-dialog #assign-issue-submit'),
+  assignSubmit: (page: Page): Locator => page.locator('#assign-dialog #assign-issue-form-submit'),
 }
 const TAB_SELECTORS: Record<string, string> = { Text: '[data-mode="source"] button' }
 
