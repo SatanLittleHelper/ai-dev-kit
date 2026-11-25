@@ -138,8 +138,9 @@ export function scenarioOf(data: PrData): Scenario {
   const last = latestMine(reviews, data.me)
   if (!last) return 'review'
   if (last.state === 'approved' && !last.dismissed) return 'wait-author'
-  if (last.commitSha !== data.pull.headSha) return 'recheck'
-  const answered = threads.some(thread => thread.comments.some(comment => same(comment.author, data.me)) && same(lastOf(thread).author, data.pull.author))
+  if (last.dismissed || last.commitSha !== data.pull.headSha) return 'recheck'
+  const reviewedAt = Date.parse(last.submittedAt)
+  const answered = threads.some(thread => thread.comments.some(comment => same(comment.author, data.me)) && same(lastOf(thread).author, data.pull.author) && Date.parse(lastOf(thread).createdAt) > reviewedAt)
   return answered ? 'recheck' : 'wait-author'
 }
 

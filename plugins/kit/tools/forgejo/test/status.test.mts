@@ -24,10 +24,21 @@ test('U32: моё ревью на старом коммите — «перепр
 
 test('U33: на текущем коммите различает «автор ответил» и «молчит»', () => {
   const reviews = [review({ state: 'changes', commitSha: 'h2' })]
-  const authorLast = thread({ comments: [mine(), comment({ id: 'c2', author: 'bob' })] })
+  const authorLast = thread({ comments: [mine(), comment({ id: 'c2', author: 'bob', createdAt: '2026-10-01T11:00:00Z' })] })
   const mineLast = thread({ comments: [comment({ id: 'c3', author: 'bob' }), mine({ id: 'c4' })] })
   assert.equal(verdict({ reviews, threads: [authorLast] })[0], 'recheck')
   assert.equal(verdict({ reviews, threads: [mineLast] })[0], 'wait-author')
+})
+
+test('U33a: ответ автора до моего последнего ревью не требует перепроверки, после него — требует', () => {
+  const authorLast = (createdAt: string) => thread({ comments: [mine({ createdAt: '2026-10-01T09:00:00Z' }), comment({ id: 'c2', author: 'bob', createdAt })] })
+  const reviews = [review({ state: 'changes', commitSha: 'h2', submittedAt: '2026-10-01T10:00:00Z' })]
+  assert.equal(verdict({ reviews, threads: [authorLast('2026-10-01T09:30:00Z')] })[0], 'wait-author')
+  assert.equal(verdict({ reviews, threads: [authorLast('2026-10-01T10:30:00Z')] })[0], 'recheck')
+})
+
+test('U33b: моё отклонённое ревью — «перепроверка»', () => {
+  assert.deepEqual(verdict({ reviews: [review({ state: 'changes', commitSha: 'h2', dismissed: true })] }), ['recheck', 'перепроверка'])
 })
 
 test('U34: свой PR: замечания, конфликт, либо ничего', () => {
