@@ -27,8 +27,9 @@ export function loadTask({ root, id }: { root: string; id?: string }): Loaded {
     const selected = select({ root, id })
     if (!('state' in selected)) return selected
 
+    const before = JSON.stringify(selected.state.drift)
     const reset = invalidate(root, selected.state)
-    if (reset) writeState(root, selected.state)
+    if (reset || JSON.stringify(selected.state.drift) !== before) writeState(root, selected.state)
 
     return { state: selected.state, reset }
   } catch (error) {

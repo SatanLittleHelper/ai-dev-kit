@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { getStatus } from '../src/flow.mts'
 import { submitDraft } from '../src/submit.mts'
@@ -67,10 +67,10 @@ test('U17: повторный wait после annotated возвращает т�
   assert.deepEqual(second, first)
 })
 
-test('U18: правка согласованного документа сбрасывает стадию', () => {
+test('U18: удаление согласованного документа сбрасывает стадию', () => {
   const { root } = submitted({ result: { decision: 'approved' } })
   wait(root)
-  writeFileSync(join(root, TARGET), `${SPEC}\nПравка.`)
+  rmSync(join(root, TARGET))
 
   const status = expectOk(getStatus({ root, id: 'A2' }))
 
@@ -113,7 +113,7 @@ test('U36: черновик, изменённый после показа, не 
 test('U37: сброс стадии очищает сессию показа', () => {
   const { root } = submitted({ result: { decision: 'approved' } })
   wait(root)
-  writeFileSync(join(root, TARGET), `${SPEC}\nПравка.`)
+  rmSync(join(root, TARGET))
 
   expectOk(getStatus({ root, id: 'A2' }))
 

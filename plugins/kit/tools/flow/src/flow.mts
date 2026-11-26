@@ -1,4 +1,5 @@
 import { isAbsolute } from 'node:path'
+import { syncBlock } from './drift.mts'
 import { fileHash, repoRelative } from './evidence.mts'
 import { blocked, currentStage, ok } from './responses.mts'
 import { DOCUMENT_STAGES, STAGE_NAMES } from './stages.mts'
@@ -108,6 +109,8 @@ function skip(root: string, id: string, stage: string, reason?: string, priorRes
   if (!('state' in loaded)) return loaded.response
 
   const { state, reset } = loaded
+  const unsynced = syncBlock(state)
+  if (unsynced) return unsynced
   const target = selectStage(state, stage)
   if ('result' in target) return target
 

@@ -1,3 +1,4 @@
+import { syncBlock } from './drift.mts'
 import { instructionsFor } from './instructions.mts'
 import { advanceJiraStage, runJiraTransition } from './jira-transition.mts'
 import type { JiraTransition } from './jira-transition.mts'
@@ -38,6 +39,8 @@ export function nextPackage({
   if (!('state' in loaded)) return loaded.response
 
   const { state, reset } = loaded
+  const unsynced = syncBlock(state)
+  if (unsynced) return unsynced
   const stage = currentStage(state)
   if (method !== undefined && stage !== 'implement') return blocked('Флаг --method действует только на стадии implement.')
   if (stage === 'in-progress') {

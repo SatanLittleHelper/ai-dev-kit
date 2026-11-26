@@ -9,7 +9,7 @@ const FROM_SPEC = ['spec', 'test-plan', 'plan', 'implement', 'simplify', 'check'
 test('U25: изменённый документ сбрасывает свою и последующие стадии', () => {
   const root = tempRoot()
   begin(root)
-  closeThrough(root, 'A1', 'test-plan')
+  closeThrough(root, 'A1', 'plan')
   writeFileSync(docPath(root, 'spec'), 'правка')
 
   const response = expectOk(getStatus({ root, id: 'A1' }))
@@ -77,7 +77,7 @@ test('U29: изменение позднего документа не трог�
 test('U30: сброс сохраняется в файле состояния', () => {
   const root = tempRoot()
   begin(root)
-  closeThrough(root, 'A1', 'test-plan')
+  closeThrough(root, 'A1', 'plan')
   writeFileSync(docPath(root, 'spec'), 'правка')
 
   getStatus({ root, id: 'A1' })
