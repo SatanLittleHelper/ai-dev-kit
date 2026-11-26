@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync, rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileHash, pathsAlias, repoRelative } from './evidence.mts'
+import { syncBlock } from './drift.mts'
 import { draftPath, targetPath } from './paths.mts'
 import { reviewDraft } from './review.mts'
 import { blocked, currentStage } from './responses.mts'
@@ -34,6 +35,8 @@ function submit({ root, cwd, id, draft, runners, now }: SubmitOptions & { id: st
   if (!('state' in loaded)) return loaded.response
 
   const { state } = loaded
+  const unsynced = syncBlock(state)
+  if (unsynced) return unsynced
   const session = state.session
   if (session?.status === 'open' && session.stage === currentStage(state)) {
     return { result: 'pending', task: state.id, stage: session.stage, draft: session.draft }

@@ -34,7 +34,9 @@ test('F2 U12: ранее согласованные документы реги�
   assert.match(reviewFocus(root, state, 'plan'), /Согласованная спека \(согласована ранее\): docs\/feat\/steps\/s\/design\.md/)
 
   writeFileSync(join(root, SPEC), 'изменено после регистрации')
-  assert.equal(expectOk(getStatusOf(root)).reset?.stages[0], 'spec')
+  const status = expectOk(getStatusOf(root))
+  assert.equal(status.reset, undefined)
+  assert.deepEqual(status.drift, [{ stage: 'spec', file: SPEC }, { stage: 'test-plan', file: SPEC }])
 
   const plain = tempRoot()
   seedRules(plain)

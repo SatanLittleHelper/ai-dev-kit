@@ -30,6 +30,7 @@ if (response.result === 'pending') return response.stage === 'review' ? 'Рев�
 
   const lines = [`Задача ${response.task}`, ...response.stages.map(stageLine)]
   if (response.reset) lines.push(`Сброшены стадии ${response.reset.stages.join(', ')}: файл ${response.reset.file} ${response.reset.reason === 'deleted' ? 'удалён' : 'изменён'}.`)
+  if (response.drift) lines.push(`Расходятся с согласованным: ${response.drift.map(entry => `${entry.stage} (${entry.file})`).join(', ')}. После approved текущего документа выполните flow sync.`)
   lines.push(response.completed ? 'Задача завершена.' : `Текущая стадия: ${response.current}`)
 
   return lines.join('\n')

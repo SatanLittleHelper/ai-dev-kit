@@ -22,6 +22,16 @@ export interface TaskState {
   session?: Session
   reviews?: Partial<Record<DocumentStageName, ReviewProgress>>
   superseded?: { path: string; hash: string }[]
+  drift?: Drift[]
+  restarts?: { from: StageName; reason: string; at: string }[]
+}
+
+// Согласованный документ изменён, пока шла работа над более поздним документом: хеш принимает только flow sync после его approved.
+export interface Drift {
+  stage: DocumentStageName
+  path: string
+  hash: string
+  since: StageName
 }
 
 export interface ResetNotice {
@@ -37,6 +47,7 @@ export interface OkResponse {
   current: StageName | null
   completed: boolean
   reset?: ResetNotice
+  drift?: { stage: DocumentStageName; file: string }[]
 }
 
 export interface BlockedResponse {

@@ -7,6 +7,7 @@ import { readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { repoRelative } from './evidence.mts'
 import { closeStage, selectStage } from './flow.mts'
+import { syncBlock } from './drift.mts'
 import { blocked } from './responses.mts'
 import { STAGE_NAMES, isAgentStage } from './stages.mts'
 import { loadTask, withTaskLock } from './task-access.mts'
@@ -36,6 +37,8 @@ function done({ root, cwd, id, stage, evidence, prLookup, jiraTransition, noDryR
   if (!('state' in loaded)) return loaded.response
 
   const { state } = loaded
+  const unsynced = syncBlock(state)
+  if (unsynced) return unsynced
   if (!(STAGE_NAMES as readonly string[]).includes(stage)) return blocked(`Неизвестная стадия «${stage}». Допустимые: ${STAGE_NAMES.join(', ')}.`)
   if (stage === 'pr') return donePr({ root, id, state, evidence, prLookup: prLookup ?? lookupPr, jiraTransition: jiraTransition ?? runJiraTransition, noDryRun: noDryRun ?? false })
   if (!isAgentStage(stage as never)) return blocked(`Стадия ${stage} закрывается не командой done: документы и ревью кода — через flow submit и flow wait, остальное — через flow next.`)
