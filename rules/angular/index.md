@@ -17,6 +17,7 @@ Baseline testing (an agent asked to build a component with an input, output, rea
 | Component structure, styling, Taiga UI, layout spacing | See file | `component.md` |
 | Pagination pattern | Plain pagination, reusable controller, fixed bottom bar | `pagination.md` |
 | Routing | Lazy-loaded route components | `routing.md` |
+| Resolvers vs. loading data in the page | Resolver only decides navigation; page/store loads display data | `resolvers.md` |
 | Porting design px values | Nearest scale class, no arbitrary bracket values | `typography.md` |
 | `HttpParams`/headers/`FormData`, jsdom gotcha | See file | `http.md` |
 
