@@ -50,3 +50,22 @@ export const sel = {
   errorAlert: (page: Page): Locator => page.getByRole('alert'),
   issueHeading: (page: Page, key: string): Locator => page.getByRole('heading', { name: key, exact: true }),
 }
+
+export const editSel = {
+  title: (page: Page): Locator => page.locator('#summary-val'),
+  link: (page: Page): Locator => page.locator('#edit-issue'),
+  dialog: (page: Page): Locator => page.locator('#edit-issue-dialog'),
+  summaryField: (page: Page): Locator => page.locator('#edit-issue-dialog #summary'),
+  descriptionField: (page: Page): Locator => page.locator('#edit-issue-dialog #description'),
+  textTab: (page: Page): Locator => page.locator('#edit-issue-dialog [data-mode="source"] button'),
+  submit: (page: Page): Locator => page.locator('#edit-issue-dialog #edit-issue-submit'),
+  cancel: (page: Page): Locator => page.locator('#edit-issue-dialog .cancel'),
+}
+
+export const commentSel = {
+  link: (page: Page): Locator => page.locator('#comment-issue').or(page.locator('#footer-comment-button')).first(),
+  field: (page: Page): Locator => page.locator('#addcomment textarea#comment'),
+  textTab: (page: Page): Locator => page.locator('#addcomment [data-mode="source"] button'),
+  submit: (page: Page): Locator => page.locator('#addcomment #issue-comment-add-submit'),
+  comments: (page: Page): Locator => page.locator('.activity-comment'),
+}

@@ -7,10 +7,15 @@ export const USAGE = `Использование:
   create --title-file <файл> --body-file <файл> [--type <тип>] [--project <код>] [--assignee me|<логин>] [--parent <KEY-N>] [--sprint <имя>] [--dry-run | --no-dry-run]
   transition <ключ> [--to in-progress|review|testing] [--assignee <email>] [--dry-run | --no-dry-run]
   after-merge --head-ref <ветка> [--title <заголовок PR>] [--tester-email <email>] [--no-assignee] [--dry-run | --no-dry-run]
-  get <ключ>
+  get <ключ> [--with-description]
+  comment <ключ> --body-file <файл> [--dry-run | --no-dry-run]
+  edit <ключ> [--title-file <файл>] [--body-file <файл>] [--dry-run | --no-dry-run]
+  draft split <черновик.md> [--out-dir <каталог>]
+  draft lint <файл> [--kind issue|markup]
 Настройки — .claude/dev-conventions.json в текущем каталоге: jira.baseUrl, jira.defaultIssueType, jira.dryRun, ticketPrefix.
 --dry-run открывает видимое окно и проверяет операцию без сохранения.
-jira.dryRun: true включает пробный запуск по умолчанию. Флаг --no-dry-run включает реальную операцию.`
+jira.dryRun: true включает пробный запуск по умолчанию. Флаг --no-dry-run включает реальную операцию.
+Команды draft работают только с файлами: к Jira не обращаются, настройки не читают.`
 
 interface CreateArgs {
   title: string
@@ -147,9 +152,87 @@ export function parseAfterMergeArgs(argv: string[]): { headRef: string; title: s
   }
 }
 
-export function parseGetArgs(argv: string[]): { key: string } {
+export function parseGetArgs(argv: string[]): { key: string; withDescription: boolean } {
   const [key, ...rest] = argv
   const issueKey = requireIssueKey(key)
-  if (rest.length > 0) throw usageError(`лишний аргумент «${rest[0]}»`)
-  return { key: issueKey }
+  const extra = rest.filter(arg => arg !== '--with-description')
+  if (extra.length > 0) throw usageError(`лишний аргумент «${extra[0]}»`)
+  return { key: issueKey, withDescription: rest.includes('--with-description') }
+}
+
+export type DraftArgs =
+  | { action: 'split'; file: string; outDir?: string }
+  | { action: 'lint'; file: string; kind: 'issue' | 'markup' }
+
+export function parseDraftArgs(argv: string[]): DraftArgs {
+  const [action, file, ...flags] = argv
+  if (action !== 'split' && action !== 'lint') throw usageError('draft принимает split или lint.')
+  if (!file || file.startsWith('--')) throw usageError('Укажите файл черновика.')
+  let outDir: string | undefined
+  let kind: 'issue' | 'markup' = 'issue'
+  for (let index = 0; index < flags.length; index++) {
+    const flag = flags[index]
+    if (action === 'split' && flag === '--out-dir') {
+      outDir = flags[++index]
+      if (!outDir) throw usageError('у флага --out-dir нет значения')
+    } else if (action === 'lint' && flag === '--kind') {
+      const value = flags[++index]
+      if (value !== 'issue' && value !== 'markup') throw usageError('--kind принимает: issue, markup')
+      kind = value
+    } else {
+      throw usageError(`неизвестный аргумент «${flag}»`)
+    }
+  }
+  return action === 'split' ? { action, file, ...(outDir ? { outDir } : {}) } : { action, file, kind }
+}
+
+// Разбор флагов вида «--имя значение» и общих переключателей пробного запуска для команд над существующей задачей.
+function collectFlags(flags: string[], valueNames: readonly string[]): { values: Record<string, string>; dryRun: boolean | undefined } {
+  const values: Record<string, string> = {}
+  const switches = new Set<string>()
+  for (let index = 0; index < flags.length; index++) {
+    const flag = flags[index]
+    if (!flag.startsWith('--')) throw usageError(`лишний аргумент «${flag}»`)
+    const name = flag.slice(2)
+    if (SWITCH_FLAGS.includes(name)) {
+      switches.add(name)
+      continue
+    }
+    if (!valueNames.includes(name)) throw usageError(`неизвестный флаг ${flag}`)
+    const value = flags[++index]
+    if (value === undefined) throw usageError(`у флага ${flag} нет значения`)
+    values[name] = value
+  }
+  return { values, dryRun: dryRunFlag(switches) }
+}
+
+export function parseCommentArgs(argv: string[], readFile: (path: string) => string): { key: string; body: string; dryRun: boolean | undefined } {
+  const [key, ...flags] = argv
+  const issueKey = requireIssueKey(key)
+  const { values, dryRun } = collectFlags(flags, ['body-file'])
+  const path = values['body-file']
+  if (!path) throw usageError('нужен --body-file')
+  const body = readInput(path, readFile).trimEnd()
+  if (!body.trim()) throw usageError(`файл комментария ${path} пуст`)
+  return { key: issueKey, body, dryRun }
+}
+
+export function parseEditArgs(argv: string[], readFile: (path: string) => string): { key: string; title?: string; body?: string; dryRun: boolean | undefined } {
+  const [key, ...flags] = argv
+  const issueKey = requireIssueKey(key)
+  const { values, dryRun } = collectFlags(flags, ['title-file', 'body-file'])
+  const titlePath = values['title-file']
+  const bodyPath = values['body-file']
+  if (!titlePath && !bodyPath) throw usageError('нужен --title-file или --body-file')
+  let title: string | undefined
+  let body: string | undefined
+  if (titlePath) {
+    title = readInput(titlePath, readFile).trim()
+    if (!title) throw usageError(`файл названия ${titlePath} пуст`)
+  }
+  if (bodyPath) {
+    body = readInput(bodyPath, readFile).trimEnd()
+    if (!body.trim()) throw usageError(`файл описания ${bodyPath} пуст`)
+  }
+  return { key: issueKey, title, body, dryRun }
 }

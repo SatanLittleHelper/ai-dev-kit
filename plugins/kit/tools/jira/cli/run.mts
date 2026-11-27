@@ -1,4 +1,9 @@
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
+import type { Page } from 'playwright-core'
+import { assertNoLintErrors, formatErrors, lintIssueDraft, lintMarkup, lintTitle } from '../src/draft/lint.mts'
+import { parseDraft } from '../src/draft/split.mts'
+import { commentIssue } from '../src/scenarios/comment-issue.mts'
+import { editIssue } from '../src/scenarios/edit-issue.mts'
 import { planAfterMerge, withTesterEmail } from '../src/after-merge.mts'
 import { loadConfig, resolveDryRun, resolveIssueType, resolveProject } from '../src/config.mts'
 import type { JiraConfig } from '../src/config.mts'
@@ -9,7 +14,7 @@ import type { PlaywrightModule } from '../src/profile.mts'
 import { createIssue } from '../src/scenarios/create-issue.mts'
 import { transitionIssue } from '../src/scenarios/transition-issue.mts'
 import { getIssue } from '../src/scenarios/get-issue.mts'
-import { parseAfterMergeArgs, parseCreateArgs, parseTransitionArgs, parseGetArgs, usageError } from './args.mts'
+import { parseDraftArgs, parseCommentArgs, parseEditArgs, parseAfterMergeArgs, parseCreateArgs, parseTransitionArgs, parseGetArgs, usageError } from './args.mts'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
@@ -62,6 +67,7 @@ async function login(rest: string[], io: Io): Promise<number> {
 async function create(rest: string[], io: Io): Promise<number> {
   const config = loadConfig(io.cwd, io.readFile)
   const args = parseCreateArgs(rest, io.readFile)
+  assertNoLintErrors([...lintTitle(args.title), ...lintMarkup(args.body)], 'Задача')
   const dryRun = resolveDryRun(args.dryRun, config)
   if (dryRun && args.dryRun === undefined) io.err('Пробный запуск включён настройкой jira.dryRun; для настоящего создания добавьте --no-dry-run.')
   const request = { ...args, dryRun, project: resolveProject(args.project, config), type: resolveIssueType(args.type, config) }
@@ -145,10 +151,84 @@ async function get(rest: string[], io: Io): Promise<number> {
   const args = parseGetArgs(rest)
   const config = loadConfig(io.cwd, io.readFile)
   return withProfile(io, config, (pw, home) => withSession(pw, profilePath(home, config.host), true, async page => {
-    const result = await getIssue(page, { key: args.key, config, timeoutMs: timeoutMs(io) })
+    const result = await getIssue(page, { key: args.key, config, timeoutMs: timeoutMs(io), withDescription: args.withDescription })
     io.out(JSON.stringify(result))
     return 0
   }))
+}
+
+function readText(io: Io, path: string): string {
+  try {
+    return io.readFile(path)
+  } catch {
+    throw usageError(`не удалось прочитать файл ${path}`)
+  }
+}
+
+function writeText(io: Io, path: string, content: string): void {
+  try {
+    io.writeFile(path, content)
+  } catch {
+    throw new CliError(`Не удалось записать файл ${path}.`, EXIT.FAILURE)
+  }
+}
+
+// Работает только с файлами: ни Jira, ни настройки проекта не нужны.
+function draft(rest: string[], io: Io): number {
+  const args = parseDraftArgs(rest)
+  const text = readText(io, args.file)
+  if (args.action === 'split') {
+    const parsed = parseDraft(text)
+    if (!parsed.ok) throw new CliError(`Черновик не разобран:\n${formatErrors(parsed.errors)}`, EXIT.FAILURE)
+    const stem = join(args.outDir ?? dirname(args.file), basename(args.file).replace(/\.[^.]+$/, ''))
+    writeText(io, `${stem}.title.txt`, parsed.title)
+    writeText(io, `${stem}.body.txt`, parsed.body)
+    io.out(JSON.stringify({ title: `${stem}.title.txt`, body: `${stem}.body.txt` }))
+    return 0
+  }
+  const errors = args.kind === 'issue' ? lintIssueDraft(text) : lintMarkup(text)
+  io.out(JSON.stringify({ ok: errors.length === 0, errors }))
+  return errors.length === 0 ? 0 : EXIT.FAILURE
+}
+
+// Общая обвязка записи в существующую задачу. Пробный запуск открывает видимое окно и ждёт его закрытия; JIRA_HEADLESS=1 отключает это для автотестов.
+async function writeToIssue<T>(
+  io: Io,
+  config: JiraConfig,
+  dryRun: boolean,
+  action: (page: Page, pause?: () => Promise<void>) => Promise<T>,
+): Promise<T> {
+  const headed = io.env.JIRA_HEADLESS === '0' || (dryRun && io.env.JIRA_HEADLESS !== '1')
+  return withProfile(io, config, (pw, home) => withSession(pw, profilePath(home, config.host), !headed, async page => {
+    const closed = headed && dryRun ? whenClosed(page.context()) : undefined
+    return action(page, closed ? () => closed : undefined)
+  }))
+}
+
+async function comment(rest: string[], io: Io): Promise<number> {
+  const args = parseCommentArgs(rest, io.readFile)
+  assertNoLintErrors(lintMarkup(args.body), 'Комментарий')
+  const config = loadConfig(io.cwd, io.readFile)
+  const dryRun = resolveDryRun(args.dryRun, config)
+  if (dryRun && args.dryRun === undefined) io.err('Пробный запуск включён настройкой jira.dryRun; для настоящей записи добавьте --no-dry-run.')
+  const result = await writeToIssue(io, config, dryRun, (page, pause) => commentIssue(page, {
+    key: args.key, body: args.body, config, dryRun, timeoutMs: timeoutMs(io), pause,
+  }))
+  io.out(JSON.stringify(result))
+  return 0
+}
+
+async function edit(rest: string[], io: Io): Promise<number> {
+  const args = parseEditArgs(rest, io.readFile)
+  assertNoLintErrors([...(args.title ? lintTitle(args.title) : []), ...(args.body ? lintMarkup(args.body) : [])], 'Правка')
+  const config = loadConfig(io.cwd, io.readFile)
+  const dryRun = resolveDryRun(args.dryRun, config)
+  if (dryRun && args.dryRun === undefined) io.err('Пробный запуск включён настройкой jira.dryRun; для настоящей записи добавьте --no-dry-run.')
+  const result = await writeToIssue(io, config, dryRun, (page, pause) => editIssue(page, {
+    key: args.key, title: args.title, body: args.body, config, dryRun, timeoutMs: timeoutMs(io), pause,
+  }))
+  io.out(JSON.stringify(result))
+  return 0
 }
 
 export async function run(argv: string[], io: Io): Promise<number> {
@@ -158,6 +238,9 @@ export async function run(argv: string[], io: Io): Promise<number> {
     if (command === 'transition') return await transition(rest, io)
     if (command === 'after-merge') return await afterMerge(rest, io)
     if (command === 'get') return await get(rest, io)
+    if (command === 'draft') return draft(rest, io)
+    if (command === 'comment') return await comment(rest, io)
+    if (command === 'edit') return await edit(rest, io)
     if (command === 'status') return await status(rest, io)
     if (command === 'login') return await login(rest, io)
     throw usageError('Неизвестная команда.')
