@@ -1,9 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, linkSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
+import { dueDrift } from './drift.mts'
 import { fileHash, pathsAlias, repoRelative } from './evidence.mts'
 import { parseDecision, parseReviewDecision } from './plannotator.mts'
 import { blocked, currentStage } from './responses.mts'
+import { isDocumentStage } from './stages.mts'
+import type { DocumentStageName } from './stages.mts'
 import { writeState } from './store.mts'
 import { loadTask, withTaskLock } from './task-access.mts'
 import type { FlowResponse, Session, TaskState } from './types.mts'
@@ -51,7 +54,7 @@ function consumeDecision(root: string, id: string, resultFile: string): FlowResp
   if (session.resultFile !== resultFile) return blocked('Сессия Plannotator сменилась. Повторите flow wait.')
   if (session.status === 'closed') {
     removeApprovedDraft(root, session)
-    return approved(state.id, session)
+    return approved(state, session)
   }
 
   let raw: string
@@ -71,13 +74,48 @@ function consumeDecision(root: string, id: string, resultFile: string): FlowResp
     return { result: 'needs-input', question: 'Plannotator вернул «нет замечаний» без решения. Документ согласован? Для согласования нужно нажать Approve.', options: ['Да, согласован', 'Нет, жду замечаний'] }
   }
   if (decision.kind === 'dismissed') return { result: 'dismissed', task: state.id, stage: session.stage }
-  if (decision.kind === 'annotated') return { result: 'annotated', task: state.id, stage: session.stage, feedback: decision.feedback, ...(decision.annotationCount === undefined ? {} : { annotationCount: decision.annotationCount }) }
+  if (decision.kind === 'annotated') {
+    markAnnotated(root, state, session)
+    return { result: 'annotated', task: state.id, stage: session.stage, feedback: decision.feedback, ...(decision.annotationCount === undefined ? {} : { annotationCount: decision.annotationCount }), ...annotatedInstruction(session.stage) }
+  }
 
   return finalize(root, state, session, decision.feedback)
 }
 
-function approved(id: string, session: Session): FlowResponse {
-  return { result: 'approved', task: id, stage: session.stage, target: session.target, ...(session.feedback ? { feedback: session.feedback } : {}) }
+// Замечания по более детальному документу: сначала доводим до approved именно его, верхние документы актуализируем после.
+function annotatedInstruction(stage: Session['stage']): { instruction?: string } {
+  if (stage !== 'test-plan' && stage !== 'plan') return {}
+
+  return { instruction: `Исправьте замечания только в черновике стадии ${stage} и снова выполните flow submit. Не открывайте для правок спеку и тест-план: сначала нужен approved этого документа. После него flow потребует привести более ранние документы к принятым изменениям (flow sync), пользователь эти правки не проверяет.` }
+}
+
+function markAnnotated(root: string, state: TaskState, session: Session): void {
+  if (!isDocumentStage(session.stage) || state.annotated?.includes(session.stage)) return
+
+  state.annotated = [...(state.annotated ?? []), session.stage]
+  writeState(root, state)
+}
+
+// Документ, получивший замечания, мог изменить то, на что опираются ранние документы: после approved их нужно актуализировать.
+function requireActualization(state: TaskState, stageName: DocumentStageName): void {
+  if (!state.annotated?.includes(stageName)) return
+
+  state.annotated = state.annotated.filter(name => name !== stageName)
+  if (state.annotated.length === 0) delete state.annotated
+  const earlier = state.stages.slice(0, state.stages.findIndex(candidate => candidate.name === stageName))
+  for (const stage of earlier) {
+    if (!isDocumentStage(stage.name) || stage.evidence === undefined || stage.hash === undefined) continue
+    if (state.drift?.some(entry => entry.stage === stage.name)) continue
+
+    state.drift = [...(state.drift ?? []), { stage: stage.name, path: stage.evidence, hash: stage.hash, since: stageName }]
+  }
+}
+
+function approved(state: TaskState, session: Session): FlowResponse {
+  const due = dueDrift(state)
+  const instruction = due.length === 0 ? undefined : `Документ согласован с замечаниями. Перепишите ${due.map(entry => `${entry.stage} (${entry.path})`).join(', ')} под принятые изменения (правьте только противоречия; пользователь эти правки не проверяет, в Plannotator их не показывайте) и выполните flow sync.`
+
+  return { result: 'approved', task: state.id, stage: session.stage, target: session.target, ...(session.feedback ? { feedback: session.feedback } : {}), ...(instruction ? { instruction } : {}) }
 }
 
 function removeApprovedDraft(root: string, session: Session): void {
@@ -131,10 +169,11 @@ function finalize(root: string, state: TaskState, session: Session, feedback?: s
     session.status = 'closed'
     if (feedback) session.feedback = feedback
     if (state.superseded) state.superseded = state.superseded.filter(entry => entry.path !== session.target)
+    requireActualization(state, stage.name as DocumentStageName)
     writeState(root, state)
     removeApprovedDraft(root, session)
 
-    return approved(state.id, session)
+    return approved(state, session)
   } catch (error) {
     return blocked(`Не удалось сохранить согласование стадии ${stage.name}: ${(error as Error).message}`)
   }
@@ -150,5 +189,5 @@ function finalizeReview(root: string, state: TaskState, session: Session, feedba
   if (feedback) session.feedback = feedback
   writeState(root, state)
 
-  return approved(state.id, session)
+  return approved(state, session)
 }

@@ -19,8 +19,8 @@ export function renderText(response: FlowResponse): string {
   if (response.result === 'needs-input') return [response.question, ...response.options.map((option, index) => `${index + 1}. ${option}`)].join('\n')
 
 if (response.result === 'pending') return response.stage === 'review' ? 'Ревью кода ждёт решения в Plannotator.' : `Документ стадии ${response.stage} ждёт решения в Plannotator: ${response.draft}.`
-  if (response.result === 'approved') return `Согласовано: ${response.target}.${response.feedback ? `\n${response.feedback}` : ''}`
-  if (response.result === 'annotated') return `Замечания${response.annotationCount === undefined ? '' : ` (${response.annotationCount})`}: ${response.feedback}`
+  if (response.result === 'approved') return `Согласовано: ${response.target}.${response.feedback ? `\n${response.feedback}` : ''}${response.instruction ? `\n${response.instruction}` : ''}`
+  if (response.result === 'annotated') return `Замечания${response.annotationCount === undefined ? '' : ` (${response.annotationCount})`}: ${response.feedback}${response.instruction ? `\n${response.instruction}` : ''}`
   if (response.result === 'dismissed') return 'Согласование отклонено.'
   if (response.result === 'review-feedback') return `Ревью, итерация ${response.iter} из ${response.max}: ${response.verdict}, отчёт ${response.reportPath}. ${response.instruction}`
 

@@ -41,6 +41,10 @@ export function invalidate(root: string, state: TaskState): ResetNotice | undefi
       state.drift = state.drift.filter(entry => !reset.some(target => target.name === entry.stage))
       if (state.drift.length === 0) delete state.drift
     }
+    if (state.annotated) {
+      state.annotated = state.annotated.filter(name => !reset.some(target => target.name === name))
+      if (state.annotated.length === 0) delete state.annotated
+    }
     for (const target of reset) {
       if (target.name === 'implement') delete state.method
       if (isDocumentStage(target.name) && state.reviews) delete state.reviews[target.name]
