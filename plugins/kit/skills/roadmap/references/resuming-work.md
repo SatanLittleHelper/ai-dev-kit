@@ -8,32 +8,9 @@ Use this reference for a generic "продолжим роадмап"-style reque
 
 ## Process
 
-### 0. Fresh main and PR sync
+### 0–4. Read current status
 
-Run `references/sync-and-isolate.md` sections A and B first. All state below is read from the fresh default branch plus the in-flight PR overlay; steps in flight in an open PR are not offered as next work, except blocked steps stackable on an open PR's branch (section B item 5), which are listed as «стек на PR #N».
-
-### 1. Find the roadmap
-
-Same rule as `references/executing-checkpoints.md` step 1: named feature → `docs/<slug>/*-roadmap.md`; otherwise glob `docs/*/*-roadmap.md`; zero matches → report and stop; multiple matches → `AskUserQuestion`, one option per roadmap.
-
-### 2. Read state
-
-- `docs/<slug>/roadmap-state.json` — per-step `status` (`roadmap/SKILL.md` → `## State File`). Missing file → fall back to reading each step's checkbox and `steps/<step-slug>/` folder contents directly.
-- `tmp/reports/batch-plan-queue.md` — Phase 2 queue, if one exists for this roadmap.
-
-### 3. Recheck blockers before anything else
-
-For every queue row with `status: blocked`, surface its `notes` reason and ask the user via `AskUserQuestion` whether it's resolved now (one question per blocked task, or one multi-select if several). Never assume a blocker is stale or still open on your own.
-
-- **Resolved** → capture the answer, set the row back to `queued`, and fold the resolution into `notes` (e.g. `resolved: <answer>`) so the next `references/batch-plan-validate.md` Phase 1 pass drafts with that context instead of re-blocking on the same question.
-- **Still open** → leave as `blocked`, exclude it from this run's proposal below.
-
-### 4. Classify every unchecked step
-
-Using `roadmap-state.json` status (`roadmap/SKILL.md` order: `not-started → spec-drafted → spec-validated → plan-drafted → implemented → closed`):
-
-- **Doc-complete** — `spec-validated` or later. The design exists and is validated; ready for a plan.
-- **Doc-in-progress** — anything before `spec-validated` (including `not-started`).
+Run `node <base>/../../tools/roadmap/cli/main.mts status` to classify steps and blockers. Run `node <base>/../../tools/roadmap/cli/main.mts estimate` for remaining estimates. Report skipped PR synchronisation and its reason.
 
 ### 5. Propose, don't assume
 

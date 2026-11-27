@@ -28,7 +28,7 @@ This skill is the single trigger for everything roadmap-related. It owns storage
 | Batch-drafting and validating several steps' specs/plans (from this roadmap, or an explicit list of tasks) | `references/batch-plan-validate.md` |
 | Fresh default branch, open-PR state overlay (incl. stackable checkpoints), hiding other roadmaps in the branch (shared by all of the above) | `references/sync-and-isolate.md` |
 
-**Before any of the above** (except writing a brand-new roadmap), run `references/sync-and-isolate.md` sections A and B: fetch, check what changed in the default branch (whether you work from it or from a roadmap-related branch) and read roadmap data accordingly, then overlay the state of roadmap work already in open PRs. Section C of the same file (strip other roadmaps from the working tree) runs once a checkpoint is picked and its branch created.
+Before continuing existing work, run `node <base>/../../tools/roadmap/cli/main.mts status` and follow `references/sync-and-isolate.md`.
 
 Read only the reference the situation calls for — they all assume this file's storage/naming/state-file conventions as shared background, so don't re-derive them per reference.
 
@@ -61,7 +61,7 @@ A roadmap and its steps carry no PRD. Feature-level goals, current/target state,
 
 | File | Purpose |
 |---|---|
-| `docs/<feature-slug>/YYYY-MM-DD-<feature-slug>-roadmap.md` | The roadmap itself. Each checkpoint/step is a top-level checkbox: `- [ ] <TICKET> <short name>`. Use the project's real issue-tracker prefix (e.g. `SCB-NNN`); before a ticket exists, use the literal placeholder `TBD` in its place. Optional tags at the end of the line: `(est: ...)` (`## Estimates`), then `(depends: ...)`. |
+| `docs/<feature-slug>/YYYY-MM-DD-<feature-slug>-roadmap.md` | The roadmap itself. Each checkpoint/step is a top-level checkbox: `- [ ] <id> — <short name> (Jira: TBD)`. The id identifies the step and cannot be `TBD`. Optional tags at the end of the line: `(est: ...)` (`## Estimates`), then `(depends: ...)`. |
 | `docs/<feature-slug>/roadmap-state.json` | Machine-readable progress state for every checkpoint — see `## State File` below. |
 | `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<step-slug>-design.md` | Step spec — the step's requirements, success criteria, and architectural decision, when it needs one (from `brainstorming`). |
 | `docs/<feature-slug>/steps/<step-slug>/YYYY-MM-DD-<ticket>-<name>-tests.md` | Test plan for the step (from `rules/skills/writing-test-plans.md`): what each test verifies, by layer. Absent when the step has no test-worthy layer. |
@@ -104,11 +104,7 @@ Each step gets its own folder under `docs/<feature-slug>/steps/`, named by the s
 
 `status` is one of, in order: `not-started` → `spec-drafted` → `spec-validated` → `plan-drafted` → `implemented` → `closed`. For a step with no design doc (drafted with `writing-plans` directly, or a step that needs no architectural decision), the `spec-*` stages are skipped — status goes straight from `not-started` to `plan-drafted` with `specPath: null`.
 
-Who updates the file, and when:
-
-- `references/writing.md` creates it right after saving the roadmap — one entry per checkpoint, `status: "not-started"`, `estimate` filled from each checkpoint's `(est: ...)` tag with `basis: "initial"`, `stepFolder` filled in only for checkpoints that got a folder immediately (most stay flat until picked up in Phase 2/3).
-- `references/batch-plan-validate.md` updates it after every phase transition for a task: Phase 1 design/plan drafted → `spec-drafted` + `specPath`, or `plan-drafted` + `planPath` if `writing-plans` was chosen directly; Phase 2 approval → `spec-validated` (or stays `plan-drafted` if a plan was validated directly) and a re-check of the step's estimate (`estimate.basis: "spec-validated"`). Also fills `stepFolder` if it was still empty.
-- `flow` (started with `--step-dir` by `references/executing-checkpoints.md`) updates this checkpoint's entry itself when it is picked up (Phase 3): `stepFolder`, `specPath` when the spec stage closes (`status` → `spec-validated`), `testPlanPath` when a separate test plan is approved, `planPath` when the plan is approved (`status` → `plan-drafted`), `status` → `implemented` when the implement stage closes. It never lowers a status and never touches a `closed` step. Still manual in `references/executing-checkpoints.md`: the estimate re-check (`estimate.basis: "plan-drafted"`), and at close-out (checkbox ticked, plan files deleted) `closed`, `planPath: null`, `testPlanPath: null`, `estimate.actualDays`.
+The tool maintains this file: `node <base>/../../tools/roadmap/cli/main.mts init` creates it, `mark` records document progress, `estimate` updates estimates, and `close` closes a step. Status never goes backwards.
 
 ## Dependencies
 
@@ -129,7 +125,7 @@ A checkpoint is **ready to pick up** when it is unchecked (`- [ ]`) and every en
 - if the folder exists but has no state file, fall back to the dependency's checkbox in that roadmap's markdown (`- [x]` = satisfied);
 - if the state file exists but has no step with that id, the reference is **broken**: treat the checkpoint as blocked and tell the user to fix the tag instead of guessing.
 
-A blocked checkpoint is **stackable** when every unsatisfied dependency is `closed` in the branch of one open PR (or a chain of PRs); it can then be started from that PR's head branch (`references/sync-and-isolate.md` section B item 5, `references/executing-checkpoints.md` step 3). This doesn't make it ready: on main the dependency stays unsatisfied until the PR merges.
+A blocked checkpoint is **stackable** when every unsatisfied dependency is `closed` in the branch of one open PR (or a chain of PRs); it can then be started from that PR's head branch (`references/sync-and-isolate.md`, `references/executing-checkpoints.md`). This doesn't make it ready: on main the dependency stays unsatisfied until the PR merges.
 
 Cross-roadmap references are one-directional and read-only: a checkpoint never edits the other roadmap's files. Multiple checkpoints can be ready at once — that's exactly what makes them safe to parallelize. `references/executing-checkpoints.md` uses this to decide which checkpoint(s) it can offer, instead of always assuming strict top-to-bottom order.
 
@@ -142,7 +138,7 @@ Every checkpoint carries a rough time estimate in two flavours, so the roadmap a
 - Unit is a **day** ≈ 6 hours of focused work; tenths allowed (`0.5д`). Written as a range: `1–3д`.
 - **manual** — one developer without AI, including writing tests and PR review.
 - **agent** — calendar time of the step when worked with an agent, including the human's review and rework (not the agent's raw runtime).
-- **Hard ceiling: `manual.max ≤ 3д` per step.** A step whose manual range goes past 3д is cut into several steps (each piece still leaves the app working — Core Principle in `references/writing.md`). Never round an oversized range down to fit and never leave the step uncut; propose the split and recompute the totals. This check runs when decomposing and on every estimate revision below.
+- **Default ceiling: `manual.max ≤ 3д` per step.** A roadmap may set `limit` in its state; `validate` checks that limit. A step whose manual range goes past 3д is cut into several steps (each piece still leaves the app working — Core Principle in `references/writing.md`). Never round an oversized range down to fit and never leave the step uncut; propose the split and recompute the totals. This check runs when decomposing and on every estimate revision below.
 - State assumptions (who executes, how familiar the stack is) in the roadmap's `Context` so the ranges can be re-judged later.
 
 **Where it lives**
@@ -172,10 +168,29 @@ Every checkpoint carries a rough time estimate in two flavours, so the roadmap a
 
 **Revision**
 
-- After Phase 2 approval (`references/batch-plan-validate.md`) and after the implementation plan is written (`references/executing-checkpoints.md` step 4): re-check the step's range against the now-detailed spec/plan, update `estimate` (+ `basis`) and the markdown tag, recompute `## Оценка`.
+- After Phase 2 approval and after the implementation plan, re-check the range, update `estimate` (+ `basis`) and the markdown tag, then call `node <base>/../../tools/roadmap/cli/main.mts estimate`.
 - On a step split/merge, re-estimate the affected steps and recompute the totals.
 - At close-out record `actualDays`; ask the user (`AskUserQuestion`) if it is not obvious from branch dates — never invent it.
 - A roadmap with no estimates (older one) keeps working; offer to add them once when it is next touched, don't force it.
+
+## Tool
+
+Use `node <base>/../../tools/roadmap/cli/main.mts <command>`. Responses are JSON; `needs-input` means ask the user with `AskUserQuestion` and repeat with the selected value.
+
+| Command | When | Result |
+|---|---|---|
+| `create` | Save an approved roadmap | Paths and state |
+| `validate` | Check tags, limits and references | Problems or success |
+| `init` | Initialise missing state | State path |
+| `estimate` | Recalculate tags and totals | Totals |
+| `status` | Check readiness and PRs | Step states |
+| `pick` | Select a checkpoint | Branch and flow command |
+| `mark` | Record documentation progress | Status |
+| `close` | Finish a checkpoint | Remaining estimates |
+| `tickets` | Draft Jira tickets | Draft path |
+| `link` | Apply created Jira keys | Linked steps |
+
+The default ceiling is `manual.max ≤ 3д`; a roadmap may set a different `limit` in `roadmap-state.json` with `create --limit agent:7`. `validate` checks that limit.
 
 ## Commit policy
 

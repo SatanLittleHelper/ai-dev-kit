@@ -25,6 +25,7 @@ export interface FakeState {
   sprints: string[]
   types: string[]
   failMode: 'none' | 'noKey' | 'error'
+  failAfter: number | null
   hideBrowse: boolean
   disableSubmit: boolean
   flavor: 'cloud' | 'server'
@@ -60,6 +61,7 @@ const defaultState = (): FakeState => ({
   sprints: ['Спринт 5'],
   types: ['Task', 'Bug'],
   failMode: 'none',
+  failAfter: null,
   hideBrowse: false,
   disableSubmit: false,
   flavor: 'cloud',
@@ -103,7 +105,7 @@ export async function startFakeJira(): Promise<FakeJira> {
       return
     }
     if (req.method === 'GET' && url.pathname === '/') {
-      const data = JSON.stringify(state).replace(/</g, '\\u003c')
+      const data = JSON.stringify({ ...state, epics: [...state.epics, ...state.issues.map(issue => ({ key: issue.key, title: issue.summary }))] }).replace(/</g, '\\u003c')
       send(res, 200, 'text/html', (state.flavor === 'server' ? SERVER_APP_HTML : APP_HTML).replace('__DATA__', () => data))
       return
     }
@@ -114,8 +116,9 @@ export async function startFakeJira(): Promise<FakeJira> {
     if (req.method === 'POST' && url.pathname === '/api/issue') {
       const body = JSON.parse(await readBody(req))
       state.submits++
-      if (state.failMode === 'noKey') return
-      if (state.failMode === 'error') {
+      const failing = state.failMode !== 'none' && (state.failAfter === null || state.issues.length >= state.failAfter)
+      if (failing && state.failMode === 'noKey') return
+      if (failing && state.failMode === 'error') {
         send(res, 500, 'application/json', '{"error":"boom"}')
         return
       }

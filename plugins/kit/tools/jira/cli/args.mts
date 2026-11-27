@@ -11,7 +11,8 @@ export const USAGE = `Использование:
   comment <ключ> --body-file <файл> [--dry-run | --no-dry-run]
   edit <ключ> [--title-file <файл>] [--body-file <файл>] [--dry-run | --no-dry-run]
   draft split <черновик.md> [--out-dir <каталог>]
-  draft lint <файл> [--kind issue|markup]
+  create-roadmap <tickets.md> [--state <roadmap-state.json>] [--resolve <id>=<KEY>|<id>=retry]... [--dry-run | --no-dry-run]
+  draft lint <файл> [--kind issue|markup|tickets] [--state <roadmap-state.json>]
 Настройки — .claude/dev-conventions.json в текущем каталоге: jira.baseUrl, jira.defaultIssueType, jira.dryRun, ticketPrefix.
 --dry-run открывает видимое окно и проверяет операцию без сохранения.
 jira.dryRun: true включает пробный запуск по умолчанию. Флаг --no-dry-run включает реальную операцию.
@@ -162,14 +163,15 @@ export function parseGetArgs(argv: string[]): { key: string; withDescription: bo
 
 export type DraftArgs =
   | { action: 'split'; file: string; outDir?: string }
-  | { action: 'lint'; file: string; kind: 'issue' | 'markup' }
+  | { action: 'lint'; file: string; kind: 'issue' | 'markup' | 'tickets'; state?: string }
 
 export function parseDraftArgs(argv: string[]): DraftArgs {
   const [action, file, ...flags] = argv
   if (action !== 'split' && action !== 'lint') throw usageError('draft принимает split или lint.')
   if (!file || file.startsWith('--')) throw usageError('Укажите файл черновика.')
   let outDir: string | undefined
-  let kind: 'issue' | 'markup' = 'issue'
+  let kind: 'issue' | 'markup' | 'tickets' = 'issue'
+  let state: string | undefined
   for (let index = 0; index < flags.length; index++) {
     const flag = flags[index]
     if (action === 'split' && flag === '--out-dir') {
@@ -177,13 +179,17 @@ export function parseDraftArgs(argv: string[]): DraftArgs {
       if (!outDir) throw usageError('у флага --out-dir нет значения')
     } else if (action === 'lint' && flag === '--kind') {
       const value = flags[++index]
-      if (value !== 'issue' && value !== 'markup') throw usageError('--kind принимает: issue, markup')
+      if (value !== 'issue' && value !== 'markup' && value !== 'tickets') throw usageError('--kind принимает: issue, markup, tickets')
       kind = value
+    } else if (action === 'lint' && flag === '--state') {
+      state = flags[++index]
+      if (!state) throw usageError('у флага --state нет значения')
     } else {
       throw usageError(`неизвестный аргумент «${flag}»`)
     }
   }
-  return action === 'split' ? { action, file, ...(outDir ? { outDir } : {}) } : { action, file, kind }
+  if (state && kind !== 'tickets') throw usageError('--state нужен только для --kind tickets')
+  return action === 'split' ? { action, file, ...(outDir ? { outDir } : {}) } : { action, file, kind, ...(state ? { state } : {}) }
 }
 
 // Разбор флагов вида «--имя значение» и общих переключателей пробного запуска для команд над существующей задачей.
@@ -235,4 +241,26 @@ export function parseEditArgs(argv: string[], readFile: (path: string) => string
     if (!body.trim()) throw usageError(`файл описания ${bodyPath} пуст`)
   }
   return { key: issueKey, title, body, dryRun }
+}
+
+export function parseCreateRoadmapArgs(argv: string[]): { file: string; dryRun: boolean | undefined; resolves: string[]; state?: string } {
+  const [file, ...flags] = argv
+  if (!file || file.startsWith('--')) throw usageError('Укажите файл документа тикетов.')
+  const resolves: string[] = []
+  let state: string | undefined
+  const switches = new Set<string>()
+  for (let index = 0; index < flags.length; index++) {
+    const flag = flags[index]
+    if (flag === '--resolve' || flag === '--state') {
+      const value = flags[++index]
+      if (value === undefined) throw usageError(`у флага ${flag} нет значения`)
+      if (flag === '--resolve') resolves.push(value)
+      else state = value
+    } else if (flag.startsWith('--') && SWITCH_FLAGS.includes(flag.slice(2))) {
+      switches.add(flag.slice(2))
+    } else {
+      throw usageError(`неизвестный аргумент «${flag}»`)
+    }
+  }
+  return { file, dryRun: dryRunFlag(switches), resolves, ...(state ? { state } : {}) }
 }

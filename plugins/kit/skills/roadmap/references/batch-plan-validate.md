@@ -92,7 +92,7 @@ For each queue task still `queued` or `drafted`, in order: run the chosen drafti
 
 **Design-only mode:** if the task's drafting mode is `brainstorming (design-only)`, stop after the design doc is drafted — do not run the auto-chain `writing-plans` pass that the plain `brainstorming` mode runs. The task is ready for Phase 2 validation with just the design (which carries the step's requirements and success criteria).
 
-If the roadmap this queue was built from has a `docs/<feature-slug>/roadmap-state.json` (`roadmap/SKILL.md` → `## State File`), update that task's entry after each artifact is drafted: design or plan drafted → `status: "spec-drafted"` + `specPath`, or `status: "plan-drafted"` + `planPath` (for `writing-plans` chosen directly; also `testPlanPath` when a test plan was written first); fill `stepFolder` if it was empty. This is in addition to, not instead of, the `tmp/reports/batch-plan-queue.md` update below — the two files track different things (this queue's own progress vs. the roadmap's overall progress).
+If the roadmap has state, record a draft with `node <base>/../../tools/roadmap/cli/main.mts mark <id> --status spec-drafted --spec <path>` or `--status plan-drafted --plan <path>`. This supplements the queue state update below.
 
 Whenever the drafting skill would normally stop and ask the user a blocking question:
 
@@ -122,7 +122,7 @@ Take the next batch of up to **3** tasks with `status: ready-for-validation`, in
 2. Post the **full plan text in a chat message** — this is a deliberate duplicate of what Plannotator will show in the browser, not a summary.
 3. Open the draft per `rules/skills/document-approval.md` (`plannotator annotate --gate --json` with version history).
 4. Annotations/change requests come back → apply them **to the same draft file** (never to the draft's real target path) and reopen it for the diff. Go back to step 2 for the same task.
-5. `approved` → this is the only point that writes to the draft's real target path: `Write` the draft's final content there and delete the draft. Set that task's `status` to `validated` in the state file immediately. If a `docs/<feature-slug>/roadmap-state.json` exists for this queue, also update that task's entry there: `status: "spec-validated"` if the validated draft was a design (design-only or auto-chain mode before its plan pass), or `status: "plan-drafted"` if the validated draft was a plan. Re-check that step's estimate against the validated draft (`roadmap/SKILL.md` → `## Estimates`): update `estimate` (+ `basis: "spec-validated"`) and the `(est: ...)` tag, recompute the roadmap's `## Оценка`; if `manual.max` now exceeds 3д, flag the step to the user as needing a split instead of keeping it. Move to the next task in the batch, back to step 1.
+5. `approved` → this is the only point that writes to the draft's real target path: `Write` the draft's final content there and delete the draft. Set that task's `status` to `validated` in the state file immediately. If the roadmap has state, call `node <base>/../../tools/roadmap/cli/main.mts mark <id> --status spec-validated --spec <path>` for a design or `--status plan-drafted --plan <path>` for a plan. Recheck the estimate and run `node <base>/../../tools/roadmap/cli/main.mts estimate`; use `validate` to check the ceiling. Move to the next task in the batch.
 
 ### After the batch
 

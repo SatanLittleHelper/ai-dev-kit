@@ -1,6 +1,11 @@
 import { basename, dirname, join } from 'node:path'
 import type { Page } from 'playwright-core'
 import { assertNoLintErrors, formatErrors, lintIssueDraft, lintMarkup, lintTitle } from '../src/draft/lint.mts'
+import { parseTickets, lintTickets } from '../src/draft/tickets.mts'
+import { createdPath, loadCreated, saveCreated, applyResolve } from '../src/roadmap/created.mts'
+import { createRoadmap } from '../src/scenarios/create-roadmap.mts'
+import { issueUrl } from '../src/config.mts'
+import { parseCreateRoadmapArgs } from './args.mts'
 import { parseDraft } from '../src/draft/split.mts'
 import { commentIssue } from '../src/scenarios/comment-issue.mts'
 import { editIssue } from '../src/scenarios/edit-issue.mts'
@@ -186,6 +191,13 @@ function draft(rest: string[], io: Io): number {
     io.out(JSON.stringify({ title: `${stem}.title.txt`, body: `${stem}.body.txt` }))
     return 0
   }
+  if (args.kind === 'tickets') {
+    const parsed = parseTickets(text)
+    const ids = args.state ? readStateIds(io, args.state) : undefined
+    const errors = parsed.ok ? lintTickets(parsed, ids) : parsed.errors
+    io.out(JSON.stringify({ ok: errors.length === 0, errors }))
+    return errors.length === 0 ? 0 : EXIT.FAILURE
+  }
   const errors = args.kind === 'issue' ? lintIssueDraft(text) : lintMarkup(text)
   io.out(JSON.stringify({ ok: errors.length === 0, errors }))
   return errors.length === 0 ? 0 : EXIT.FAILURE
@@ -231,9 +243,57 @@ async function edit(rest: string[], io: Io): Promise<number> {
   return 0
 }
 
+function readStateIds(io: Io, path: string): string[] | undefined {
+  try { return (JSON.parse(readText(io, path)) as { steps?: { id: string; status?: string }[] }).steps?.filter(step => step.status !== 'closed').map(step => step.id) }
+  catch { throw new CliError(`${path} — невалидный JSON.`, EXIT.FAILURE) }
+}
+
+async function createRoadmapCommand(rest: string[], io: Io): Promise<number> {
+  const args = parseCreateRoadmapArgs(rest)
+  const parsed = parseTickets(readText(io, args.file))
+  const ids = args.state ? readStateIds(io, args.state) : undefined
+  const errors = parsed.ok ? lintTickets(parsed, ids) : parsed.errors
+  if (!parsed.ok || errors.length > 0) throw new CliError(`Документ тикетов не прошёл проверку.\n${formatErrors(errors)}`, EXIT.FAILURE)
+
+  const config = loadConfig(io.cwd, io.readFile)
+  const path = createdPath(args.file)
+  const created = applyResolve(loadCreated(path, io.readFile), args.resolves, key => issueUrl(config.baseUrl, key))
+  if (created.unknown) {
+    throw new CliError(`Тикет «${created.unknown}» в неизвестном состоянии: проверьте Jira и повторите с --resolve ${created.unknown}=<KEY> (создан) или ${created.unknown}=retry (создать заново).`, EXIT.FAILURE)
+  }
+  if (args.resolves.length > 0) saveCreated(path, created, io.writeFile)
+
+  const dryRun = resolveDryRun(args.dryRun, config)
+  if (dryRun && args.dryRun === undefined) io.err('Пробный запуск включён настройкой jira.dryRun; для настоящего создания добавьте --no-dry-run.')
+  const project = resolveProject(undefined, config)
+  const result = await withProfile(io, config, async (pw, home) => {
+    const headed = dryRun && io.env.JIRA_HEADLESS !== '1'
+    return withSession(pw, profilePath(home, config.host), !headed, async page => {
+      let pause: (() => Promise<void>) | undefined
+      if (headed) {
+        const closed = whenClosed(page.context())
+        pause = () => closed
+      }
+      return createRoadmap(page, { baseUrl: config.baseUrl, timeoutMs: timeoutMs(io), progress: io.err, pause }, {
+        project,
+        storyType: config.roadmapStoryType ?? 'Story',
+        childType: config.roadmapChildType ?? 'Sub-task',
+        story: parsed.story,
+        children: parsed.children,
+        created,
+        dryRun,
+        save: value => saveCreated(path, value, io.writeFile),
+      })
+    })
+  })
+  io.out(JSON.stringify(result))
+  return 0
+}
+
 export async function run(argv: string[], io: Io): Promise<number> {
   try {
     const [command, ...rest] = argv
+    if (command === 'create-roadmap') return await createRoadmapCommand(rest, io)
     if (command === 'create') return await create(rest, io)
     if (command === 'transition') return await transition(rest, io)
     if (command === 'after-merge') return await afterMerge(rest, io)

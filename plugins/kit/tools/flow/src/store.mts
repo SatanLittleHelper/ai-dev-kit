@@ -70,6 +70,16 @@ export function readState(root: string, id: string): TaskState | null {
 export function writeState(root: string, state: TaskState): void {
   mkdirSync(stateDir(root), { recursive: true })
   const path = statePath(root, state.id)
+  const previous = existsSync(path) ? parse(path) : null
+  if (!previous) state.timeline = [{ at: new Date().toISOString(), stage: 'ticket', event: 'start' }]
+  else {
+    const events: NonNullable<TaskState['timeline']> = []
+    for (const stage of state.stages) {
+      const prior = previous.stages.find(item => item.name === stage.name)
+      if (prior && prior.status !== stage.status) events.push({ at: new Date().toISOString(), stage: stage.name, event: stage.status === 'pending' ? 'reset' : stage.status })
+    }
+    if (events.length) state.timeline = [...(previous.timeline ?? []), ...events]
+  }
   const temporary = `${path}.${randomUUID()}.tmp`
   try {
     writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`, { flag: 'wx' })
