@@ -41,9 +41,9 @@ test('A4: без флага autoUpdate не появляется (чужие mar
 });
 
 test('A5: повторный запуск идемпотентен, явно выключенный плагин остаётся выключенным', () => {
-  const first = merge({ enabledPlugins: { 'polish@ai-dev-kit': false } }, '--auto-update', 'kit', 'polish');
-  assert.equal(first.settings.enabledPlugins['polish@ai-dev-kit'], false);
-  const second = spawnSync('node', [SCRIPT, first.file, 'ai-dev-kit', REPO, '--auto-update', 'kit', 'polish'], { encoding: 'utf8' });
+  const first = merge({ enabledPlugins: { 'quick-actions@ai-dev-kit': false } }, '--auto-update', 'kit', 'quick-actions');
+  assert.equal(first.settings.enabledPlugins['quick-actions@ai-dev-kit'], false);
+  const second = spawnSync('node', [SCRIPT, first.file, 'ai-dev-kit', REPO, '--auto-update', 'kit', 'quick-actions'], { encoding: 'utf8' });
   assert.equal(second.status, 0);
   assert.match(second.stdout, /already enabled/);
   assert.deepEqual(JSON.parse(readFileSync(first.file, 'utf8')), first.settings);

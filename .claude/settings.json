@@ -22,7 +22,7 @@
   },
   "enabledPlugins": {
     "kit@ai-dev-kit": true,
-    "polish@ai-dev-kit": true,
+    "quick-actions@ai-dev-kit": true,
     "pr-flow@ai-dev-kit": true,
     "superpowers@superpowers-marketplace": true,
     "plannotator@plannotator": true

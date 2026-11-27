@@ -1,0 +1,5 @@
+{
+  "name": "quick-actions",
+  "description": "Кнопки над промптом: PR dashboard (kit:forgejo-pr-dashboard) и Roadmap (kit:roadmap)",
+  "author": { "name": "Aleksandr Fenin" }
+}

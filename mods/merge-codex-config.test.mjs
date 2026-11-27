@@ -24,10 +24,10 @@ test('C1: создаёт файл и добавляет включённые п�
 
 test('C2: существующее содержимое сохраняется, повтор не дублирует секцию', () => {
   const file = fresh('model = "gpt-x"\n\n[plugins."kit@ai-dev-kit"]\nenabled = false\n');
-  run(file, 'kit@ai-dev-kit', 'polish@ai-dev-kit');
+  run(file, 'kit@ai-dev-kit', 'quick-actions@ai-dev-kit');
   const text = readFileSync(file, 'utf8');
   assert.match(text, /^model = "gpt-x"/);
   assert.equal((text.match(/\[plugins\."kit@ai-dev-kit"\]/g) || []).length, 1);
   assert.match(text, /\[plugins\."kit@ai-dev-kit"\]\nenabled = false/);
-  assert.match(text, /\[plugins\."polish@ai-dev-kit"\]\nenabled = true/);
+  assert.match(text, /\[plugins\."quick-actions@ai-dev-kit"\]\nenabled = true/);
 });

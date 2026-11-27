@@ -36,12 +36,12 @@ fs.writeFileSync(f, JSON.stringify(s));'; fi`);
 
 test('M1: install-mods возвращает autoUpdate после claude plugin marketplace add и идемпотентен', () => {
   const { run, settings } = sandbox();
-  const first = run(INSTALL, 'kit', 'polish');
+  const first = run(INSTALL, 'kit', 'quick-actions');
   assert.equal(first.status, 0, first.stderr);
   assert.equal(settings().extraKnownMarketplaces['ai-dev-kit'].autoUpdate, true);
   assert.equal(settings().enabledPlugins['kit@ai-dev-kit'], true);
   const before = JSON.stringify(settings());
-  assert.equal(run(INSTALL, 'kit', 'polish').status, 0);
+  assert.equal(run(INSTALL, 'kit', 'quick-actions').status, 0);
   assert.equal(JSON.stringify(settings()), before);
 });
 
@@ -50,11 +50,11 @@ test('M2: явный autoUpdate: false и выключенный плагин с
   mkdirSync(join(project, '.claude'));
   writeFileSync(join(project, '.claude', 'settings.json'), JSON.stringify({
     extraKnownMarketplaces: { 'ai-dev-kit': { source: { source: 'github', repo: 'SatanLittleHelper/ai-dev-kit' }, autoUpdate: false } },
-    enabledPlugins: { 'polish@ai-dev-kit': false },
+    enabledPlugins: { 'quick-actions@ai-dev-kit': false },
   }));
   // the fake CLI drops autoUpdate on `marketplace add` like the real one, so only the merge result is checked for plugins
-  run(INSTALL, 'kit', 'polish');
-  assert.equal(settings().enabledPlugins['polish@ai-dev-kit'], false);
+  run(INSTALL, 'kit', 'quick-actions');
+  assert.equal(settings().enabledPlugins['quick-actions@ai-dev-kit'], false);
 });
 
 test('M3: неизвестное имя плагина отклоняется до любых записей', () => {

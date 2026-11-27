@@ -88,11 +88,11 @@ test('K5: результат ls-remote кешируется на TTL', () => {
 });
 
 test('K6: Claude — плагин включён в проекте, но не установлен', () => {
-  const dir = project({ settings: { enabledPlugins: { 'kit@ai-dev-kit': true, 'polish@ai-dev-kit': false, 'other@elsewhere': true } } });
+  const dir = project({ settings: { enabledPlugins: { 'kit@ai-dev-kit': true, 'quick-actions@ai-dev-kit': false, 'other@elsewhere': true } } });
   const message = kit.checkClaudePlugins(ctxFor(dir, stub({}).exec));
   assert.match(message, /kit@ai-dev-kit/);
   assert.match(message, /claude plugin install kit@ai-dev-kit --scope project/);
-  assert.doesNotMatch(message, /polish|other@elsewhere/);
+  assert.doesNotMatch(message, /quick-actions|other@elsewhere/);
 });
 
 test('K6b: Claude — плагина нет в маркетплейсе кита: советуем удалить запись, а не ставить', () => {

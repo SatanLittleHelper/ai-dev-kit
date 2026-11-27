@@ -14,7 +14,7 @@ Run from the consuming project's root:
 | Missing dependency | Offer this command |
 |---|---|
 | Superpowers, Plannotator plugin/skills or CLI | `bash .claude/ai-dev-kit/dependencies/install.sh` |
-| `pr-flow`, `polish`, or another kit mod | `bash .claude/ai-dev-kit/mods/install-mods.sh <mod-name>` — use the actual name from the kit's marketplace |
+| `pr-flow`, `quick-actions`, or another kit mod | `bash .claude/ai-dev-kit/mods/install-mods.sh <mod-name>` — use the actual name from the kit's marketplace |
 | Codex CLI (`codex`) — needed by `doc-review` and `codex-implement` | `npm install -g @openai/codex`, then `codex login`; for the `local` profile also replace its `YOUR-…` placeholders in `.claude/dev-conventions.json` and export `LOCAL_LLM_API_KEY` in your shell (never in a project file) |
 | `doc-review` or another kit-owned skill (`codex-implement`, …) — also a missing default profile in `.claude/dev-conventions.json` | skill: below; profile: `bash .claude/ai-dev-kit/defaults/install-dev-conventions.sh` |
 | A kit-owned skill (skills are named `kit:<skill>`) | `bash .claude/ai-dev-kit/mods/install-mods.sh kit` |
@@ -34,6 +34,6 @@ Claude Code plugins and mods are host-specific. Do not claim they are available 
 - Superpowers: offer installation through Codex's plugin catalog; see current official instructions at `https://github.com/obra/superpowers`.
 - Plannotator: offer `curl -fsSL https://plannotator.ai/install.sh | bash` for host integrations, including Codex. Unlike the kit's minimal binary installation, this installer can configure detected agents; explain that scope before running it. Follow current official host instructions at `https://github.com/backnotprop/plannotator`.
 - PR-flow in Codex: run `bash .claude/ai-dev-kit/mods/install-codex-plugins.sh kit` and start a new session. The skill requires Node.js 24+ for validation. Trust the bundled hooks via `/hooks` if you want automatic checks of supported shell calls.
-- `polish` and other Claude-only mods require Claude Code. Offer the supported manual workflow in the current host when applicable.
+- `quick-actions` and other Claude-only mods require Claude Code. Offer the supported manual workflow in the current host when applicable.
 
 For unknown dependencies, locate official installation instructions before suggesting a command; never invent repositories or flags.

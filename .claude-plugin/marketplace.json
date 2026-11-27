@@ -11,9 +11,9 @@
       "description": "Скиллы кита: roadmap, doc-review, codex-implement, Forgejo-скиллы, jira-writer, splitting-pr, testing-changes, scaffolding-nestjs-app, update-ai-dev-kit"
     },
     {
-      "name": "polish",
-      "source": "./mods/polish",
-      "description": "Кнопка и команда /polish: /simplify, затем /superpowers:requesting-code-review, находки правятся молча, без отчётов"
+      "name": "quick-actions",
+      "source": "./mods/quick-actions",
+      "description": "Кнопки над промптом: PR dashboard (kit:forgejo-pr-dashboard) и Roadmap (kit:roadmap)"
     },
     {
       "name": "pr-flow",
