@@ -11,3 +11,5 @@ export class CliError extends Error {
     this.code = code
   }
 }
+
+export const unknownState = (reason: string): CliError => new CliError(`${reason} Состояние неизвестно, проверьте Jira.`, EXIT.UNKNOWN)

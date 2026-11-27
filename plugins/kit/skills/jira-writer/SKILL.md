@@ -5,6 +5,7 @@ description: >-
   acceptance criteria). Use when the user asks for a Jira task, backlog item, bug,
   spike, technical task, acceptance criteria, or a paste-ready issue before implementation.
   After approval it can also create the issue in Jira through the `jira` CLI of the kit.
+  It can also add a comment to an existing issue and edit the title and description of an existing issue through the `jira` CLI.
 ---
 
 # Jira Writer
@@ -39,6 +40,8 @@ Split the output into **two separate fenced code blocks** so the user can copy e
 2. Second block — everything else, starting directly with `h3. Контекст` (omit the `h2. Описание` heading entirely).
 
 Never wrap the entire issue in a single fenced code block.
+
+These formatting rules are enforced by `node <base>/../../tools/jira/cli/main.mts draft lint <draft>` (see «After output»). Write for the linter, but don't rely on it alone: it checks form, not meaning.
 
 ## Approval: plannotator annotate loop (no Plan Mode)
 
@@ -122,10 +125,11 @@ For a simple bug, drop the `h3. Решение` block entirely.
 Approval flow (no native Plan Mode; see `rules/skills/document-approval.md`):
 
 1. Write the issue draft into `tmp/drafts/<issue-slug>.md`, in exactly the format from «Template»: two fenced code blocks and nothing else — first block: title only; second block: body in Jira Wiki Markup, starting at `h3. Контекст`. No «Название»/«Описание» labels or any other text outside the blocks.
-2. Open it with `plannotator annotate --gate --json` (version history on) and wait for the final decision.
-3. If annotation feedback comes back — revise the same file and reopen it.
-4. `dismissed` — stop, nothing is approved.
-5. Once approved as-is (no annotation feedback) — do NOT reprint the issue text in chat. The user already saw and approved the exact draft via Plannotator/the approval flow; repeating it in chat is a pure duplicate. Next, offer to create the issue in Jira (see «Creating the issue in Jira»); if the user declines, or Jira is not configured, move on to the next step (e.g. writing-plans).
+2. Check the draft: `node <base>/../../tools/jira/cli/main.mts draft lint tmp/drafts/<issue-slug>.md`. Exit code `1` — fix every error from the `errors` list in the same file and repeat; show the draft in Plannotator only once it is clean.
+3. Open it with `plannotator annotate --gate --json` (version history on) and wait for the final decision.
+4. If annotation feedback comes back — revise the same file and reopen it.
+5. `dismissed` — stop, nothing is approved.
+6. Once approved as-is (no annotation feedback) — do NOT reprint the issue text in chat. The user already saw and approved the exact draft via Plannotator/the approval flow; repeating it in chat is a pure duplicate. Next, offer to create the issue in Jira (see «Creating the issue in Jira»); if the user declines, or Jira is not configured, move on to the next step (e.g. writing-plans).
 
 ## Creating the issue in Jira
 
@@ -135,7 +139,7 @@ The browser profile with the user's Jira session lives in `~/.config/ai-dev-kit/
 
 1. **Check the session:** `node <base>/../../tools/jira/cli/main.mts status`. Exit code `2` means the user must sign in once: tell them to run `! node <base>/../../tools/jira/cli/main.mts login` (it installs `playwright-core` on first use and opens Chrome; they sign in via SSO/2FA and close the window), then repeat `status`.
 2. **Ask before creating.** Creating an issue is visible to other people and cannot be undone by the CLI. Ask «Создать задачу в Jira сейчас?» (`AskUserQuestion`) and run `create` only after an explicit yes. Never create automatically after approval.
-3. **Split the approved draft into two files** under `tmp/drafts/`: the first fenced block (title) into `<issue-slug>.title.txt`, the second block (body, Jira Wiki Markup) into `<issue-slug>.body.txt`, without the fences.
+3. **Split the approved draft:** `node <base>/../../tools/jira/cli/main.mts draft split tmp/drafts/<issue-slug>.md` writes `<issue-slug>.title.txt` (title) and `<issue-slug>.body.txt` (body, Jira Wiki Markup) next to the draft and prints their paths as JSON. Do not cut the fenced blocks by hand.
 4. **Create:**
    `node <base>/../../tools/jira/cli/main.mts create --title-file tmp/drafts/<issue-slug>.title.txt --body-file tmp/drafts/<issue-slug>.body.txt [--type <тип>] [--assignee me|<логин>] [--parent <KEY-N>] [--sprint "<имя>"] [--project <код>]`
    Pass optional flags only when the user named the value — except `--assignee`, which depends on the context of the call (see «Assignee by context» below). stdout is one line `{"key","url"}`; show the user the key and the link.
@@ -145,7 +149,29 @@ The browser profile with the user's Jira session lives in `~/.config/ai-dev-kit/
 - **Batch creation from a roadmap** (the issues are checkpoints of a roadmap, drafted several at a time, the `roadmap` skill or `references/writing.md` is in play) → do NOT pass `--assignee`: the issues stay unassigned until someone picks them up. Pass it only if the user explicitly named an assignee.
 - **Unclear which of the two it is** → ask once (`AskUserQuestion`) together with the confirmation of step 2.
 
-5. **Exit codes:** `0` created; `1` configuration or usage error (read stderr, fix the input); `2` sign in required; `3` a field value was not found in Jira (the issue was NOT created: name the field and ask for another value); `4` the browser profile is busy with another run (wait and retry); `5` the state after pressing Create is unknown — **do not retry**, ask the user to check Jira for the issue before doing anything else.
-6. Delete the two temporary files after a successful run.
+5. **Exit codes:** `0` created; `1` configuration or usage error or markup validation failed (`create` checks title and markup; read stderr, fix the input); `2` sign in required; `3` a field value was not found in Jira (the issue was NOT created: name the field and ask for another value); `4` the browser profile is busy with another run (wait and retry); `5` the state after pressing Create is unknown — **do not retry**, ask the user to check Jira for the issue before doing anything else.
+6. Delete the `*.title.txt` and `*.body.txt` temporary files from the `draft split` output after a successful run.
 
 **Dry run for debugging the scenario.** Add `--dry-run` to `create`: Chrome opens with a visible window, the form is filled in front of the user, Create is not pressed and nothing is saved; the command ends when the user closes the window and prints `{"dryRun":true,…}`. Use it when checking the CLI against a real project (or after a Jira update); never use it as a substitute for the explicit confirmation in step 2. `jira.dryRun: true` in `.claude/dev-conventions.json` makes every `create` a dry run by default (stderr says so); `--no-dry-run` overrides it for one real creation, and the command-line flag always wins over the setting. With `jira.dryRun` on, ask for the explicit «да» of step 2 and only then add `--no-dry-run`.
+
+## Commenting on an existing issue
+
+Use when the user asks to leave a comment on a Jira issue («оставь комментарий в ABC-123», «напиши в тикет»). Session check: step 1 of «Creating the issue in Jira».
+
+1. Write the comment in Russian, Jira Wiki Markup (same formatting rules as the issue body; no `h2.`, no headings unless needed). Keep it short.
+2. Save it to `tmp/drafts/<issue-key>.comment.txt` and run `node <base>/../../tools/jira/cli/main.mts draft lint tmp/drafts/<issue-key>.comment.txt --kind markup`. Exit code `1` — fix the listed errors and repeat.
+3. Show the text in chat and ask «Добавить комментарий в <KEY>?» (`AskUserQuestion`). Run the command only after an explicit yes — a comment is visible to other people and the CLI cannot take it back.
+4. `node <base>/../../tools/jira/cli/main.mts comment <KEY> --body-file tmp/drafts/<issue-key>.comment.txt` (add `--no-dry-run` when `jira.dryRun` is on and the user said yes). stdout: `{"key","url","result"}` — tell the user the link.
+5. Exit code `5` — the comment may or may not have been added: **do not retry**, ask the user to check the issue. Other codes — as in «Creating the issue in Jira». Delete the temporary file after a successful run.
+
+## Editing an existing issue (title and description)
+
+Use when the user asks to change the title or description of an existing Jira issue («поправь описание ABC-123», «переименуй задачу»). Only these two fields; nothing else is editable through the CLI.
+
+1. Read the current state: `node <base>/../../tools/jira/cli/main.mts get <KEY> --with-description` → `title`, `description` (raw Wiki Markup).
+2. Write the new version into `tmp/drafts/<KEY>-edit.md` in the same two-fenced-blocks format as a new issue (title, then body), changing only what the user asked for; keep the rest of the text as it was. Run `draft lint` on it (as in «After output» step 2) and approve it in Plannotator (`--gate`, version history on). If the user asked to change only one field, still show both blocks, but pass only that field to the CLI.
+3. After `approved`, ask «Записать изменения в <KEY>?» (`AskUserQuestion`); run `edit` only after an explicit yes.
+4. `draft split tmp/drafts/<KEY>-edit.md`, then `node <base>/../../tools/jira/cli/main.mts edit <KEY> [--title-file <title.txt>] [--body-file <body.txt>]` — pass only the files of the fields that changed. stdout: `{"key","url","result","changed"}`; `unchanged` means Jira already had these values.
+5. Exit code `5` — do not retry, ask the user to check the issue. Delete the temporary files after a successful run.
+
+Both commands accept `--dry-run` (visible window, nothing saved) and honour `jira.dryRun` exactly like `create`.

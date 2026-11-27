@@ -14,6 +14,7 @@ interface FakeIssue {
   parent?: string
   sprint?: string
   status?: string
+  comments?: string[]
 }
 export interface FakeState {
   loggedIn: boolean
@@ -37,6 +38,9 @@ export interface FakeState {
   transitions: number
   assignments: number
   issueReads: number
+  writeMode: 'ok' | 'rejected' | 'noReply'
+  commentSaves: number
+  editSaves: number
 }
 export interface FakeJira {
   url: string
@@ -69,6 +73,9 @@ const defaultState = (): FakeState => ({
   transitions: 0,
   assignments: 0,
   issueReads: 0,
+  writeMode: 'ok',
+  commentSaves: 0,
+  editSaves: 0,
 })
 
 const APP_HTML = readFileSync(new URL('./fake-jira-app.html', import.meta.url), 'utf8')
@@ -129,6 +136,8 @@ export async function startFakeJira(): Promise<FakeJira> {
         }
         const data = JSON.stringify({
           key: issue.key,
+          summary: issue.summary,
+          description: issue.description,
           status: issue.status ?? 'Open',
           options: state.transitionOptions,
           layout: state.transitionLayout,
@@ -142,6 +151,23 @@ export async function startFakeJira(): Promise<FakeJira> {
     if (req.method === 'POST' && browse) {
       const issue = state.issues.find(candidate => candidate.key === browse[1])
       const body = JSON.parse(await readBody(req))
+      if ('comment' in body || 'edit' in body) {
+        if ('comment' in body) state.commentSaves++
+        else state.editSaves++
+        if (state.writeMode === 'noReply') return
+        if (!issue || state.writeMode === 'rejected') {
+          send(res, 409, 'application/json', '{"error":"Jira отклонила запись"}')
+          return
+        }
+        if ('comment' in body) {
+          issue.comments = [...(issue.comments ?? []), body.comment]
+        } else {
+          issue.summary = body.edit.summary
+          issue.description = body.edit.description
+        }
+        send(res, 200, 'application/json', '{}')
+        return
+      }
       if ('assignee' in body) {
         const user = state.users.find(candidate => candidate.login === body.assignee)
         state.assignments++

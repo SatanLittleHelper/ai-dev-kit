@@ -3,7 +3,7 @@
 <h1 id="key-val"></h1>
 <div id="opsbar-opsbar-transitions"></div>
 <script>
-  const { key, status, options, layout, users, assignee } = __DATA__
+  const { key, status, options, layout, users, assignee, summary, description } = __DATA__
   const toolbar = document.querySelector('#opsbar-opsbar-transitions')
   document.querySelector('#key-val').textContent = key
 
@@ -89,6 +89,42 @@
         return
       }
       document.querySelector('#assignee-val').textContent = data.assignee
+      dialog.remove()
+    })
+  })
+  let currentDescription = description
+  newElement('h2', { id: 'summary-val', textContent: summary }, document.body)
+  const comments = newElement('div', { id: 'comments' }, document.body)
+  const showError = text => newElement('div', { className: 'aui-message-error', textContent: text }, document.body).setAttribute('role', 'alert')
+  const post = async body => {
+    const result = await fetch(location.pathname, { method: 'POST', body: JSON.stringify(body) })
+    return { ok: result.ok, data: await result.json() }
+  }
+  newElement('a', { id: 'comment-issue', href: '#', textContent: 'Comment' }, document.body).addEventListener('click', event => {
+    event.preventDefault()
+    const form = newElement('form', { id: 'addcomment' }, document.body)
+    const field = newElement('textarea', { id: 'comment' }, form)
+    newElement('button', { id: 'issue-comment-add-submit', type: 'button', textContent: 'Add' }, form).addEventListener('click', async () => {
+      const { ok, data } = await post({ comment: field.value })
+      if (!ok) return showError(data.error)
+      newElement('div', { className: 'activity-comment', textContent: field.value }, comments)
+      form.remove()
+    })
+  })
+  newElement('a', { id: 'edit-issue', href: '#', textContent: 'Edit' }, document.body).addEventListener('click', event => {
+    event.preventDefault()
+    const dialog = newElement('div', { id: 'edit-issue-dialog' }, document.body)
+    const title = newElement('input', { id: 'summary', value: document.querySelector('#summary-val').textContent }, dialog)
+    const text = newElement('textarea', { id: 'description', value: currentDescription }, dialog)
+    newElement('a', { className: 'cancel', href: '#', textContent: 'Cancel' }, dialog).addEventListener('click', e => {
+      e.preventDefault()
+      dialog.remove()
+    })
+    newElement('button', { id: 'edit-issue-submit', type: 'button', textContent: 'Update' }, dialog).addEventListener('click', async () => {
+      const { ok, data } = await post({ edit: { summary: title.value, description: text.value } })
+      if (!ok) return showError(data.error)
+      document.querySelector('#summary-val').textContent = title.value
+      currentDescription = text.value
       dialog.remove()
     })
   })
