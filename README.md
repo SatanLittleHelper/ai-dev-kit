@@ -26,15 +26,15 @@
 
 | Мод | Что делает |
 |---|---|
-| `mods/polish` | Кнопка `Polish` над промптом и команда `/polish`: по очереди запускает `/simplify` и `/superpowers:requesting-code-review`, ждёт всех агентов `simplify` и ревью-субагента, затем основной ассистент молча применяет находки ревью. Никаких отчётов и Plannotator — только правки. Нажатие кнопки мышью работает в полноэкранном режиме (`/tui fullscreen`), иначе — `ctrl+x`, `Tab`, `p` |
+| `mods/quick-actions` | Кнопки над промптом: `PR dashboard` (запускает `kit:forgejo-pr-dashboard`) и `Roadmap` (запускает `kit:roadmap`). Нажатие мышью работает в полноэкранном режиме (`/tui fullscreen`), иначе — `ctrl+x`, `Tab`, `d` / `r` |
 | `mods/pr-flow` | Реагирует на «сделай ПР» и git-команды: на просьбу подмешивает в промпт инструкции потока (коммит с согласованием сообщения, push, ПР через API Forgejo или `gh`), блокирует `git commit` в trunk, а перед созданием ПР (`gh pr create` или POST на `/pulls`) проверяет, что в описании есть строка `**Серьёзность: <Лёгкие/Средние/Серьёзные/Критичные>** — причина` не ниже границы, посчитанной по диффу (миграции, auth, CI, конфиги, major-зависимости и т. п.), и раздел `## Что сделано`; иначе команда блокируется с объяснением |
 
-`setup.sh` (через `mods/install-mods.sh`) не только прописывает мод в `settings.json`, но и ставит его командой `claude plugin install polish@ai-dev-kit --scope project`: запись в `enabledPlugins` без установки мод не загружает. Установка — на каждой машине отдельно, поэтому коллегам нужно один раз запустить `setup.sh` или выполнить эту команду вручную.
+`setup.sh` (через `mods/install-mods.sh`) не только прописывает мод в `settings.json`, но и ставит его командой `claude plugin install quick-actions@ai-dev-kit --scope project`: запись в `enabledPlugins` без установки мод не загружает. Установка — на каждой машине отдельно, поэтому коллегам нужно один раз запустить `setup.sh` или выполнить эту команду вручную.
 
 Ручная установка без `setup.sh` (личная, в user-scope):
 
 ```
-/plugin install polish --marketplace SatanLittleHelper/ai-dev-kit
+/plugin install quick-actions --marketplace SatanLittleHelper/ai-dev-kit
 ```
 
 **Правило проекта:** новый мод нужно дописать и в `.claude-plugin/marketplace.json`, и в массив `BASE_PLUGINS` в `setup.sh` — оба списка захардкожены. Проверки: `claude plugin validate mods/<name>`, `claude plugin validate .`, `claude plugin test mods/<name>`.
@@ -54,9 +54,9 @@ bash .claude/ai-dev-kit/dependencies/install.sh --update
 
 `update-ai-dev-kit` вызывает этот скрипт с `--update` после обновления submodule. Ошибки не подавляются: установщик возвращает ненулевой код, и обновление должно явно сообщить о незавершённом шаге.
 
-Если нужный плагин, мод (`pr-flow`, `polish`), скилл или CLI недоступен, агент называет зависимость, объясняет, какой шаг от неё зависит, и предлагает конкретную команду установки. Независимую работу можно продолжать; зависимый шаг ждёт установки либо явного решения пользователя обойтись без неё. Запись `enabledPlugins` сама по себе не доказывает, что мод загрузился.
+Если нужный плагин, мод (`pr-flow`, `quick-actions`), скилл или CLI недоступен, агент называет зависимость, объясняет, какой шаг от неё зависит, и предлагает конкретную команду установки. Независимую работу можно продолжать; зависимый шаг ждёт установки либо явного решения пользователя обойтись без неё. Запись `enabledPlugins` сама по себе не доказывает, что мод загрузился.
 
-**Codex подключается отдельно.** Генерация `AGENTS.md` переносит правила, но не устанавливает плагины Claude Code в Codex. Для Superpowers используется каталог плагинов Codex; полный официальный установщик Plannotator настраивает поддерживаемые интеграции обнаруженных агентов. См. [Superpowers](https://github.com/obra/superpowers) и [Plannotator](https://github.com/backnotprop/plannotator). Codex получает свой плагин `pr-flow` вместе с `kit`. После установки откройте новую сессию и используйте «сделай ПР». Для проверки нужен Node.js 24+. Через `/hooks` можно доверить хуки плагина. После изменения хука Codex может попросить подтвердить доверие повторно. Хуки проверяют распознанные вызовы оболочки в локальном Codex. Навык запускает проверку нового PR и без доверенного хука. `polish` требует Claude Code.
+**Codex подключается отдельно.** Генерация `AGENTS.md` переносит правила, но не устанавливает плагины Claude Code в Codex. Для Superpowers используется каталог плагинов Codex; полный официальный установщик Plannotator настраивает поддерживаемые интеграции обнаруженных агентов. См. [Superpowers](https://github.com/obra/superpowers) и [Plannotator](https://github.com/backnotprop/plannotator). Codex получает свой плагин `pr-flow` вместе с `kit`. После установки откройте новую сессию и используйте «сделай ПР». Для проверки нужен Node.js 24+. Через `/hooks` можно доверить хуки плагина. После изменения хука Codex может попросить подтвердить доверие повторно. Хуки проверяют распознанные вызовы оболочки в локальном Codex. Навык запускает проверку нового PR и без доверенного хука. `quick-actions` требует Claude Code.
 
 Проверка установщика без сетевых запросов и изменений пользовательских настроек: `node --test dependencies/install.test.cjs`.
 
@@ -149,7 +149,7 @@ bash .claude/ai-dev-kit/rules/build-agents-md.sh
 curl -fsSL https://raw.githubusercontent.com/SatanLittleHelper/ai-dev-kit/main/setup.sh | bash
 ```
 
-Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано выше, за один проход: добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, регистрирует хуки в `.claude/settings.json` (запрет trailer'ов в коммитах и `kit-sync` — см. ниже), убирает старые копии скиллов, установленные когда-то через `npx skills`, включает плагины кита (`kit` со скиллами, моды `polish`, `pr-flow` и — если в `package.json` есть `@angular/core`/`@nestjs/core` — соответствующий best-practices плагин) в `.claude/settings.json` проекта с `autoUpdate: true` и ставит их командой `claude plugin install … --scope project`, устанавливает официальные Superpowers и Plannotator с CLI, добавляет дефолтные профили Codex. **Спрашивает, нужна ли поддержка Codex**: если да — генерирует `AGENTS.md`, ставит плагины кита в Codex (`codex plugin marketplace add` + `codex plugin add`), включает их в `.codex/config.toml` и регистрирует хук в `.codex/hooks.json` (его нужно один раз одобрить в Codex через `/hooks`). Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
+Запускается из корня проекта (внутри git-репозитория). Делает всё, что описано выше, за один проход: добавляет этот репозиторий как submodule, дописывает `@import`-строку в `CLAUDE.md`, регистрирует хуки в `.claude/settings.json` (запрет trailer'ов в коммитах и `kit-sync` — см. ниже), убирает старые копии скиллов, установленные когда-то через `npx skills`, включает плагины кита (`kit` со скиллами, моды `quick-actions`, `pr-flow` и — если в `package.json` есть `@angular/core`/`@nestjs/core` — соответствующий best-practices плагин) в `.claude/settings.json` проекта с `autoUpdate: true` и ставит их командой `claude plugin install … --scope project`, устанавливает официальные Superpowers и Plannotator с CLI, добавляет дефолтные профили Codex. **Спрашивает, нужна ли поддержка Codex**: если да — генерирует `AGENTS.md`, ставит плагины кита в Codex (`codex plugin marketplace add` + `codex plugin add`), включает их в `.codex/config.toml` и регистрирует хук в `.codex/hooks.json` (его нужно один раз одобрить в Codex через `/hooks`). Безопасно перезапускать: каждый шаг пропускается, если уже сделан. Ничего не коммитит — итог смотреть через `git status` и коммитить самостоятельно.
 
 ### Хук проверки кита (`kit-sync`)
 

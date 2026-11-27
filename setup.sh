@@ -14,7 +14,7 @@ SUBMODULE_PATH=".claude/ai-dev-kit"
 IMPORT_LINE="@${SUBMODULE_PATH}/rules/RULES.md"
 # Plugins from .claude-plugin/marketplace.json enabled in every project: the kit's skills (kit) and
 # the mods. Stack plugins (Angular/NestJS best-practices) are added below by package.json detection.
-BASE_PLUGINS=(kit polish pr-flow)
+BASE_PLUGINS=(kit quick-actions pr-flow)
 STACK_PLUGINS=()
 # Files that a submodule pinned before the plugin delivery was introduced does not have yet.
 REQUIRED_KIT_FILES=(mods/install-mods.sh mods/install-codex-plugins.sh mods/migrate-legacy-skills.sh rules/hooks/install-kit-sync.sh rules/hooks/kit-sync.js rules/hooks/install-flow-guard.sh rules/hooks/install-pre-push.sh rules/hooks/flow-guard.js dependencies/install.sh defaults/install-dev-conventions.sh)

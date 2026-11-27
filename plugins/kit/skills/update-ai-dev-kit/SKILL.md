@@ -10,7 +10,7 @@ description: Use when the user wants to bring this project's ai-dev-kit up to da
 The kit is published from one repo (`SatanLittleHelper/ai-dev-kit`) and reaches a project in four ways:
 
 - **rules** — git submodule `.claude/ai-dev-kit`, wired into `CLAUDE.md` via `@import`;
-- **plugins** — marketplace `ai-dev-kit` (`.claude-plugin/marketplace.json`) enabled in the project's `.claude/settings.json` with `autoUpdate: true`: the `kit` plugin (all kit skills, named `kit:<skill>`), the mods (`polish`, `pr-flow`) and, by stack, `angular-best-practices` / `nestjs-best-practices`. For Codex the same plugins come from `.agents/plugins/marketplace.json` and are enabled in `.codex/config.toml`;
+- **plugins** — marketplace `ai-dev-kit` (`.claude-plugin/marketplace.json`) enabled in the project's `.claude/settings.json` with `autoUpdate: true`: the `kit` plugin (all kit skills, named `kit:<skill>`), the mods (`quick-actions`, `pr-flow`) and, by stack, `angular-best-practices` / `nestjs-best-practices`. For Codex the same plugins come from `.agents/plugins/marketplace.json` and are enabled in `.codex/config.toml`;
 - **workflow dependencies** — official Superpowers and Plannotator plugins plus the Plannotator CLI, declared in `dependencies/plugins.json` and managed by `dependencies/install.sh`;
 - **defaults for `.claude/dev-conventions.json`** — kit-provided values (the Codex backend profiles `codex` and `local`), merged in by `defaults/install-dev-conventions.sh`.
 

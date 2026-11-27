@@ -1,6 +1,0 @@
-{
-  "name": "polish",
-  "description": "Кнопка и команда /polish: последовательно запускает /simplify и /superpowers:requesting-code-review; находки правятся молча, без отчётов",
-  "author": { "name": "Aleksandr Fenin" },
-  "types": "./types/index.d.ts"
-}
