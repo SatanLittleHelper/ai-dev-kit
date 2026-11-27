@@ -45,6 +45,7 @@ function restart(root: string, id: string, stage: string, reason: string | undef
     state.drift = state.drift.filter(entry => !stages.some(target => target.name === entry.stage))
     if (state.drift.length === 0) delete state.drift
   }
+  delete state.annotated
   state.restarts = [...(state.restarts ?? []), { from: stage as StageName, reason: why, at: now.toISOString() }]
   writeState(root, state)
 

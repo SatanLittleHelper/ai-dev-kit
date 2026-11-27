@@ -23,6 +23,7 @@ export interface TaskState {
   reviews?: Partial<Record<DocumentStageName, ReviewProgress>>
   superseded?: { path: string; hash: string }[]
   drift?: Drift[]
+  annotated?: DocumentStageName[]
   restarts?: { from: StageName; reason: string; at: string }[]
 }
 
@@ -157,8 +158,8 @@ interface DecisionContext {
 }
 
 export type DecisionResponse = DecisionContext & (
-  | { result: 'approved'; target: string; feedback?: string }
-  | { result: 'annotated'; feedback: string; annotationCount?: number }
+  | { result: 'approved'; target: string; feedback?: string; instruction?: string }
+  | { result: 'annotated'; feedback: string; annotationCount?: number; instruction?: string }
   | { result: 'dismissed' }
 )
 
