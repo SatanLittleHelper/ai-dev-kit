@@ -19,6 +19,7 @@ export interface TaskState {
   jiraInstance?: string
   stepDir?: string
   stages: Stage[]
+  timeline?: { at: string; stage: StageName; event: 'start' | 'done' | 'skipped' | 'reset' }[]
   session?: Session
   reviews?: Partial<Record<DocumentStageName, ReviewProgress>>
   superseded?: { path: string; hash: string }[]
@@ -116,7 +117,9 @@ export interface GuardResponse {
   message?: string
 }
 
-export type FlowResponse = GuardResponse | OkResponse | AgentPackageResponse | PackageResponse | ValidResponse | BlockedResponse | NeedsInputResponse | PendingResponse | DecisionResponse | ReviewFeedbackResponse
+export type TimeResponse = { result: 'time'; task: string; days: number | null; hours: number; active: number; skipped: number; idleHours: number }
+
+export type FlowResponse = TimeResponse | GuardResponse | OkResponse | AgentPackageResponse | PackageResponse | ValidResponse | BlockedResponse | NeedsInputResponse | PendingResponse | DecisionResponse | ReviewFeedbackResponse
 
 export interface Session {
   stage: SessionStage

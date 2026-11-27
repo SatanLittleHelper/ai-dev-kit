@@ -10,7 +10,7 @@ Personal dev-conventions repo (`ai-dev-kit`), consumed by other projects three d
 - `rules/` — plain markdown, NOT skills, wired into a consuming project by adding it as a git submodule and importing one file from the project's own `CLAUDE.md`.
 - `mods/` — Claude Code plugins with UI and hooks (TypeScript), listed in `.claude-plugin/marketplace.json`; `setup.sh` enables them in a consuming project's `.claude/settings.json` via `mods/install-mods.sh`.
 - `defaults/` — kit-provided default values merged into a consuming project's `.claude/dev-conventions.json` (missing keys only, never overwriting, never secrets) by `defaults/install-dev-conventions.sh`, which `setup.sh` and the `update-ai-dev-kit` skill both call; currently the Codex backend profiles `codex` and `local`.
-- `plugins/kit/tools/` — TypeScript tools with a CLI that skills call; one copy of each tool inside the `kit` plugin (no dependencies in the repo; Node 24 runs the `.mts` files directly). A skill calls a tool in place: `node <base>/../../tools/<name>/cli/main.mts`, where `<base>` is its «Base directory for this skill». Currently `flow/` (state machine and CLI of the task flow: stage order, `tmp/flow/<id>.json` state, `start` / `status` / `skip`; no dependencies), `forgejo/` (Forgejo/Gitea API and CLI for the `forgejo-pr-dashboard`, `forgejo-pr-feedback` and `roadmap` skills) and `jira/` (Playwright CLI `login` / `status` / `create` / `get` / `comment` / `edit` / `transition` and file-only `draft split|lint` for `jira-writer`; `playwright-core` is installed at runtime into `~/.config/ai-dev-kit/jira/`, in the repo it is only a dev-dependency for the tests). The only extra copy is the Forgejo CLI inside the separate Codex plugin `plugins/pr-flow-codex/`, which cannot see the kit files.
+- `plugins/kit/tools/` — TypeScript tools with a CLI that skills call; one copy of each tool inside the `kit` plugin (no dependencies in the repo; Node 24 runs the `.mts` files directly). A skill calls a tool in place: `node <base>/../../tools/<name>/cli/main.mts`, where `<base>` is its «Base directory for this skill». Currently `flow/` (state machine and CLI of the task flow: stage order, `tmp/flow/<id>.json` state, `start` / `status` / `skip`; no dependencies), `forgejo/` (Forgejo/Gitea API and CLI for the `forgejo-pr-dashboard`, `forgejo-pr-feedback` and `roadmap` skills), `roadmap/` (dependency-free CLI `create` / `validate` / `init` / `estimate` / `status` / `pick` / `mark` / `close` / `tickets` / `link` for the `roadmap` skill), and `jira/` (Playwright CLI `login` / `status` / `create` / `create-roadmap` / `get` / `comment` / `edit` / `transition` and file-only `draft split|lint` for `jira-writer`; `playwright-core` is installed at runtime into `~/.config/ai-dev-kit/jira/`, in the repo it is only a dev-dependency for the tests). The only extra copy is the Forgejo CLI inside the separate Codex plugin `plugins/pr-flow-codex/`, which cannot see the kit files.
 
 There is no application build or lint step here — the repo is markdown content, bash and Node scripts (`setup.sh`, `rules/build-agents-md.sh`, `rules/hooks/*`, `mods/*.sh`, `mods/*.js`, `defaults/install-dev-conventions.sh`) and the mods in `mods/`. The scripts have tests (`node --test`, see Commands). A mod's tests run with `claude plugin test mods/<name>`; validate with `claude plugin validate mods/<name>` and `claude plugin validate .` (marketplace).
 
@@ -56,6 +56,11 @@ node --test 'plugins/kit/tools/jira/test/*.test.mts'
 Run the tests of the flow tool (task-flow stage state machine; no dependencies, Node 24):
 ```bash
 node --test 'plugins/kit/tools/flow/test/*.test.mts'
+```
+
+Run the roadmap tool tests (Node 24):
+```bash
+node --test 'plugins/kit/tools/roadmap/test/*.test.mts'
 ```
 
 ## Project rules

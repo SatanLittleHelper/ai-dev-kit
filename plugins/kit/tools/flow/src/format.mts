@@ -1,6 +1,6 @@
 import type { AgentPackageResponse, FlowResponse, PackageResponse, Stage } from './types.mts'
 
-const EXIT_CODES = { guard: 0, ok: 0, pending: 0, approved: 0, blocked: 1, dismissed: 1, 'needs-input': 2, annotated: 2, 'review-feedback': 2 } as const
+const EXIT_CODES = { time: 0, guard: 0, ok: 0, pending: 0, approved: 0, blocked: 1, dismissed: 1, 'needs-input': 2, annotated: 2, 'review-feedback': 2 } as const
 
 const MARKS = { pending: '[ ]', done: '[x]', skipped: '[-]' } as const
 
@@ -14,6 +14,7 @@ function stageLine(stage: Stage): string {
 }
 
 export function renderText(response: FlowResponse): string {
+  if (response.result === 'time') return `Задача ${response.task}: ${response.days === null ? 'нет данных' : `${response.days} дн. (${response.hours} ч активной работы)`}`
   if (response.result === 'blocked') return `Отказ: ${response.reason}`
   if (response.result === 'guard') return response.message ?? ''
   if (response.result === 'needs-input') return [response.question, ...response.options.map((option, index) => `${index + 1}. ${option}`)].join('\n')

@@ -5,6 +5,8 @@ export interface JiraConfig {
   baseUrl: string
   host: string
   ticketPrefix?: string
+  roadmapStoryType?: string
+  roadmapChildType?: string
   defaultIssueType?: string
   dryRun?: boolean
   inProgressTransition?: string
@@ -26,6 +28,8 @@ export function loadConfig(cwd: string, readFile: (path: string) => string): Jir
   }
   let json: { ticketPrefix?: unknown; jira?: {
     baseUrl?: unknown
+    roadmapStoryType?: unknown
+    roadmapChildType?: unknown
     defaultIssueType?: unknown
     dryRun?: unknown
     inProgressTransition?: unknown
@@ -44,6 +48,8 @@ export function loadConfig(cwd: string, readFile: (path: string) => string): Jir
   } catch {
     throw new CliError(`jira.baseUrl «${baseUrl}» не похож на URL.`, EXIT.FAILURE)
   }
+  const roadmapStoryType = text(json.jira?.roadmapStoryType)
+  const roadmapChildType = text(json.jira?.roadmapChildType)
   const inProgressTransition = text(json.jira?.inProgressTransition)
   const inProgressStatus = text(json.jira?.inProgressStatus)
   return {
@@ -51,6 +57,8 @@ export function loadConfig(cwd: string, readFile: (path: string) => string): Jir
     host: url.host,
     ticketPrefix: text(json.ticketPrefix),
     defaultIssueType: text(json.jira?.defaultIssueType),
+    ...(roadmapStoryType ? { roadmapStoryType } : {}),
+    ...(roadmapChildType ? { roadmapChildType } : {}),
     dryRun: flag(json.jira?.dryRun),
     ...(inProgressTransition ? { inProgressTransition } : {}),
     ...(inProgressStatus ? { inProgressStatus } : {}),

@@ -29,7 +29,7 @@ interface CreatedIssue {
   url: string
 }
 
-interface CreateContext {
+export interface CreateContext {
   baseUrl: string
   timeoutMs: number
   progress(message: string): void

@@ -28,10 +28,10 @@ Concretely this usually means: additive changes (new module, new table, dual-wri
    - **Estimate:** give each checkpoint a coarse range in two flavours — `manual` (one developer, no AI) and `agent` (with an agent, including human review) — as an `(est: 1–3д / agent: 0.5–1д)` tag (`roadmap/SKILL.md` → `## Estimates`). If `manual.max` goes past 3д, the step is too big: cut it into several steps (each still leaving the app working) instead of keeping or rounding the range. State the estimating assumptions in `Context`.
    - **Dependencies:** for each checkpoint, decide which other checkpoints must be closed before it can start — ids from this same roadmap, or `<feature-slug>:<id>` for a checkpoint in a neighbouring roadmap under `docs/` — and tag it `(depends: <id>[, <slug>:<id>...])` at the end of its checklist line (`roadmap/SKILL.md` → `## Dependencies`); omit the tag when there's no dependency. Before writing a cross-roadmap id, check that `docs/<slug>/roadmap-state.json` exists and has that step. Don't mark every checkpoint as depending on the one before it "to be safe" — that defeats the point, which is showing which checkpoints can actually be worked in parallel.
 7. Present the decomposition → open the draft for approval (`rules/skills/document-approval.md`) (same gate as `brainstorming`).
-8. Write the roadmap (+ any nested step folders) to disk. **Default location:** a dedicated `docs/<feature-slug>/` folder, committed to git and kept permanently — a roadmap is a durable record of a migration's history, not a throwaway planning artifact, so it does not follow the usual "delete the plan/spec after implementation" rule. A project's own conventions (including a personal `.local.md` override) win over this default when they conflict for the roadmap itself — but not for individual steps' own artifacts once a step is worked, see `roadmap/SKILL.md` → `## Storage Precedence`. Then create `docs/<feature-slug>/roadmap-state.json` per `roadmap/SKILL.md` → `## State File`: one entry per checkpoint, `status: "not-started"`, `stepFolder` filled in only for checkpoints that got a folder immediately, `dependsOn` populated straight from each checkpoint's `(depends: ...)` tag (`roadmap/SKILL.md` → `## Dependencies`; empty array when the tag is absent), and `estimate` populated from each `(est: ...)` tag with `basis: "initial"`, `actualDays: null`. Fill the roadmap's `## Оценка` totals (sum, critical path, remaining) per `roadmap/SKILL.md` → `## Estimates`.
+8. After approval save the roadmap and initialise its state with `node <base>/../../tools/roadmap/cli/main.mts create tmp/drafts/<slug>.md <slug> [--limit agent:7]`.
 9. Self-review pass (placeholders, internal contradictions, the Core Principle check on step ordering, ambiguous checkpoints, `Context` actually states goals and constraints) — fix inline, no separate round.
 10. Ask the user to review the written roadmap before proceeding.
-11. After approval, ask (`AskUserQuestion`, don't auto-start) how to continue. Offer, alongside "just save it for later": **running ticket-drafting and plan-drafting in parallel** — a Jira-drafting skill (e.g. `jira-writer`) producing one paste-ready draft per ticket, and `references/batch-plan-validate.md` drafting/validating each checkpoint's implementation plan — both fed from the same roadmap checklist. Note explicitly that a Jira-drafting skill typically only *drafts* text for the user to paste into Jira's UI; it does not create tickets via API, so real ticket IDs come back from the user afterward and replace the `TBD` placeholders in the roadmap doc.
+11. Ask how to continue. If `jira.baseUrl` is configured, offer to create the story and subtasks in Jira; follow `references/jira-tickets.md`. Also offer batch planning or saving for later.
 
 ## Roadmap Document Template
 
@@ -51,7 +51,7 @@ End-state architecture — not per-step.
 - [ ] A2 — ... (Jira: TBD) (est: 2–3д / agent: 1д) (depends: A1)   <- optional depends tag (always last), only when A2 truly needs A1 closed first
 
 ## Список задач                            <- use this instead of Шаги for a flat roadmap
-- [ ] <ticket-or-TBD> — [domain] Title — what changes (est: ...) (depends: ...)
+- [ ] <id> — [domain] Title — what changes (est: ...) (depends: ...)
 
 ## Оценка
 Table (Сумма по шагам / Критический путь / Осталось × Вручную / С агентом) and Допущения — format and calculation rules in `roadmap/SKILL.md` → `## Estimates`.
@@ -84,7 +84,7 @@ A roadmap carries no code — verification happens per-checkpoint, in that check
 - **Batch-asking all clarifying questions in one message.** Breaks the `brainstorming` dialogue discipline this reference inherits — one question at a time.
 - **Writing a PRD anyway.** The flow has no PRD documents — put goals and constraints in `Context`, step requirements in the step's design doc.
 - **Nesting every step into its own folder "to be safe."** Most steps are simple enough to stay a flat checklist line; over-nesting produces a pile of near-empty step folders nobody reads.
-- **Inventing Jira ticket numbers.** A ticket-drafting skill produces text to paste, not a created ticket — use `TBD` until the user reports back a real id.
+- **Inventing Jira ticket numbers.** Use `TBD` until a ticket is created or the user reports a real id; follow `references/jira-tickets.md` for batch creation.
 - **Deleting the roadmap folder after the migration finishes.** Unlike an ordinary plan/spec, this is meant to stay as history — don't apply the usual "clean up after implementation" reflex to it.
 - **Auto-starting ticket/plan drafting right after `approved`.** Design approval isn't "start coding" — ask how to proceed, same reasoning as after any other Plan Mode exit.
 - **A single number instead of a range.** Gives false precision; always `min–max`, in both flavours (manual and agent).

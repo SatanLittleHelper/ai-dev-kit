@@ -14,11 +14,12 @@ export interface ParsedArgs {
   method?: string
   agent?: string
   evidence?: string
+  idleHours?: string
   timeout?: string
   error?: string
 }
 
-const VALUE_FLAGS = { '--branch': 'branch', '--method': 'method', '--agent': 'agent', '--evidence': 'evidence', '--task': 'task', '--reason': 'reason', '--step-dir': 'stepDir', '--draft': 'draft', '--timeout': 'timeout' } as const
+const VALUE_FLAGS = { '--idle-hours': 'idleHours', '--branch': 'branch', '--method': 'method', '--agent': 'agent', '--evidence': 'evidence', '--task': 'task', '--reason': 'reason', '--step-dir': 'stepDir', '--draft': 'draft', '--timeout': 'timeout' } as const
 
 export function parseArgs(argv: string[]): ParsedArgs {
   const parsed: ParsedArgs = { positional: [], noTracker: false, text: false }

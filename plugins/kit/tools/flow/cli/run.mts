@@ -1,3 +1,4 @@
+import { timeCommand } from '../src/time.mts'
 import { guard, GUARD_EVENTS } from '../src/guard.mts'
 import type { GuardEvent } from '../src/guard.mts'
 import { doneStage } from '../src/done.mts'
@@ -29,7 +30,7 @@ export interface Io {
   sleep?(ms: number): void
 }
 
-const COMMANDS = ['start', 'status', 'skip', 'sync', 'restart', 'next', 'validate', 'submit', 'wait', 'done', 'guard']
+const COMMANDS = ['time', 'start', 'status', 'skip', 'sync', 'restart', 'next', 'validate', 'submit', 'wait', 'done', 'guard']
 
 // Команды, принимающие один позиционный аргумент: ключ, стадия или событие.
 const POSITIONAL_COMMANDS = ['start', 'skip', 'restart', 'done', 'guard']
@@ -54,6 +55,7 @@ if (args.confirmJira && args.command !== 'next') return blocked('Флаг --conf
 
   const [first] = args.positional
   switch (args.command) {
+    case 'time': return timeCommand({ root, id: args.task, idleHours: args.idleHours === undefined ? undefined : Number(args.idleHours) })
     case 'start': return startTask({ root, id: first, noTracker: args.noTracker, stepDir: args.stepDir })
     case 'skip': return skipStage({ root, id: args.task, stage: first ?? '', reason: args.reason })
     case 'sync': return syncDrift({ root, id: args.task })
